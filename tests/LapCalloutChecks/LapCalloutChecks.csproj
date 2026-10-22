@@ -4,6 +4,8 @@
     <ImplicitUsings>enable</ImplicitUsings><Nullable>enable</Nullable>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="../../src/IMRCRaceControl.App/Services/ApplicationDataPaths.cs" Link="ApplicationDataPaths.cs" />
+    <Compile Include="../../src/IMRCRaceControl.App/Services/DataProtectionService.cs" Link="DataProtectionService.cs" />
     <Compile Include="../../src/IMRCRaceControl.App/Core/RaceAudioSchedule.cs" Link="RaceAudioSchedule.cs" />
     <Compile Include="../../src/IMRCRaceControl.App/Core/NextRacePreview.cs" Link="NextRacePreview.cs" />
     <Compile Include="../../src/IMRCRaceControl.App/Core/TrackmateProtocol.cs" Link="TrackmateProtocol.cs" />

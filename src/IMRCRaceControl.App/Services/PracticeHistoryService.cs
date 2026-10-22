@@ -5,10 +5,7 @@ namespace IMRCRaceControl.Services;
 
 public sealed class PracticeHistoryService
 {
-    public string DatabasePath { get; } = Path.Combine(
-        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-        "IMRCRaceControl",
-        "RaceControl.db");
+    public string DatabasePath { get; } = ApplicationDataPaths.DatabasePath;
 
     private string ConnectionString => new SqliteConnectionStringBuilder
     {

@@ -7,9 +7,9 @@ This project is ready to upload to the root of a GitHub repository. Upload the *
 1. Select the destination GitHub repository. For the included token-free app updater, release assets must be publicly downloadable. The repository URL is embedded automatically by the release workflow; no username or access token is embedded in the app.
 2. Push/upload the source to the repository's default branch. Enable GitHub Actions if it is disabled.
 3. In **Actions**, choose **Build draft release**, then **Run workflow** on that branch.
-4. Wait for the Windows build and regression checks to pass. The run produces the installer and all update files, then creates a **draft** `v0.16.17` release.
+4. Wait for the Windows build and regression checks to pass. The run produces the installer and all update files, then creates a **draft** `v0.16.18` release.
 5. Review the draft release and its notes. Publish it when ready. Do not mark a normal user update as a prerelease: the stable updater intentionally ignores prereleases and drafts.
-6. Users install the `IMRCRaceControl-...-Setup.exe` asset once. They do not need the source ZIP or the .NET SDK. The packaged app includes the Windows .NET runtime.
+6. Users install the `Setup.exe` asset once. They do not need the source ZIP or the .NET SDK. The packaged app includes the Windows .NET runtime.
 
 The first release establishes the installer/update system. Older ZIP/source versions must install the Setup.exe once before they can use automatic updates.
 
@@ -26,7 +26,7 @@ Normal commits run build checks without publishing a release. A draft is invisib
 
 Keep the **entire generated payload** on the same release, especially:
 
-- `*Setup.exe`: installer for users.
+- `Setup.exe`: installer for users.
 - `*-full.nupkg`: complete update package.
 - `releases.win.json` (or the matching generated channel feed): updater metadata.
 - Other generated release files, including the portable ZIP and legacy feed where produced.
@@ -65,3 +65,15 @@ Reference: https://docs.velopack.io/integrating/update-sources
 ## First Windows acceptance check
 
 Before publishing the first release, install its Setup.exe on Windows, open an existing event, and confirm that data and preferences remain available. Build the next version as a separate draft; the installed app should not offer it until the draft is published. After publishing, verify that the update prompt downloads, restarts and opens the next version. Also verify offline launch, declining an update, and blocked manual updates during race/practice. These installed-app checks have not been run in the Linux preparation environment.
+
+## Data protection in 0.16.18
+
+Users download and run **Setup.exe only**. The runtime and program files are installed automatically; the other release assets support online updates and do not need manual downloading.
+
+The old package identity used the same LocalAppData directory as user data. This release changes the package ID to `IMRCRaceControl.App`, and stores data in `%LocalAppData%\IMRC Racing N Repair\Race Control\Data`. Backups live beside it in `Backups`. Neither is part of the installation. Users of 0.16.17 must install the new Setup.exe once. Close the old app; do not uninstall it before the new version imports surviving data. Subsequent updates use the new identity.
+
+Migration uses SQLite online backup (including committed WAL data), leaves original data in place, and copies settings, audio, results, archives, and publishing outbox files. Startup and periodic saves make database snapshots. Updates force a snapshot before downloading. The **DATA** button provides **BACK UP NOW**, **OPEN BACKUPS**, and **RESTORE DATABASE**. A restore validates the selected database, applies it at the next launch, and snapshots the current database first. Invalid data stops startup without silently replacing it with defaults. If an older repair already deleted the database, recovery requires a surviving database or backup.
+
+The **Verify Windows installer** workflow builds and retains Setup.exe and rendered branding on source pushes without publishing a release. Before publishing, test installation, repair, reboot, migration, and update on a Windows PC with sample saved races. CI packaging and simulated repair checks do not substitute for that installed-app test.
+
+A push changing the application project/version file now also runs **Build draft release** automatically. Ordinary source pushes still verify the app and installer without publishing. Review the resulting draft and publish it when the Windows checks are complete.

@@ -2,6 +2,8 @@ name: Build draft release
 on:
   workflow_dispatch:
   push:
+    branches: [main, master]
+    paths: ['src/IMRCRaceControl.App/IMRCRaceControl.App.csproj']
     tags: ['v*']
 permissions:
   contents: write
@@ -41,6 +43,17 @@ jobs:
           name: IMRC-Race-Control-Windows
           path: artifacts/releases/*
           if-no-files-found: error
+      - name: Write installer instructions
+        shell: pwsh
+        run: |
+          @'
+          ## Install IMRC Race Control
+          Download **Setup.exe** below and run it. You do not need to download or extract the other files.
+          
+          The remaining package/feed assets are used automatically for online updates.
+          
+          This release stores race data outside the installation directory, migrates surviving earlier data, and keeps automatic database backups. Version 0.16.17 users should install this new Setup.exe once; no uninstall of the old version is required before migration.
+          '@ | Set-Content artifacts/ReleaseNotes.md
       - name: Create draft GitHub release
         shell: pwsh
         env:
@@ -51,5 +64,7 @@ jobs:
         run: |
           dotnet tool run vpk -- upload github --repoUrl $env:RELEASE_REPOSITORY --outputDir artifacts/releases --tag "v$env:RELEASE_VERSION" --releaseName "IMRC Race Control $env:RELEASE_VERSION" --targetCommitish $env:RELEASE_COMMIT --token $env:GH_TOKEN
           if ($LASTEXITCODE -ne 0) { throw 'Draft release upload failed' }
+          gh release edit "v$env:RELEASE_VERSION" --repo $env:GITHUB_REPOSITORY --notes-file artifacts/ReleaseNotes.md
+          if ($LASTEXITCODE -ne 0) { throw 'Release instructions could not be updated' }
           gh release upload "v$env:RELEASE_VERSION" artifacts/releases/SHA256SUMS.txt --repo $env:GITHUB_REPOSITORY
           if ($LASTEXITCODE -ne 0) { throw 'Checksum upload failed' }

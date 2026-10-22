@@ -2835,7 +2835,7 @@ public partial class MainWindow : Window
         var path = _trafficLogger.SessionDirectory;
         if (string.IsNullOrWhiteSpace(path))
         {
-            path = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "IMRCRaceControl", "Logs");
+            path = Path.Combine(ApplicationDataPaths.DataDirectory, "Logs");
             Directory.CreateDirectory(path);
         }
         OpenFolder(path);

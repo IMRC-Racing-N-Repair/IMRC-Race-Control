@@ -13,47 +13,34 @@ public sealed class SettingsService
         PropertyNameCaseInsensitive = true
     };
 
-    public string SettingsPath { get; } = Path.Combine(
-        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-        "IMRCRaceControl",
+    public string SettingsPath { get; } = Path.Combine(ApplicationDataPaths.DataDirectory,
         "settings.json");
 
     public async Task<AppSettings> LoadAsync()
     {
-        try
-        {
-            if (File.Exists(SettingsPath))
-            {
-                AppSettings? loaded;
-                await using (var stream = File.OpenRead(SettingsPath))
-                {
-                    loaded = await JsonSerializer.DeserializeAsync<AppSettings>(stream, JsonOptions);
-                }
-
-                if (loaded is not null)
-                {
-                    Normalize(loaded);
-                    await SaveAsync(loaded);
-                    return loaded;
-                }
-            }
-        }
-        catch
-        {
-            // A corrupt or older settings file must never stop Race Control from opening.
-        }
-
-        var settings = CreateDefaults();
-        await SaveAsync(settings);
-        return settings;
+        if (!File.Exists(SettingsPath)) return CreateDefaults();
+        await using var stream = File.OpenRead(SettingsPath);
+        var loaded = await JsonSerializer.DeserializeAsync<AppSettings>(stream,JsonOptions)
+            ?? throw new InvalidDataException("The settings backup could not be read. It has not been overwritten.");
+        Normalize(loaded);
+        return loaded;
     }
 
     public async Task SaveAsync(AppSettings settings)
     {
         Normalize(settings);
         Directory.CreateDirectory(Path.GetDirectoryName(SettingsPath)!);
-        await using var stream = File.Create(SettingsPath);
-        await JsonSerializer.SerializeAsync(stream, settings, JsonOptions);
+        var temporary = SettingsPath+"."+Guid.NewGuid().ToString("N")+".tmp";
+        try
+        {
+            await using (var stream = new FileStream(temporary,FileMode.CreateNew,FileAccess.Write,FileShare.None,4096,FileOptions.WriteThrough))
+            {
+                await JsonSerializer.SerializeAsync(stream,settings,JsonOptions);
+                await stream.FlushAsync();
+            }
+            File.Move(temporary,SettingsPath,true);
+        }
+        finally { if (File.Exists(temporary)) File.Delete(temporary); }
     }
 
     public static AppSettings CreateDefaults()

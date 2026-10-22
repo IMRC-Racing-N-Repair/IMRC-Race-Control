@@ -227,9 +227,7 @@ public partial class MainWindow
     {
         try
         {
-            var folder = Path.Combine(
-                Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-                "IMRCRaceControl",
+            var folder = Path.Combine(IMRCRaceControl.Services.ApplicationDataPaths.DataDirectory,
                 "Logs");
             Directory.CreateDirectory(folder);
 

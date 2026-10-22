@@ -9,9 +9,7 @@ public sealed class RaceResultService
 {
     private static readonly JsonSerializerOptions JsonOptions = new() { WriteIndented = true };
 
-    public string ResultsDirectory { get; } = Path.Combine(
-        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-        "IMRCRaceControl",
+    public string ResultsDirectory { get; } = Path.Combine(ApplicationDataPaths.DataDirectory,
         "Results");
 
     public async Task<(string JsonPath, string CsvPath)> SaveAsync(

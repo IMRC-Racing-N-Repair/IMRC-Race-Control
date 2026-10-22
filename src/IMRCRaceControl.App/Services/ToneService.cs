@@ -55,9 +55,7 @@ public sealed class ToneService
         if (!IsSupportedFile(sourcePath))
             throw new InvalidOperationException("Supported custom audio formats are WAV, MP3, and WMA.");
 
-        var folder = Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-            "IMRCRaceControl",
+        var folder = Path.Combine(ApplicationDataPaths.DataDirectory,
             "Audio");
         Directory.CreateDirectory(folder);
 

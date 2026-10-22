@@ -7,12 +7,13 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <AssemblyName>IMRCRaceControl</AssemblyName>
     <RootNamespace>IMRCRaceControl</RootNamespace>
-    <Version>0.16.17</Version>
+    <Version>0.16.18</Version>
     <StartupObject>IMRCRaceControl.Program</StartupObject>
     <ApplicationManifest>app.manifest</ApplicationManifest>
   </PropertyGroup>
 
   <ItemGroup>
+    <Resource Include="Assets/IMRC-Original.png" />
     <ApplicationDefinition Remove="App.xaml" />
     <Page Include="App.xaml" />
     <AssemblyMetadata Include="UpdateRepository" Value="$(UpdateRepository)" />

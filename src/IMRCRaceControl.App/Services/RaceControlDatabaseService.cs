@@ -23,10 +23,7 @@ public sealed class RaceControlDatabaseService
     private readonly SemaphoreSlim _initializeGate = new(1, 1);
     private volatile bool _initialized;
 
-    public string DatabasePath { get; } = Path.Combine(
-        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-        "IMRCRaceControl",
-        "RaceControl.db");
+    public string DatabasePath { get; } = ApplicationDataPaths.DatabasePath;
 
     private string ConnectionString => new SqliteConnectionStringBuilder
     {
@@ -48,6 +45,8 @@ public sealed class RaceControlDatabaseService
                 return;
 
             Directory.CreateDirectory(Path.GetDirectoryName(DatabasePath)!);
+            if (File.Exists(DatabasePath))
+                await DataProtectionService.BackupAsync(DatabasePath,ApplicationDataPaths.BackupDirectory);
 
             await using var connection = new SqliteConnection(ConnectionString);
             await connection.OpenAsync();
@@ -339,15 +338,21 @@ public sealed class RaceControlDatabaseService
 
         var value = await command.ExecuteScalarAsync();
         if (value is not string json || string.IsNullOrWhiteSpace(json))
+        {
+            await using var existing = connection.CreateCommand();
+            existing.CommandText="SELECT (SELECT COUNT(*) FROM Drivers)+(SELECT COUNT(*) FROM Events)+(SELECT COUNT(*) FROM Series);";
+            if (Convert.ToInt64(await existing.ExecuteScalarAsync()) > 0)
+                throw new InvalidDataException("The saved database contains race data but its application snapshot is missing. It has not been replaced with defaults.");
             return null;
+        }
 
         try
         {
-            return JsonSerializer.Deserialize<AppSettings>(json, JsonOptions);
+            return JsonSerializer.Deserialize<AppSettings>(json, JsonOptions) ?? throw new InvalidDataException("The saved application snapshot is empty. It has not been replaced with defaults.");
         }
-        catch
+        catch (JsonException ex)
         {
-            return null;
+            throw new InvalidDataException("Stored application data could not be read. It has not been replaced with defaults.",ex);
         }
     }
 
@@ -712,6 +717,8 @@ public sealed class RaceControlDatabaseService
         }
 
         transaction.Commit();
+        try { await DataProtectionService.BackupAsync(DatabasePath,ApplicationDataPaths.BackupDirectory); }
+        catch (Exception ex) { AppCrashLogger.Log("Automatic database backup",ex); }
     }
 
     public async Task<string> GetDatabaseSummaryAsync()

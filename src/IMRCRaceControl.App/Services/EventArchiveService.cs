@@ -8,9 +8,7 @@ public sealed class EventArchiveService
 {
     private static readonly JsonSerializerOptions JsonOptions = new() { WriteIndented = true };
 
-    public string ArchiveDirectory { get; } = Path.Combine(
-        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-        "IMRCRaceControl",
+    public string ArchiveDirectory { get; } = Path.Combine(ApplicationDataPaths.DataDirectory,
         "EventArchive");
 
     public async Task<string> SaveAsync(RaceDayEventDefinition raceEvent)

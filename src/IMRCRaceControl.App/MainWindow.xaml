@@ -30,8 +30,8 @@
                 </Grid.ColumnDefinitions>
 
                 <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                    <TextBlock Text="IMRC RACE CONTROL" FontSize="17" FontWeight="Bold"/>
-                    <TextBlock Text="  v0.16.17" Margin="4,2,0,0"
+                    <controls:BrandLogo Width="165" Height="64" ToolTip="IMRC Race Control"/>
+                    <TextBlock Text="  v0.16.18" Margin="4,2,0,0"
                                Foreground="{DynamicResource MutedBrush}" FontSize="10"
                                VerticalAlignment="Center"/>
                 </StackPanel>
@@ -48,6 +48,7 @@
                 <StackPanel Grid.Column="4" Orientation="Horizontal">
                 <Button x:Name="PopOutDashboardButton" Content="&#xE7F4;" FontFamily="Segoe MDL2 Assets" Click="PopOutDashboardButton_Click" ToolTip="Pop out race / practice board" AutomationProperties.Name="Pop out race / practice board" Width="34" MinWidth="34" Padding="0" FontSize="15"/>
                 <Button Content="&#xE749;" FontFamily="Segoe MDL2 Assets" Click="PrintReports_Click" ToolTip="Print reports" AutomationProperties.Name="Print reports" Width="34" MinWidth="34" Padding="0" FontSize="15"/>
+                <Button Content="DATA" Click="DataProtection_Click" ToolTip="Race data and database backups" MinWidth="50" Padding="6,0"/>
                 <Button Content="↻" Click="CheckApplicationUpdates_Click" ToolTip="Check for application updates" Width="34" MinWidth="34" Padding="0" FontSize="18"/>
                 <Button Content="⚙" Click="Settings_Click"
                         ToolTip="Settings" Width="34" MinWidth="34"

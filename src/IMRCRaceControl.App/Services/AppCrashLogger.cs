@@ -6,9 +6,7 @@ public static class AppCrashLogger
 {
     private static readonly object Gate = new();
 
-    public static string LogDirectory { get; } = Path.Combine(
-        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-        "IMRCRaceControl",
+    public static string LogDirectory { get; } = Path.Combine(ApplicationDataPaths.DataDirectory,
         "Logs");
 
     public static string Log(string context, Exception exception)

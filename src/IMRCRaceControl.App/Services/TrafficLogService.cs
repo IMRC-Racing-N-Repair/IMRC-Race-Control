@@ -60,9 +60,7 @@ public sealed class TrafficLogService : IAsyncDisposable
             if (_writerTask is not null)
                 return;
 
-            var baseDir = Path.Combine(
-                Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-                "IMRCRaceControl",
+            var baseDir = Path.Combine(ApplicationDataPaths.DataDirectory,
                 "Logs");
 
             Directory.CreateDirectory(baseDir);

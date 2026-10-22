@@ -12,7 +12,21 @@ Checked @('tool','restore')
 # Clean generated payloads so a release never includes stale files.
 Remove-Item 'artifacts/publish','artifacts/releases' -Recurse -Force -ErrorAction SilentlyContinue
 Checked @('publish',$project,'-c','Release','-r','win-x64','--self-contained','true','-o','artifacts/publish',"-p:UpdateRepository=$Repository",'-p:PublishSingleFile=false')
-Checked @('tool','run','vpk','--','pack','--packId','IMRCRaceControl','--packVersion',$version,'--packDir','artifacts/publish','--mainExe','IMRCRaceControl.exe','--packTitle','IMRC Race Control','--packAuthors','IMRC Racing N Repair','--outputDir','artifacts/releases')
-if (-not (Get-ChildItem 'artifacts/releases/*Setup.exe')) { throw 'Installer was not generated' }
+# Render the native app brand to PNG/ICO on the Windows runner; no external image service is required.
+$branding = Join-Path (Get-Location) 'artifacts/branding'
+& './artifacts/publish/IMRCRaceControl.exe' --export-brand $branding
+if ($LASTEXITCODE -ne 0) { throw 'Brand asset rendering failed' }
+$icon = Join-Path $branding 'IMRC-Race-Control.ico'
+$splash = Join-Path $branding 'IMRC-Race-Control.png'
+if (-not (Test-Path $icon)) { throw 'Brand icon was not rendered' }
+# Rebuild the application with the same icon used by Setup.exe and the updater.
+Checked @('publish',$project,'-c','Release','-r','win-x64','--self-contained','true','-o','artifacts/publish',"-p:UpdateRepository=$Repository","-p:ApplicationIcon=$icon",'-p:PublishSingleFile=false')
+Checked @('tool','run','vpk','--','pack','--packId','IMRCRaceControl.App','--packVersion',$version,'--packDir','artifacts/publish','--mainExe','IMRCRaceControl.exe','--packTitle','IMRC Race Control','--packAuthors','IMRC Racing N Repair','--icon',$icon,'--splashImage',$splash,'--outputDir','artifacts/releases')
+$setup = @(Get-ChildItem 'artifacts/releases/*Setup.exe')
+if ($setup.Count -ne 1) { throw 'Expected exactly one installer' }
+Move-Item $setup[0].FullName 'artifacts/releases/Setup.exe'
+# Portable source bundles are not needed by users or by the updater.
+Get-ChildItem 'artifacts/releases/*Portable.zip' | Remove-Item
+
 Get-ChildItem 'artifacts/releases' -File | Get-FileHash -Algorithm SHA256 | ForEach-Object { "$($_.Hash.ToLower())  $([IO.Path]::GetFileName($_.Path))" } | Set-Content 'artifacts/releases/SHA256SUMS.txt'
 Write-Host "Installer and update files ready in artifacts/releases (version $version)."

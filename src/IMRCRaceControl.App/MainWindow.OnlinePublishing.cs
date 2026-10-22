@@ -29,7 +29,7 @@ public partial class MainWindow
         if (_onlinePublisher is null || scope != _onlineScope)
         {
             _onlinePublisher?.Dispose();
-            _onlinePublisher = new OnlinePublisher(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "IMRCRaceControl", "OnlineOutbox"), scope);
+            _onlinePublisher = new OnlinePublisher(Path.Combine(ApplicationDataPaths.DataDirectory, "OnlineOutbox"), scope);
             _onlineScope = scope;
         }
         return _onlinePublisher;

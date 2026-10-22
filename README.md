@@ -4,7 +4,7 @@ Windows race scoring software by IMRC Racing N Repair.
 
 ## Installation and updates
 
-The first installer-enabled version is **0.16.17**. Install using the Setup.exe attached to a published GitHub release. Installed copies check for stable updates after launch; updates can also be checked manually using the refresh arrow in the top bar. Race and practice sessions block application updates.
+Use **0.16.18 or later** for the protected data location. Download **Setup.exe only** from a published GitHub release; it installs the runtime and all required program files. If you installed 0.16.17, close the old app and run the new Setup.exe once before uninstalling anything. Installed copies check for stable updates after launch; updates can also be checked manually using the refresh arrow in the top bar. Race and practice sessions block application updates.
 
 For complete release and installer instructions, see [GITHUB_RELEASES.md](GITHUB_RELEASES.md).
 
@@ -24,7 +24,7 @@ dotnet run --project src/IMRCRaceControl.App/IMRCRaceControl.App.csproj
 3. The Windows workflow checks the code and generates an installer plus update packages.
 4. Review and publish the resulting draft release when ready.
 
-Normal source pushes run build checks without publishing. Drafts and prereleases are excluded from stable app updates. Existing ZIP/source builds need the first Setup.exe installation once before automatic updates are available.
+Normal source pushes run build checks. Changes to the version/project file also prepare a draft release for review; publishing stays manual. Drafts and prereleases are excluded from stable app updates. Existing ZIP/source builds need the first Setup.exe installation once before automatic updates are available.
 
 ## Features
 

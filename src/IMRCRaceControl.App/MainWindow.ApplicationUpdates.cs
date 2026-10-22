@@ -41,6 +41,7 @@ public partial class MainWindow
             try
             {
                 await CaptureAndSaveSettingsAsync(reportFailureToCaller: true);
+                await DataProtectionService.BackupAsync(ApplicationDataPaths.DatabasePath,ApplicationDataPaths.BackupDirectory,force: true);
                 FooterStatusText.Text = "Downloading application update…";
                 using var downloadTimeout = new CancellationTokenSource(TimeSpan.FromMinutes(15));
                 await manager.DownloadUpdatesAsync(update,

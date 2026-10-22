@@ -36,28 +36,30 @@ public partial class App : Application
         delay.Start();
         try
         {
+            splash?.SetStatus("Protecting saved race data…");
+            await DataProtectionService.PrepareAsync();
             var settingsService = new SettingsService();
             var database = new RaceControlDatabaseService();
-            splash?.SetStatus("Loading settings…");
-            var fallbackSettings = await settingsService.LoadAsync();
-            var settings = fallbackSettings;
+            splash?.SetStatus("Opening race database…");
+            await database.InitializeAsync();
+            var databaseSettings = await database.LoadApplicationStateAsync();
+            var settings = databaseSettings ?? await settingsService.LoadAsync();
+            // Imported tones used absolute paths in earlier versions. Point only copied
+            // application-owned audio at its new location; external files stay unchanged.
+            foreach (var property in typeof(IMRCRaceControl.Models.AppSettings).GetProperties()
+                .Where(p => p.PropertyType == typeof(string) && p.Name.EndsWith("ToneFile",StringComparison.Ordinal)))
+            {
+                var oldPath = property.GetValue(settings) as string;
+                var legacyPrefix = ApplicationDataPaths.LegacyDirectory + Path.DirectorySeparatorChar;
+                if (oldPath?.StartsWith(legacyPrefix,StringComparison.OrdinalIgnoreCase) == true)
+                {
+                    var imported = Path.Combine(ApplicationDataPaths.DataDirectory,oldPath[legacyPrefix.Length..]);
+                    if (File.Exists(imported)) property.SetValue(settings,imported);
+                }
+            }
+            SettingsService.Normalize(settings);
+            if (databaseSettings is null) await database.SaveApplicationStateAsync(settings);
             string? startupWarning = null;
-            try
-            {
-                splash?.SetStatus("Opening race database…");
-                await database.InitializeAsync();
-                var databaseSettings = await database.LoadApplicationStateAsync();
-                settings = databaseSettings ?? fallbackSettings;
-                SettingsService.Normalize(settings);
-                if (databaseSettings is null)
-                    await database.SaveApplicationStateAsync(settings);
-            }
-            catch (Exception ex)
-            {
-                settings = fallbackSettings;
-                AppCrashLogger.Log("Database startup fallback", ex);
-                startupWarning = $"Race Control could not open the local database and started from the backup settings file instead.\n\n{ex.Message}\n\nA diagnostic log was written to:\n{AppCrashLogger.LogDirectory}";
-            }
 
             ThemeService.Apply(settings.Theme);
             ThemeService.ApplyDashboard(settings);
@@ -78,7 +80,7 @@ public partial class App : Application
         {
             delay.Stop(); splash?.Close();
             var path = AppCrashLogger.Log("Application startup", ex);
-            MessageBox.Show($"Race Control could not start.\n\n{ex.Message}\n\nDiagnostic log:\n{path}",
+            MessageBox.Show($"Race Control could not start.\n\n{ex.Message}\n\nYour data has not been reset.\nBackups: {ApplicationDataPaths.BackupDirectory}\n\nDiagnostic log:\n{path}",
                 "IMRC Race Control", MessageBoxButton.OK, MessageBoxImage.Error);
             Shutdown(1);
         }
