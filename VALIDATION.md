@@ -1,12 +1,11 @@
-# Validation for 0.16.18
+# Validation for 0.16.19
 
-- Windows-targeted WPF application build: passed locally with zero warnings/errors; GitHub Windows build also passed.
-- Isolated race/scoring/database regression suite: 878 checks passed locally. Windows default-mode checks: 845 passed.
-- Added repair simulation, SQLite WAL migration, pre-restore safety snapshot, missing database recovery, invalid backup rejection, and storage separation checks.
-- Logo composition inspected using the original IMRC lettermark and RACE CONTROL wording.
-- Windows self-contained Setup.exe packaging and native PNG/ICO generation: passed in Verify Windows installer. Rendered Windows logo inspected.
-- Draft release uploads are checked for Setup.exe, package, update feed and checksums; refer to the latest Build draft release run for upload status.
+- Local Windows-targeted WPF build: passed with zero warnings and errors.
+- Isolated race/scoring/database regression suite: 878 checks passed.
+- Workflow YAML and current-version extraction from the single CHANGELOG.md: validated locally.
+- Windows build and installer verification run on each relevant push. Consult the current Build and verify, Verify Windows installer, and Build draft release runs for results.
+- Installer verification retains actual Windows-rendered logo previews for Dark, Light and Blue themes in its Brand artifact.
 
-Before publishing: install Setup.exe on Windows, migrate sample earlier data, run repair/reinstall, restart, and verify the saved event, drivers, settings and practice history. Also verify updating from a published release, offline launch, declined updates and blocked updates during race/practice. Automated builds and simulated installation-folder deletion do not replace these interactive acceptance checks.
+Interactive Windows checks: hover tooltips, the disabled empty Series screen, Settings > Application tools (including saved settings and active-session guards), theme preview/cancel, and the loading-screen logo. Also verify repair/reinstall and online updates using sample saved events before publishing.
 
-If an earlier repair already deleted the old database, recovery requires an existing database or backup; this release cannot recreate deleted records.
+If an earlier repair already deleted the old database, recovery requires a surviving database or backup; the installer cannot recreate deleted records.

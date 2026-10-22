@@ -9,7 +9,8 @@ internal sealed class StartupLoadingWindow : Window
     {
         Width = 480; Height = 245; WindowStartupLocation = WindowStartupLocation.CenterScreen;
         WindowStyle = WindowStyle.None; ResizeMode = ResizeMode.NoResize; ShowInTaskbar = false;
-        Background = new SolidColorBrush(Color.FromRgb(16,18,20)); Foreground = Brushes.White;
+        SetResourceReference(BackgroundProperty,"PageBrush");
+        SetResourceReference(ForegroundProperty,"TextBrush");
         var panel = new StackPanel { Margin = new Thickness(28) };
         panel.Children.Add(new Controls.BrandLogo { Width = 350, Height = 135, HorizontalAlignment = HorizontalAlignment.Center });
         _status = new TextBlock { Text = "Starting…", Margin = new Thickness(0,16,0,12) };

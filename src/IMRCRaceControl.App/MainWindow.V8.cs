@@ -15,7 +15,7 @@ public partial class MainWindow
     private async void Settings_Click(object sender, RoutedEventArgs e)
     {
         _lapSpeech.Stop();
-        var dialog = new SettingsDialog(_settings) { Owner = this, OpenWeb = () => LocalBoard_Click(this, new RoutedEventArgs()) };
+        var dialog = new SettingsDialog(_settings) { Owner = this, ApplicationToolsEnabled = ApplicationUpdateAllowed, OpenWeb = () => LocalBoard_Click(this, new RoutedEventArgs()) };
         if (dialog.ShowDialog() != true)
             return;
 
@@ -80,8 +80,12 @@ public partial class MainWindow
         ApplyDashboardPreferences();
         ApplyPracticeStatPreferences();
         ApplyPracticeLayoutPreferences();
-        await CaptureAndSaveSettingsAsync();
+        await CaptureAndSaveSettingsAsync(true);
         FooterStatusText.Text = $"Settings saved • {_settings.Theme.ToDisplay()} • dashboard and race audio updated.";
+        if (dialog.RequestedApplicationAction == SettingsDialog.ApplicationAction.CheckUpdates)
+            await CheckApplicationUpdatesAsync(manual: true);
+        else if (dialog.RequestedApplicationAction == SettingsDialog.ApplicationAction.ManageData)
+            DataProtection_Click(this,new RoutedEventArgs());
     }
 
     private async void MainTabs_SelectionChanged(object sender, SelectionChangedEventArgs e)

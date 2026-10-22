@@ -1,13 +1,15 @@
 <UserControl x:Class="IMRCRaceControl.Controls.BrandLogo"
  xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
- xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" Focusable="False">
+ xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" Focusable="False" IsHitTestVisible="False">
  <Viewbox Stretch="Uniform">
-  <Grid Width="2059" Height="790" Background="White">
-   <Image Source="/IMRCRaceControl;component/Assets/IMRC-Original.png" Width="2059" Height="764" VerticalAlignment="Top">
-    <Image.Clip><RectangleGeometry Rect="0,0,2059,585"/></Image.Clip>
-   </Image>
-   <TextBlock Text="RACE CONTROL" FontFamily="Arial Black" FontWeight="Black" FontStyle="Italic"
-    FontSize="165" Foreground="Black" HorizontalAlignment="Center" VerticalAlignment="Top" Margin="0,585,0,0"/>
+  <Grid x:Name="LogoLayers" Width="2099" Height="830">
+   <Grid x:Name="Artwork" Width="2059" Height="790" Margin="20" Background="Transparent">
+    <Image Source="/IMRCRaceControl;component/Assets/IMRC-Original.png" Width="2059" Height="764" VerticalAlignment="Top">
+     <Image.Clip><RectangleGeometry Rect="0,0,2059,585"/></Image.Clip>
+    </Image>
+    <TextBlock Text="RACE CONTROL" FontFamily="Arial Black" FontWeight="Black" FontStyle="Italic"
+     FontSize="165" Foreground="Black" HorizontalAlignment="Center" VerticalAlignment="Top" Margin="0,585,0,0"/>
+   </Grid>
   </Grid>
  </Viewbox>
 </UserControl>

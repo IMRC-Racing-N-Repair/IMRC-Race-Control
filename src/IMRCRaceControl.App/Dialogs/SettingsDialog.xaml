@@ -8,10 +8,19 @@
 
         <StackPanel>
             <TextBlock Text="Settings" FontSize="22" FontWeight="Bold"/>
-            <TextBlock Text="Application appearance, race audio, and Race Dashboard display." Foreground="{DynamicResource MutedBrush}" Margin="0,2,0,10"/>
+            <TextBlock Text="Appearance, race audio, race displays, updates and saved data." Foreground="{DynamicResource MutedBrush}" Margin="0,2,0,10"/>
         </StackPanel>
 
         <TabControl Grid.Row="1" TabStripPlacement="Left" ItemContainerStyle="{StaticResource SideNavigationTabItemStyle}">
+            <TabItem Header="APPLICATION"><ScrollViewer VerticalScrollBarVisibility="Auto"><StackPanel Margin="16">
+                <TextBlock Text="APPLICATION UPDATES" FontSize="24" FontWeight="Bold" Margin="0,0,0,10"/>
+                <TextBlock Text="Check for the latest published release of IMRC Race Control." TextWrapping="Wrap"/>
+                <Button x:Name="CheckUpdatesButton" Content="CHECK FOR UPDATES" Click="CheckUpdates_Click" HorizontalAlignment="Left" Margin="0,12,0,24"/>
+                <TextBlock Text="RACE DATA &amp; BACKUPS" FontSize="24" FontWeight="Bold" Margin="0,0,0,10"/>
+                <TextBlock Text="Back up your race database, open your backup folder, or restore a saved database." TextWrapping="Wrap"/>
+                <Button x:Name="ManageDataButton" Content="DATA / BACKUPS" Click="ManageData_Click" HorizontalAlignment="Left" Margin="0,12,0,18"/>
+                <TextBlock Text="Opening either tool saves your current settings and closes this window. Finish any active race or practice before using these tools." Foreground="{DynamicResource MutedBrush}" TextWrapping="Wrap"/>
+            </StackPanel></ScrollViewer></TabItem>
             <TabItem Header="RACE INFO DISPLAY"><ScrollViewer VerticalScrollBarVisibility="Auto"><StackPanel Margin="16">
                 <TextBlock Text="RACE DASHBOARD" FontWeight="Bold" Margin="0,0,0,12" FontSize="24"/><TextBlock Text="Choose the fields shown on the operator Race Dashboard. Position, car number and driver stay visible." TextWrapping="Wrap" Margin="0,0,0,8"/><ItemsControl ItemsSource="{Binding DashboardColumnOptions}"><ItemsControl.ItemsPanel><ItemsPanelTemplate><WrapPanel/></ItemsPanelTemplate></ItemsControl.ItemsPanel><ItemsControl.ItemTemplate><DataTemplate><CheckBox Content="{Binding Label}" IsChecked="{Binding IsVisible, Mode=TwoWay}" Width="180" Margin="0,4,12,4"/></DataTemplate></ItemsControl.ItemTemplate></ItemsControl><TextBlock Text="POP-OUT / WEB" FontSize="24" FontWeight="Bold" Margin="0,26,0,12"/>
                 <TextBlock Text="These fields and sections apply to both Pop-Out and Web. Driver zoom is adjusted on each screen; Include header lets it scale too." TextWrapping="Wrap" Margin="0,8,0,14"/>

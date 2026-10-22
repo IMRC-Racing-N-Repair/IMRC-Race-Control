@@ -16,7 +16,6 @@ internal static class BrandAssetExporter
         var visual = new DrawingVisual();
         using(var drawing=visual.RenderOpen())
         {
-            drawing.DrawRectangle(Brushes.White,null,new Rect(0,0,256,256));
             drawing.DrawImage(image,new Rect(4,80,248,95.17));
         }
         var iconImage = new RenderTargetBitmap(256,256,96,96,PixelFormats.Pbgra32); iconImage.Render(visual);
@@ -26,5 +25,16 @@ internal static class BrandAssetExporter
         writer.Write((ushort)0); writer.Write((ushort)1); writer.Write((ushort)1);
         writer.Write((byte)0); writer.Write((byte)0); writer.Write((byte)0); writer.Write((byte)0);
         writer.Write((ushort)1); writer.Write((ushort)32); writer.Write(payload.Length); writer.Write(22); writer.Write(payload);
+        // Keep actual Windows-rendered previews for reviewing all supported themes.
+        foreach (var theme in Enum.GetValues<IMRCRaceControl.Models.AppTheme>())
+        {
+            ThemeService.Apply(theme);
+            var preview = new System.Windows.Controls.Border { Width=840,Height=347,Padding=new Thickness(20),Child=new BrandLogo() };
+            preview.SetResourceReference(System.Windows.Controls.Border.BackgroundProperty,"PanelBrush");
+            preview.Measure(new Size(840,347)); preview.Arrange(new Rect(0,0,840,347)); preview.UpdateLayout();
+            var rendered = new RenderTargetBitmap(840,347,96,96,PixelFormats.Pbgra32); rendered.Render(preview);
+            var encoder = new PngBitmapEncoder(); encoder.Frames.Add(BitmapFrame.Create(rendered));
+            using var file=File.Create(Path.Combine(output,$"IMRC-Race-Control-{theme}.png")); encoder.Save(file);
+        }
     }
 }

@@ -7,7 +7,7 @@ This project is ready to upload to the root of a GitHub repository. Upload the *
 1. Select the destination GitHub repository. For the included token-free app updater, release assets must be publicly downloadable. The repository URL is embedded automatically by the release workflow; no username or access token is embedded in the app.
 2. Push/upload the source to the repository's default branch. Enable GitHub Actions if it is disabled.
 3. In **Actions**, choose **Build draft release**, then **Run workflow** on that branch.
-4. Wait for the Windows build and regression checks to pass. The run produces the installer and all update files, then creates a **draft** `v0.16.18` release.
+4. Wait for the Windows build and regression checks to pass. The run produces the installer and all update files, then creates a **draft** `v0.16.19` release.
 5. Review the draft release and its notes. Publish it when ready. Do not mark a normal user update as a prerelease: the stable updater intentionally ignores prereleases and drafts.
 6. Users install the `Setup.exe` asset once. They do not need the source ZIP or the .NET SDK. The packaged app includes the Windows .NET runtime.
 
@@ -15,9 +15,9 @@ The first release establishes the installer/update system. Older ZIP/source vers
 
 ## Every later update
 
-1. Change the app and increment `<Version>` in `src/IMRCRaceControl.App/IMRCRaceControl.App.csproj`, for example `0.16.17` to `0.16.18`. Update the visible version in `MainWindow.xaml` to match.
+1. Change the app and increment `<Version>` in `src/IMRCRaceControl.App/IMRCRaceControl.App.csproj`, for example `0.16.18` to `0.16.19`. Update the visible version in `MainWindow.xaml` to match.
 2. Commit/push the changes.
-3. Run **Build draft release** again. Alternatively, push a matching tag such as `v0.16.18`.
+3. Run **Build draft release** again. Alternatively, push a matching tag such as `v0.16.19`.
 4. Test the resulting Windows installer, review the draft release, and publish it.
 
 Normal commits run build checks without publishing a release. A draft is invisible to installed apps until you publish it. Each release version is immutable: fix a failed/incorrect release by using a newer version, rather than replacing a published installer with a different binary under the same version.
@@ -39,7 +39,7 @@ The workflow creates the draft and uploads the final filenames using GitHub CLI,
 - An IMRC loading screen while the database/dashboard starts.
 - A short, asynchronous update check after launch. Internet failure leaves the installed version usable.
 - A prompt when a newer stable GitHub release is available.
-- A refresh arrow in the top bar for a manual check.
+- **Settings → Application → Check for updates** for a manual check.
 - Updates are refused during an armed/running race, final laps, practice, or result saving.
 - After accepting an update, the main controls pause, preferences are saved, the package downloads, and the app restarts into the updated version. Existing race data stays in the existing LocalAppData data directory.
 
@@ -72,8 +72,12 @@ Users download and run **Setup.exe only**. The runtime and program files are ins
 
 The old package identity used the same LocalAppData directory as user data. This release changes the package ID to `IMRCRaceControl.App`, and stores data in `%LocalAppData%\IMRC Racing N Repair\Race Control\Data`. Backups live beside it in `Backups`. Neither is part of the installation. Users of 0.16.17 must install the new Setup.exe once. Close the old app; do not uninstall it before the new version imports surviving data. Subsequent updates use the new identity.
 
-Migration uses SQLite online backup (including committed WAL data), leaves original data in place, and copies settings, audio, results, archives, and publishing outbox files. Startup and periodic saves make database snapshots. Updates force a snapshot before downloading. The **DATA** button provides **BACK UP NOW**, **OPEN BACKUPS**, and **RESTORE DATABASE**. A restore validates the selected database, applies it at the next launch, and snapshots the current database first. Invalid data stops startup without silently replacing it with defaults. If an older repair already deleted the database, recovery requires a surviving database or backup.
+Migration uses SQLite online backup (including committed WAL data), leaves original data in place, and copies settings, audio, results, archives, and publishing outbox files. Startup and periodic saves make database snapshots. Updates force a snapshot before downloading. **Settings → Application → Data / Backups** provides **BACK UP NOW**, **OPEN BACKUPS**, and **RESTORE DATABASE**. A restore validates the selected database, applies it at the next launch, and snapshots the current database first. Invalid data stops startup without silently replacing it with defaults. If an older repair already deleted the database, recovery requires a surviving database or backup.
 
 The **Verify Windows installer** workflow builds and retains Setup.exe and rendered branding on source pushes without publishing a release. Before publishing, test installation, repair, reboot, migration, and update on a Windows PC with sample saved races. CI packaging and simulated repair checks do not substitute for that installed-app test.
 
 A push changing the application project/version file now also runs **Build draft release** automatically. Ordinary source pushes still verify the app and installer without publishing. Review the resulting draft and publish it when the Windows checks are complete.
+
+## Changelog maintenance
+
+Use **CHANGELOG.md** for every version, adding the newest `## major.minor.patch` section at the top. Keep earlier sections in that same file. The draft-release workflow extracts the matching version section into its release notes and fails if the section is missing. Do not create a version-numbered changelog file.

@@ -11,6 +11,21 @@ namespace IMRCRaceControl.Dialogs;
 
 public partial class SettingsDialog : Window
 {
+    public enum ApplicationAction { None, CheckUpdates, ManageData }
+    public ApplicationAction RequestedApplicationAction { get; private set; }
+    public bool ApplicationToolsEnabled
+    {
+        set { CheckUpdatesButton.IsEnabled = value; ManageDataButton.IsEnabled = value; }
+    }
+    private void CheckUpdates_Click(object sender, RoutedEventArgs e) => OpenApplicationTool(ApplicationAction.CheckUpdates,sender,e);
+    private void ManageData_Click(object sender, RoutedEventArgs e) => OpenApplicationTool(ApplicationAction.ManageData,sender,e);
+    private void OpenApplicationTool(ApplicationAction action,object sender,RoutedEventArgs e)
+    {
+        RequestedApplicationAction = action;
+        Save_Click(sender,e);
+        if (DialogResult != true) RequestedApplicationAction = ApplicationAction.None;
+    }
+
     private sealed record Choice<T>(T Value, string Label);
 
     private readonly ToneService _toneService = new();

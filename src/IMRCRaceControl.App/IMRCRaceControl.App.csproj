@@ -7,7 +7,8 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <AssemblyName>IMRCRaceControl</AssemblyName>
     <RootNamespace>IMRCRaceControl</RootNamespace>
-    <Version>0.16.18</Version>
+    <!-- Match this version in CHANGELOG.md and the dashboard header. -->
+    <Version>0.16.19</Version>
     <StartupObject>IMRCRaceControl.Program</StartupObject>
     <ApplicationManifest>app.manifest</ApplicationManifest>
   </PropertyGroup>

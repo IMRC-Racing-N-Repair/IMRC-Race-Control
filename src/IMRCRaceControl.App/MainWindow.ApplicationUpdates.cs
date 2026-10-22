@@ -7,7 +7,6 @@ public partial class MainWindow
     private bool _applicationUpdateBusy;
     private bool ApplicationUpdateAllowed => !_practiceActive && !_resultAutoSaveInProgress &&
         _raceEngine.State is not (RaceState.Armed or RaceState.Running or RaceState.TimeExpired);
-    private async void CheckApplicationUpdates_Click(object sender, RoutedEventArgs e) => await CheckApplicationUpdatesAsync(true);
     internal async Task CheckApplicationUpdatesAsync(bool manual)
     {
         if (_applicationUpdateBusy) return;

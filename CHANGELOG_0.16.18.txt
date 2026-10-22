@@ -1,8 +1,0 @@
-IMRC Race Control 0.16.18
-- Original IMRC lettermark with new RACE CONTROL wording in dashboard, loading screen, installer and application icon.
-- Self-contained Setup.exe: download only this file; remaining release assets power online updates.
-- Separate installation and user-data directories so repair/reinstallation cannot remove the race database.
-- Copy surviving legacy race data, settings, audio, results and archives without deleting originals.
-- Automatic SQLite backups, backup before updates, and DATA backup/restore controls.
-- Invalid database/settings errors preserve data instead of silently resetting saved state.
-- Regression checks simulate old installation removal, WAL migration, backup recovery and rejected corrupt restores.

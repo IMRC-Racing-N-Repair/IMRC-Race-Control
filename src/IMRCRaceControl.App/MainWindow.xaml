@@ -31,7 +31,7 @@
 
                 <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                     <controls:BrandLogo Width="165" Height="64" ToolTip="IMRC Race Control"/>
-                    <TextBlock Text="  v0.16.18" Margin="4,2,0,0"
+                    <TextBlock Text="  v0.16.19" Margin="4,2,0,0"
                                Foreground="{DynamicResource MutedBrush}" FontSize="10"
                                VerticalAlignment="Center"/>
                 </StackPanel>
@@ -48,8 +48,6 @@
                 <StackPanel Grid.Column="4" Orientation="Horizontal">
                 <Button x:Name="PopOutDashboardButton" Content="&#xE7F4;" FontFamily="Segoe MDL2 Assets" Click="PopOutDashboardButton_Click" ToolTip="Pop out race / practice board" AutomationProperties.Name="Pop out race / practice board" Width="34" MinWidth="34" Padding="0" FontSize="15"/>
                 <Button Content="&#xE749;" FontFamily="Segoe MDL2 Assets" Click="PrintReports_Click" ToolTip="Print reports" AutomationProperties.Name="Print reports" Width="34" MinWidth="34" Padding="0" FontSize="15"/>
-                <Button Content="DATA" Click="DataProtection_Click" ToolTip="Race data and database backups" MinWidth="50" Padding="6,0"/>
-                <Button Content="↻" Click="CheckApplicationUpdates_Click" ToolTip="Check for application updates" Width="34" MinWidth="34" Padding="0" FontSize="18"/>
                 <Button Content="⚙" Click="Settings_Click"
                         ToolTip="Settings" Width="34" MinWidth="34"
                         Padding="0" FontSize="15" VerticalAlignment="Center"/>
@@ -1186,9 +1184,16 @@
                         <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
                         <TextBlock Text="EVENTS IN THIS SERIES" FontWeight="Bold" FontSize="18"/>
                         <DockPanel Grid.Row="1"><Button DockPanel.Dock="Right" Content="REFRESH EVENTS" Click="RefreshSeriesEvents_Click"/><TextBlock Text="Select or remove weeks manually. Active events stay pending until completed." TextWrapping="Wrap"/></DockPanel>
-                        <ListBox Grid.Row="2" ItemsSource="{Binding SeriesEventChoices}">
+                        <ListBox x:Name="SeriesEventList" Grid.Row="2" ItemsSource="{Binding SeriesEventChoices}">
                           <ListBox.ItemTemplate><DataTemplate><CheckBox Content="{Binding Display}" IsChecked="{Binding Included, Mode=TwoWay}" Tag="{Binding EventId}" Click="SeriesEventCheckBox_Click"/></DataTemplate></ListBox.ItemTemplate>
                         </ListBox>
+                        <TextBlock Grid.Row="2" Text="No events to show yet. Create a series and add race-day events."
+                                   Foreground="{DynamicResource MutedBrush}" Margin="18" TextWrapping="Wrap"
+                                   VerticalAlignment="Center" HorizontalAlignment="Center" IsHitTestVisible="False">
+                          <TextBlock.Style><Style TargetType="TextBlock"><Setter Property="Visibility" Value="Collapsed"/>
+                            <Style.Triggers><DataTrigger Binding="{Binding HasItems, ElementName=SeriesEventList}" Value="False"><Setter Property="Visibility" Value="Visible"/></DataTrigger></Style.Triggers>
+                          </Style></TextBlock.Style>
+                        </TextBlock>
                       </Grid>
                     </Grid>
                   </TabItem>

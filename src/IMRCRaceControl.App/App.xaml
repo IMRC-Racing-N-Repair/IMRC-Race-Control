@@ -3,6 +3,7 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
     <Application.Resources>
         <!-- Core palette -->
+        <SolidColorBrush x:Key="BrandOutlineBrush" Color="White"/>
         <SolidColorBrush x:Key="PageBrush" Color="#101214"/>
         <SolidColorBrush x:Key="PanelBrush" Color="#171A1D"/>
         <SolidColorBrush x:Key="PanelAltBrush" Color="#202428"/>
@@ -64,6 +65,21 @@
         <SolidColorBrush x:Key="{x:Static SystemColors.HighlightBrushKey}" Color="#7E2E35"/>
         <SolidColorBrush x:Key="{x:Static SystemColors.HighlightTextBrushKey}" Color="#FFFFFF"/>
         <SolidColorBrush x:Key="{x:Static SystemColors.GrayTextBrushKey}" Color="#78869A"/>
+
+        <Style TargetType="ToolTip">
+            <Setter Property="Background" Value="{DynamicResource PanelAltBrush}"/>
+            <Setter Property="Foreground" Value="{DynamicResource TextBrush}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource BorderStrongBrush}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Padding" Value="9,6"/>
+            <Setter Property="MaxWidth" Value="380"/>
+            <Setter Property="Template"><Setter.Value><ControlTemplate TargetType="ToolTip">
+                <Border Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}"
+                        BorderThickness="{TemplateBinding BorderThickness}" Padding="{TemplateBinding Padding}" CornerRadius="3">
+                    <ContentPresenter TextElement.Foreground="{TemplateBinding Foreground}" RecognizesAccessKey="True"/>
+                </Border>
+            </ControlTemplate></Setter.Value></Setter>
+        </Style>
 
         <Style TargetType="ContextMenu">
             <Setter Property="Background" Value="{DynamicResource PanelBrush}"/>
@@ -360,6 +376,22 @@
             <Setter Property="BorderThickness" Value="1"/>
             <Setter Property="Padding" Value="4"/>
             <Setter Property="ScrollViewer.HorizontalScrollBarVisibility" Value="Disabled"/>
+            <Setter Property="ScrollViewer.VerticalScrollBarVisibility" Value="Auto"/>
+            <Setter Property="ScrollViewer.CanContentScroll" Value="True"/>
+            <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+            <Setter Property="Template"><Setter.Value><ControlTemplate TargetType="ListBox">
+                <Border Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}"
+                        BorderThickness="{TemplateBinding BorderThickness}" SnapsToDevicePixels="True">
+                    <ScrollViewer Padding="{TemplateBinding Padding}" Focusable="False">
+                        <ItemsPresenter SnapsToDevicePixels="{TemplateBinding SnapsToDevicePixels}"/>
+                    </ScrollViewer>
+                </Border>
+                <ControlTemplate.Triggers>
+                    <Trigger Property="IsEnabled" Value="False">
+                        <Setter Property="Foreground" Value="{DynamicResource MutedBrush}"/>
+                    </Trigger>
+                </ControlTemplate.Triggers>
+            </ControlTemplate></Setter.Value></Setter>
         </Style>
 
         <Style TargetType="ListBoxItem">
