@@ -14,8 +14,8 @@ Remove-Item 'artifacts/publish','artifacts/releases' -Recurse -Force -ErrorActio
 Checked @('publish',$project,'-c','Release','-r','win-x64','--self-contained','true','-o','artifacts/publish',"-p:UpdateRepository=$Repository",'-p:PublishSingleFile=false')
 # Render the native app brand to PNG/ICO on the Windows runner; no external image service is required.
 $branding = Join-Path (Get-Location) 'artifacts/branding'
-& './artifacts/publish/IMRCRaceControl.exe' --export-brand $branding
-if ($LASTEXITCODE -ne 0) { throw 'Brand asset rendering failed' }
+$renderer = Start-Process -FilePath (Join-Path (Get-Location) 'artifacts/publish/IMRCRaceControl.exe') -ArgumentList @('--export-brand',"`"$branding`"") -Wait -PassThru
+if ($renderer.ExitCode -ne 0) { throw "Brand asset rendering failed (exit $($renderer.ExitCode))" }
 $icon = Join-Path $branding 'IMRC-Race-Control.ico'
 $splash = Join-Path $branding 'IMRC-Race-Control.png'
 if (-not (Test-Path $icon)) { throw 'Brand icon was not rendered' }

@@ -3,7 +3,7 @@ on:
   workflow_dispatch:
   push:
     branches: [main, master]
-    paths: ['src/IMRCRaceControl.App/IMRCRaceControl.App.csproj']
+    paths: ['src/IMRCRaceControl.App/IMRCRaceControl.App.csproj', 'scripts/Build-Installer.ps1']
     tags: ['v*']
 permissions:
   contents: write
