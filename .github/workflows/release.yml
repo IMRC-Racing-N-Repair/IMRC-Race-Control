@@ -62,9 +62,24 @@ jobs:
           RELEASE_VERSION: ${{ steps.version.outputs.version }}
           RELEASE_COMMIT: ${{ github.sha }}
         run: |
-          dotnet tool run vpk -- upload github --repoUrl $env:RELEASE_REPOSITORY --outputDir artifacts/releases --tag "v$env:RELEASE_VERSION" --releaseName "IMRC Race Control $env:RELEASE_VERSION" --targetCommitish $env:RELEASE_COMMIT --token $env:GH_TOKEN
-          if ($LASTEXITCODE -ne 0) { throw 'Draft release upload failed' }
-          gh release edit "v$env:RELEASE_VERSION" --repo $env:GITHUB_REPOSITORY --notes-file artifacts/ReleaseNotes.md
-          if ($LASTEXITCODE -ne 0) { throw 'Release instructions could not be updated' }
-          gh release upload "v$env:RELEASE_VERSION" artifacts/releases/SHA256SUMS.txt --repo $env:GITHUB_REPOSITORY
-          if ($LASTEXITCODE -ne 0) { throw 'Checksum upload failed' }
+          $tag = "v$env:RELEASE_VERSION"
+          $releaseJson = gh release list --repo $env:GITHUB_REPOSITORY --limit 100 --json tagName,isDraft
+          if ($LASTEXITCODE -ne 0) { throw 'Could not inspect existing releases' }
+          $existing = @($releaseJson | ConvertFrom-Json | Where-Object { $_.tagName -eq $tag })
+          if ($existing.Count -gt 0) {
+            if (-not $existing[0].isDraft) { throw 'This version is already published. Increment the version instead of replacing it.' }
+            gh release edit $tag --repo $env:GITHUB_REPOSITORY --target $env:RELEASE_COMMIT --title "IMRC Race Control $env:RELEASE_VERSION" --notes-file artifacts/ReleaseNotes.md
+          } else {
+            gh release create $tag --repo $env:GITHUB_REPOSITORY --draft --target $env:RELEASE_COMMIT --title "IMRC Race Control $env:RELEASE_VERSION" --notes-file artifacts/ReleaseNotes.md
+          }
+          if ($LASTEXITCODE -ne 0) { throw 'Draft release could not be prepared' }
+          $draft = gh release view $tag --repo $env:GITHUB_REPOSITORY --json isDraft | ConvertFrom-Json
+          if ($LASTEXITCODE -ne 0 -or -not $draft.isDraft) { throw 'Upload is allowed only to a draft release' }
+          $assets = @(Get-ChildItem artifacts/releases -File | ForEach-Object { $_.FullName })
+          gh release upload $tag @assets --repo $env:GITHUB_REPOSITORY --clobber
+          if ($LASTEXITCODE -ne 0) { throw 'Draft release asset upload failed' }
+          $uploaded = gh release view $tag --repo $env:GITHUB_REPOSITORY --json assets | ConvertFrom-Json
+          if ($LASTEXITCODE -ne 0) { throw 'Could not verify uploaded assets' }
+          foreach ($name in @('Setup.exe','releases.win.json','RELEASES','SHA256SUMS.txt',"IMRCRaceControl.App-$env:RELEASE_VERSION-full.nupkg")) {
+            if ($name -notin $uploaded.assets.name) { throw "Release asset missing: $name" }
+          }

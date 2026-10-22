@@ -27,6 +27,8 @@ if ($setup.Count -ne 1) { throw 'Expected exactly one installer' }
 Move-Item $setup[0].FullName 'artifacts/releases/Setup.exe'
 # Portable source bundles are not needed by users or by the updater.
 Get-ChildItem 'artifacts/releases/*Portable.zip' | Remove-Item
+# Internal vpk upload inventory still uses its generated names; gh uploads the final filenames.
+Remove-Item 'artifacts/releases/assets.win.json' -ErrorAction SilentlyContinue
 
 Get-ChildItem 'artifacts/releases' -File | Get-FileHash -Algorithm SHA256 | ForEach-Object { "$($_.Hash.ToLower())  $([IO.Path]::GetFileName($_.Path))" } | Set-Content 'artifacts/releases/SHA256SUMS.txt'
 Write-Host "Installer and update files ready in artifacts/releases (version $version)."
