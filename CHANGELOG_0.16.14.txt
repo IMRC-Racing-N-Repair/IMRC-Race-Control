@@ -1,0 +1,8 @@
+IMRC Race Control v0.16.14
+- Removed the Zoom page from Settings. Existing zoom values are preserved and adjusted on screen.
+- Added Settings > Pop-Out / Web: shared visible race columns, race header, master clock, NEXT UP, and Estimated Overall Position.
+- Position, car number and driver name stay visible. Main Race Dashboard columns retain their separate settings.
+- On-screen zoom now scales driver information rather than the whole application. Include header optionally scales the race header; off by default. Zoom controls remain outside scaled content.
+- Spectator columns use the same labels and order as Web. Display preference changes also apply to held finished-race results.
+- NEXT UP scrolls continuously and uses the current theme's darker accent color with white text.
+Validation: Windows-targeted build passed with zero warnings/errors. All 865 regression checks passed. Web checks passed for visible fields, sections, zoom and remembered header inclusion. Windows interactive visual verification remains required.

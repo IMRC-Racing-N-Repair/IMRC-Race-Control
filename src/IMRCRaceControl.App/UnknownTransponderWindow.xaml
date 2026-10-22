@@ -1,0 +1,143 @@
+<Window x:Class="IMRCRaceControl.UnknownTransponderWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Unknown Transponders"
+        Width="900" Height="520"
+        MinWidth="760" MinHeight="420"
+        WindowStartupLocation="CenterOwner"
+        ShowInTaskbar="False">
+    <Grid Margin="10">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <StackPanel>
+            <TextBlock Text="TRANSPONDER NOT IN THIS RACE"
+                       FontSize="18"
+                       FontWeight="Bold"/>
+            <TextBlock Text="One window handles every unassigned crossing. Drag a transponder onto the correct racer below or onto a driver in the main race standings. The stored crossing(s) will then be replayed through normal scoring."
+                       Foreground="{DynamicResource MutedBrush}"
+                       TextWrapping="Wrap"
+                       Margin="0,3,0,10"/>
+        </StackPanel>
+
+        <Grid Grid.Row="1">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="1.05*"/>
+                <ColumnDefinition Width="14"/>
+                <ColumnDefinition Width="1*"/>
+            </Grid.ColumnDefinitions>
+
+            <Border Background="{DynamicResource PanelBrush}"
+                    BorderBrush="{DynamicResource BorderBrush}"
+                    BorderThickness="0,0,0,1"
+                    CornerRadius="0"
+                    Padding="7">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                    </Grid.RowDefinitions>
+                    <DockPanel>
+                        <Button Content="COPY NUMBER" Click="CopyNumber_Click" DockPanel.Dock="Right"/>
+                        <TextBlock Text="UNASSIGNED CROSSINGS" FontWeight="Bold" FontSize="14" VerticalAlignment="Center"/>
+                    </DockPanel>
+                    <DataGrid x:Name="UnknownGrid"
+                              Grid.Row="1"
+                              AutoGenerateColumns="False"
+                              IsReadOnly="True"
+                              CanUserAddRows="False"
+                              SelectionMode="Single"
+                              PreviewMouseMove="UnknownGrid_PreviewMouseMove"
+                              Margin="0,6,0,0">
+                        <DataGrid.Columns>
+                            <DataGridTextColumn Header="TRANSPONDER" Binding="{Binding TransponderId}" Width="*"/>
+                            <DataGridTextColumn Header="HITS" Binding="{Binding Count}" Width="55"/>
+                            <DataGridTextColumn Header="LAST" Binding="{Binding LastSeenDisplay}" Width="100"/>
+                            <DataGridTextColumn Header="SOURCE" Binding="{Binding LastSource}" Width="120"/>
+                        </DataGrid.Columns>
+                    </DataGrid>
+                </Grid>
+            </Border>
+
+            <Border Grid.Column="2"
+                    Background="{DynamicResource PanelBrush}"
+                    BorderBrush="{DynamicResource BorderBrush}"
+                    BorderThickness="0,0,0,1"
+                    CornerRadius="0"
+                    Padding="7">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+
+                    <StackPanel>
+                        <TextBlock Text="CURRENT RACE RACERS"
+                                   FontWeight="Bold"
+                                   FontSize="14"/>
+                        <TextBlock Text="Drop the transponder onto a racer."
+                                   Foreground="{DynamicResource MutedBrush}"/>
+                    </StackPanel>
+
+                    <DataGrid x:Name="RacerGrid"
+                              Grid.Row="1"
+                              AutoGenerateColumns="False"
+                              IsReadOnly="True"
+                              CanUserAddRows="False"
+                              SelectionMode="Single"
+                              AllowDrop="True"
+                              DragOver="RacerGrid_DragOver"
+                              Drop="RacerGrid_Drop"
+                              Margin="0,6,0,0">
+                        <DataGrid.Columns>
+                            <DataGridTextColumn Header="#" Binding="{Binding CarNumber}" Width="48"/>
+                            <DataGridTextColumn Header="DRIVER" Binding="{Binding DisplayName}" Width="*"/>
+                            <DataGridTextColumn Header="TRANSPONDER" Binding="{Binding TransponderId}" Width="150"/>
+                        </DataGrid.Columns>
+                    </DataGrid>
+
+                    <Button Grid.Row="2"
+                            Content="ASSIGN SELECTED → SELECTED RACER"
+                            Click="AssignSelected_Click"
+                            Background="{DynamicResource GoodBrush}"
+                            Foreground="#101318"
+                            Margin="0,7,0,0"/>
+                </Grid>
+            </Border>
+        </Grid>
+
+        <Grid Grid.Row="2" Margin="0,10,0,0">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="Auto"/>
+            </Grid.ColumnDefinitions>
+
+            <Button Content="CLEAR SELECTED"
+                    Click="ClearSelected_Click"
+                    MinWidth="110"/>
+            <Button Grid.Column="1"
+                    Content="CLEAR ALL"
+                    Click="ClearAll_Click"
+                    MinWidth="90"
+                    Background="{DynamicResource AccentDarkBrush}"/>
+
+            <TextBlock Grid.Column="2"
+                       Text="Clear an entry when somebody crossed the loop accidentally and should not be part of this race."
+                       Foreground="{DynamicResource MutedBrush}"
+                       TextWrapping="Wrap"
+                       VerticalAlignment="Center"
+                       Margin="10,0"/>
+
+            <Button Grid.Column="3"
+                    Content="CLOSE"
+                    Click="Close_Click"
+                    MinWidth="90"/>
+        </Grid>
+    </Grid>
+</Window>

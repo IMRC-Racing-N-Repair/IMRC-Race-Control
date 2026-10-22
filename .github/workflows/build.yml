@@ -1,0 +1,17 @@
+name: Build and verify
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - run: dotnet build src/IMRCRaceControl.App/IMRCRaceControl.App.csproj -c Release
+      - run: dotnet run --project tests/LapCalloutChecks/LapCalloutChecks.csproj -c Release

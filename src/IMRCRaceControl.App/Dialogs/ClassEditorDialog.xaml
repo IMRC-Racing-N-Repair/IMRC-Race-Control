@@ -1,0 +1,194 @@
+<Window x:Class="IMRCRaceControl.Dialogs.ClassEditorDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Class"
+        Width="900" Height="790"
+        MinWidth="820" MinHeight="720"
+        WindowStartupLocation="CenterOwner"
+        ShowInTaskbar="False">
+    <Grid Margin="12">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <StackPanel>
+            <TextBlock x:Name="DialogTitleText" Text="CREATE CLASS" FontSize="18" FontWeight="Bold"/>
+            <TextBlock Text="Race timing, qualifying heat size, main size, and bump-up rules live with the class."
+                       Foreground="{DynamicResource MutedBrush}" Margin="0,3,0,12"/>
+        </StackPanel>
+
+        <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+            <StackPanel>
+                <Border Background="{DynamicResource PanelBrush}" BorderBrush="{DynamicResource BorderBrush}"
+                        BorderThickness="0,0,0,1" CornerRadius="0" Padding="10" Margin="0,0,0,8">
+                    <StackPanel>
+                        <TextBlock Text="CLASS / RACE FORMAT" FontWeight="Bold" FontSize="14"/>
+
+                        <TextBlock Text="Class name" Foreground="{DynamicResource MutedBrush}" Margin="0,7,0,0"/>
+                        <TextBox x:Name="ClassNameText"/>
+
+                        <StackPanel Margin="0,5,0,5">
+                            <TextBlock Text="Mains format" Foreground="{DynamicResource MutedBrush}"/>
+                            <ComboBox x:Name="MainRaceFormatCombo" SelectionChanged="RaceFormatCombo_SelectionChanged">
+                                <ComboBoxItem Content="Timed race"/>
+                                <ComboBoxItem Content="Lapped race"/>
+                            </ComboBox>
+                            <StackPanel x:Name="MainMinutesPanel"><TextBlock Text="Mains minutes"/><TextBox x:Name="MainMinutesText" Text="5"/></StackPanel>
+                            <StackPanel x:Name="MainLapsPanel"><TextBlock Text="Mains target laps"/><TextBox x:Name="MainLapsText" Text="50"/></StackPanel>
+                        </StackPanel>
+                        <Grid Margin="0,5,0,0">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="1.2*"/>
+                                <ColumnDefinition Width="10"/>
+                                <ColumnDefinition Width="1*"/>
+                                <ColumnDefinition Width="10"/>
+                                <ColumnDefinition Width="1*"/>
+                            </Grid.ColumnDefinitions>
+
+                            <StackPanel>
+                                <TextBlock Text="Qualifier format" Foreground="{DynamicResource MutedBrush}"/>
+                                <ComboBox x:Name="RaceFormatCombo"
+                                          SelectionChanged="RaceFormatCombo_SelectionChanged">
+                                    <ComboBoxItem Content="Timed race"/>
+                                    <ComboBoxItem Content="Lapped race"/>
+                                </ComboBox>
+                            </StackPanel>
+
+                            <StackPanel x:Name="TimedLengthPanel" Grid.Column="2">
+                                <TextBlock Text="Qualifier minutes" Foreground="{DynamicResource MutedBrush}"/>
+                                <TextBox x:Name="RaceMinutesText" Text="5"/>
+                            </StackPanel>
+
+                            <StackPanel x:Name="LapLengthPanel" Grid.Column="2" Visibility="Collapsed">
+                                <TextBlock Text="Target laps" Foreground="{DynamicResource MutedBrush}"/>
+                                <TextBox x:Name="TargetLapsText" Text="50"/>
+                            </StackPanel>
+
+                            <StackPanel Grid.Column="4">
+                                <TextBlock Text="Minimum lap (seconds)" Foreground="{DynamicResource MutedBrush}"/>
+                                <TextBox x:Name="MinimumLapText" Text="1.0"/>
+                            </StackPanel>
+                        </Grid>
+
+                        <Grid Margin="0,5,0,0">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="10"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <StackPanel>
+                                <TextBlock Text="Racers per qualifying heat" Foreground="{DynamicResource MutedBrush}"/>
+                                <TextBox x:Name="RacersPerHeatText" Text="19"/>
+                            </StackPanel>
+                            <StackPanel Grid.Column="2">
+                                <TextBlock Text="Default racers per main" Foreground="{DynamicResource MutedBrush}"/>
+                                <TextBox x:Name="RacersPerMainText" Text="19"/>
+                            </StackPanel>
+                        </Grid>
+                    </StackPanel>
+                </Border>
+
+                <Border Background="{DynamicResource PanelBrush}" BorderBrush="{DynamicResource BorderBrush}"
+                        BorderThickness="0,0,0,1" CornerRadius="0" Padding="10" Margin="0,0,0,8">
+                    <StackPanel>
+                        <TextBlock Text="CLOCK START STYLE" FontWeight="Bold" FontSize="14"/>
+
+                        <TextBlock Text="Qualification start style" Foreground="{DynamicResource MutedBrush}" Margin="0,7,0,0"/>
+                        <ComboBox x:Name="QualStyleCombo">
+                            <ComboBoxItem>All clocks start at the tone</ComboBoxItem>
+                            <ComboBoxItem>All clocks start when leader crosses line</ComboBoxItem>
+                            <ComboBoxItem IsSelected="True">Each racer's clock starts when they cross line</ComboBoxItem>
+                        </ComboBox>
+
+                        <TextBlock Text="Race / Main start style" Foreground="{DynamicResource MutedBrush}"/>
+                        <ComboBox x:Name="RaceStyleCombo">
+                            <ComboBoxItem IsSelected="True">All clocks start at the tone</ComboBoxItem>
+                            <ComboBoxItem>All clocks start when leader crosses line</ComboBoxItem>
+                            <ComboBoxItem>Each racer's clock starts when they cross line</ComboBoxItem>
+                        </ComboBox>
+                    </StackPanel>
+                </Border>
+
+                <Border Background="{DynamicResource PanelBrush}" BorderBrush="{DynamicResource BorderBrush}"
+                        BorderThickness="0,0,0,1" CornerRadius="0" Padding="10">
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="230"/>
+                            <RowDefinition Height="Auto"/>
+                        </Grid.RowDefinitions>
+
+                        <StackPanel>
+                            <TextBlock Text="MAIN RULES / BUMP UPS" FontWeight="Bold" FontSize="14"/>
+                            <TextBlock Text="Each row is one main rule. Set field size, bump-ins, and how many separate main runs are scored."
+                                       Foreground="{DynamicResource MutedBrush}" TextWrapping="Wrap" Margin="0,3,0,7"/>
+                            <TextBlock Text="Example: A Main MAX 8 / BUMP-INS 2 / RUNS 3 / COUNT BEST 2 = 6 direct qualifiers, 2 bump-ups, then best 2 of 3 A-Main finishes count."
+                                       Foreground="{DynamicResource MutedBrush}" TextWrapping="Wrap"/>
+                        </StackPanel>
+
+                        <DataGrid x:Name="MainRulesGrid"
+                                  Grid.Row="1"
+                                  ItemsSource="{Binding MainRules}"
+                                  AutoGenerateColumns="False"
+                                  CanUserAddRows="False"
+                                  CanUserDeleteRows="False"
+                                  HeadersVisibility="Column"
+                                  Margin="0,8,0,0">
+                            <DataGrid.Columns>
+                                <DataGridTextColumn Header="MAIN"
+                                                    Binding="{Binding MainName}"
+                                                    IsReadOnly="True"
+                                                    Width="90"/>
+                                <DataGridTextColumn Header="MAX"
+                                                    Binding="{Binding MaxRacers, UpdateSourceTrigger=PropertyChanged}"
+                                                    Width="72"/>
+                                <DataGridTextColumn Header="BUMP-INS"
+                                                    Binding="{Binding BumpInsFromLower, UpdateSourceTrigger=PropertyChanged}"
+                                                    Width="85"/>
+                                <DataGridTextColumn Header="RUNS"
+                                                    Binding="{Binding RunCount, UpdateSourceTrigger=PropertyChanged}"
+                                                    Width="65"/>
+                                <DataGridTextColumn Header="COUNT BEST"
+                                                    Binding="{Binding CountBest, UpdateSourceTrigger=PropertyChanged}"
+                                                    Width="88"/>
+                                <DataGridTextColumn Header="RULE"
+                                                    Binding="{Binding RuleDisplay}"
+                                                    IsReadOnly="True"
+                                                    Width="*"/>
+                            </DataGrid.Columns>
+                        </DataGrid>
+
+                        <Grid Grid.Row="2" Margin="0,8,0,0">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <Button Grid.Column="0" Content="+ ADD LOWER MAIN"
+                                    Click="AddMainRule_Click" MinWidth="130"/>
+                            <Button Grid.Column="1" Content="REMOVE LAST MAIN"
+                                    Click="RemoveMainRule_Click" MinWidth="135"/>
+                            <Button Grid.Column="2" Content="APPLY DEFAULT SIZE"
+                                    Click="ApplyMainSize_Click" MinWidth="135"/>
+                            <TextBlock Grid.Column="3"
+                                       Text="The lowest configured main cannot receive bump-ins because there is no lower main beneath it."
+                                       Foreground="{DynamicResource MutedBrush}"
+                                       TextWrapping="Wrap"
+                                       VerticalAlignment="Center"
+                                       Margin="10,0,0,0"/>
+                        </Grid>
+                    </Grid>
+                </Border>
+            </StackPanel>
+        </ScrollViewer>
+
+        <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,12,0,0">
+            <Button Content="CANCEL" MinWidth="95" Click="Cancel_Click"/>
+            <Button Content="SAVE CLASS" MinWidth="120" Click="Save_Click"
+                    Background="{DynamicResource GoodBrush}" Foreground="#101318"/>
+        </StackPanel>
+    </Grid>
+</Window>

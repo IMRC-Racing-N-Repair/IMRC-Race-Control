@@ -1,0 +1,44 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType><TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings><Nullable>enable</Nullable>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="../../src/IMRCRaceControl.App/Core/RaceAudioSchedule.cs" Link="RaceAudioSchedule.cs" />
+    <Compile Include="../../src/IMRCRaceControl.App/Core/NextRacePreview.cs" Link="NextRacePreview.cs" />
+    <Compile Include="../../src/IMRCRaceControl.App/Core/TrackmateProtocol.cs" Link="TrackmateProtocol.cs" />
+    <Compile Include="../../src/IMRCRaceControl.App/Core/OnlineTrackRegistration.cs" Link="OnlineTrackRegistration.cs" />
+    <Compile Include="../../src/IMRCRaceControl.App/Core/OnlineSnapshotBuilder.cs" Link="OnlineSnapshotBuilder.cs" />
+    <Compile Include="../../src/IMRCRaceControl.App/Services/OnlinePublisher.cs" Link="OnlinePublisher.cs" />
+    <Compile Include="../../src/IMRCRaceControl.App/Core/OpenStintDecoder.cs" Link="OpenStintDecoder.cs" />
+    <Compile Include="../../src/IMRCRaceControl.App/Transport/OpenStintTransport.cs" Link="OpenStintTransport.cs" />
+    <Compile Include="../../src/IMRCRaceControl.App/Transport/IByteTransport.cs" Link="IByteTransport.cs" />
+    <Compile Include="../../src/IMRCRaceControl.App/Transport/TransportEventArgs.cs" Link="TransportEventArgs.cs" />
+    <PackageReference Include="NetMQ" Version="4.0.4.3" />
+    <Compile Include="../../src/IMRCRaceControl.App/Core/SimulatorPassing.cs" Link="SimulatorPassing.cs" />
+    <Compile Include="../../src/IMRCRaceControl.App/Core/AutomaticDecoder.cs" Link="AutomaticDecoder.cs" />
+    <Compile Include="../../src/IMRCRaceControl.App/Core/PracticeTracker.cs" Link="PracticeTracker.cs" />
+    <Compile Include="../../src/IMRCRaceControl.App/Core/DriverIdentity.cs" Link="DriverIdentity.cs" />
+    <Compile Include="../../src/IMRCRaceControl.App/Core/DriverRatingCalculator.cs" Link="DriverRatingCalculator.cs" />
+
+    <Compile Include="../../src/IMRCRaceControl.App/Core/P3StreamDecoder.cs" Link="P3StreamDecoder.cs" />
+    <Compile Include="../../src/IMRCRaceControl.App/Services/DecoderIngressService.cs" Link="DecoderIngressService.cs" />
+    <Compile Include="../../src/IMRCRaceControl.App/Services/DecoderDiagnostics.cs" Link="DecoderDiagnostics.cs" />
+    <Compile Include="../../src/IMRCRaceControl.App/Services/AppCrashLogger.cs" Link="AppCrashLogger.cs" />
+    <Compile Include="../../src/IMRCRaceControl.App/Services/TrafficLogService.cs" Link="TrafficLogService.cs" />
+    <Compile Include="../../src/IMRCRaceControl.App/Models/*.cs" Link="Models/%(Filename)%(Extension)" />
+    <Compile Include="../../src/IMRCRaceControl.App/Core/MainResultCalculator.cs" Link="MainResultCalculator.cs" />
+    <Compile Include="../../src/IMRCRaceControl.App/Core/SeriesScoring.cs" Link="SeriesScoring.cs" />
+    <Compile Include="../../src/IMRCRaceControl.App/Core/PrintReportChoice.cs" Link="PrintReportChoice.cs" />
+    <Compile Include="../../src/IMRCRaceControl.App/Core/RaceCheckInState.cs" Link="RaceCheckInState.cs" />
+    <Compile Include="../../src/IMRCRaceControl.App/Core/RaceSchedule.cs" Link="RaceSchedule.cs" />
+    <Compile Include="../../src/IMRCRaceControl.App/Core/RaceReports.cs" Link="RaceReports.cs" />
+    <Compile Include="../../src/IMRCRaceControl.App/Core/SavedRoundEditor.cs" Link="SavedRoundEditor.cs" />
+    <Compile Include="../../src/IMRCRaceControl.App/Core/RaceEngine.cs" Link="RaceEngine.cs" />
+    <Compile Include="../../src/IMRCRaceControl.App/Core/LapAnnouncementFormatter.cs" Link="LapAnnouncementFormatter.cs" />
+    <Compile Include="../../src/IMRCRaceControl.App/Core/SpeechCalloutQueue.cs" Link="SpeechCalloutQueue.cs" />
+    <Compile Include="../../src/IMRCRaceControl.App/Services/PracticeHistoryService.cs" Link="PracticeHistoryService.cs" />
+    <Compile Include="../../src/IMRCRaceControl.App/Services/RaceControlDatabaseService.cs" Link="RaceControlDatabaseService.cs" />
+    <PackageReference Include="Microsoft.Data.Sqlite" Version="10.0.12" />
+  </ItemGroup>
+</Project>

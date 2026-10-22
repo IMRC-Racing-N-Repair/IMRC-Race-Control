@@ -1,0 +1,9 @@
+IMRC Race Control 0.16.17 — GitHub release preparation
+- Pinned Velopack installer/updater integration and early startup lifecycle hook.
+- GitHub Actions build checks and Windows installer/draft release workflow.
+- Build embeds the destination repository URL; no app credentials are included.
+- Automatic startup check and manual update button. Active races/practice/result saving block updates.
+- Save preferences before accepted update download and restart. Offline/update failures leave the installed version usable.
+- Startup loading screen with settings/database/dashboard status.
+- Local Windows installer build script, checksum output, ignore rules and release instructions.
+- Existing race scoring and display changes preserved.

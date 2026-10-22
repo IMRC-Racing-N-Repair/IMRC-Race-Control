@@ -1,0 +1,1 @@
+TQ bonus now uses the best single completed qualifying run across all heats and rounds of the class: most laps, then lowest elapsed time. Combined event rankings and qualifying points modes no longer override TQ. Includes regression coverage.

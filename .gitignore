@@ -1,0 +1,15 @@
+**/bin/
+**/obj/
+.vs/
+.vscode/
+artifacts/
+Releases/
+*.user
+*.suo
+*_wpftmp.csproj
+*.pfx
+*.p12
+.env
+*.db
+*.db-shm
+*.db-wal

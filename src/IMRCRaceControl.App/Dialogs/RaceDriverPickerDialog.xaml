@@ -1,0 +1,42 @@
+<Window x:Class="IMRCRaceControl.Dialogs.RaceDriverPickerDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Add Racer To Race"
+        Width="500" Height="350"
+        ResizeMode="NoResize"
+        WindowStartupLocation="CenterOwner"
+        ShowInTaskbar="False">
+    <Grid Margin="12">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <StackPanel>
+            <TextBlock Text="ADD RACER TO CURRENT RACE" FontSize="16" FontWeight="Bold"/>
+            <TextBlock Text="Choose a registered driver who is not already in this heat, or create a new racer."
+                       Foreground="{DynamicResource MutedBrush}" TextWrapping="Wrap" Margin="0,2,0,10"/>
+        </StackPanel>
+
+        <StackPanel Grid.Row="1">
+            <TextBlock Text="Driver" Foreground="{DynamicResource MutedBrush}"/>
+            <ComboBox x:Name="DriverCombo" DisplayMemberPath="DisplayName" MinHeight="32"/>
+
+            <TextBlock Text="Transponder for this race (optional)" Foreground="{DynamicResource MutedBrush}" Margin="0,10,0,0"/>
+            <TextBox x:Name="TransponderText"/>
+
+            <Button Content="+ CREATE NEW RACER"
+                    HorizontalAlignment="Left"
+                    MinWidth="145"
+                    Margin="0,12,0,0"
+                    Click="CreateNew_Click"/>
+        </StackPanel>
+
+        <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right">
+            <Button Content="CANCEL" MinWidth="90" Click="Cancel_Click"/>
+            <Button Content="ADD TO RACE" MinWidth="115" Click="Add_Click"
+                    Background="{DynamicResource GoodBrush}" Foreground="#101318"/>
+        </StackPanel>
+    </Grid>
+</Window>

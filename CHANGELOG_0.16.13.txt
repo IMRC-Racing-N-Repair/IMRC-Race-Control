@@ -1,0 +1,2 @@
+Zoom controls on Race Dashboard, spectator pop-out, and browser webcast. Bottom-right minus/slider/plus with live percentage. Range 50–150% in 5% steps (20 intervals). Desktop zoom is saved after dragging; web zoom is remembered per browser. Controls remain outside scaled content. Includes all v0.16.12 race finish fixes.
+Validation: Windows-targeted build passed with zero warnings/errors. Web zoom checks passed for all 21 positions, limits, independent controls and reset. Windows runtime visual verification remains required.

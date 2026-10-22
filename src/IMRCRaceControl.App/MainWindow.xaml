@@ -1,0 +1,1884 @@
+<Window x:Class="IMRCRaceControl.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:controls="clr-namespace:IMRCRaceControl.Controls"
+        Title="IMRC Race Control"
+        Width="1360"
+        Height="790"
+        MinWidth="1024"
+        MinHeight="620"
+        WindowStartupLocation="CenterScreen"
+        PreviewKeyDown="Window_PreviewKeyDown">
+    <Grid>
+    <Grid.RowDefinitions><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+    <Grid x:Name="MainScreenRoot" Margin="5">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <Border Grid.Row="0" Background="{DynamicResource PanelBrush}" BorderBrush="{DynamicResource BorderBrush}"
+                BorderThickness="0,0,0,1" Padding="9,6" Margin="0,0,0,4">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+
+                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                    <TextBlock Text="IMRC RACE CONTROL" FontSize="17" FontWeight="Bold"/>
+                    <TextBlock Text="  v0.16.17" Margin="4,2,0,0"
+                               Foreground="{DynamicResource MutedBrush}" FontSize="10"
+                               VerticalAlignment="Center"/>
+                </StackPanel>
+
+                <TextBlock x:Name="HeaderMessageText" Grid.Column="2"
+                           Text="Create an event and build a race-day schedule."
+                           Foreground="{DynamicResource MutedBrush}" FontSize="10.5"
+                           VerticalAlignment="Center" Margin="10,0,10,0"/>
+
+                <TextBlock x:Name="HeaderRaceStateText" Grid.Column="3"
+                           Text="READY" FontSize="11" FontWeight="Bold"
+                           VerticalAlignment="Center" Margin="0,0,8,0"/>
+
+                <StackPanel Grid.Column="4" Orientation="Horizontal">
+                <Button x:Name="PopOutDashboardButton" Content="&#xE7F4;" FontFamily="Segoe MDL2 Assets" Click="PopOutDashboardButton_Click" ToolTip="Pop out race / practice board" AutomationProperties.Name="Pop out race / practice board" Width="34" MinWidth="34" Padding="0" FontSize="15"/>
+                <Button Content="&#xE749;" FontFamily="Segoe MDL2 Assets" Click="PrintReports_Click" ToolTip="Print reports" AutomationProperties.Name="Print reports" Width="34" MinWidth="34" Padding="0" FontSize="15"/>
+                <Button Content="↻" Click="CheckApplicationUpdates_Click" ToolTip="Check for application updates" Width="34" MinWidth="34" Padding="0" FontSize="18"/>
+                <Button Content="⚙" Click="Settings_Click"
+                        ToolTip="Settings" Width="34" MinWidth="34"
+                        Padding="0" FontSize="15" VerticalAlignment="Center"/>
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <TabControl x:Name="MainTabs" Grid.Row="1" SelectionChanged="MainTabs_SelectionChanged"
+                    TabStripPlacement="Left" BorderThickness="0"
+                    HorizontalContentAlignment="Stretch" VerticalContentAlignment="Stretch"
+                    ItemContainerStyle="{StaticResource SideNavigationTabItemStyle}">
+            <TabItem x:Name="RaceTab" Header="RACE">
+                <Grid x:Name="RaceManualInputFocusTarget" Focusable="True" FocusVisualStyle="{x:Null}"
+                      Margin="2" Background="{DynamicResource DashboardBackgroundBrush}"
+                      HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
+                    <Border Background="{DynamicResource HoneycombPatternBrush}" Opacity="0" IsHitTestVisible="False"/>
+                    <Grid Margin="2" HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="*"/>
+                        </Grid.RowDefinitions>
+
+                        <Border x:Name="DashboardRaceHeader" Background="{DynamicResource DashboardPanelBrush}" BorderBrush="{DynamicResource BorderBrush}"
+                                TextElement.Foreground="{DynamicResource DashboardTextBrush}"
+                                BorderThickness="0,0,0,1" CornerRadius="0" Padding="9" Margin="0,0,0,6">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="145"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+
+                                <StackPanel Width="365" HorizontalAlignment="Left">
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="72"/>
+                                            <ColumnDefinition Width="6"/>
+                                            <ColumnDefinition Width="*"/>
+                                        </Grid.ColumnDefinitions>
+                                        <Grid.RowDefinitions>
+                                            <RowDefinition Height="Auto"/>
+                                            <RowDefinition Height="Auto"/>
+                                        </Grid.RowDefinitions>
+                                        <TextBlock Text="ROUND" Foreground="{DynamicResource MutedBrush}" FontWeight="SemiBold"/>
+                                        <TextBlock Grid.Column="2" Text="RACE # / CLASS" Foreground="{DynamicResource MutedBrush}" FontWeight="SemiBold"/>
+                                        <ComboBox x:Name="DashboardRoundCombo" Grid.Row="1"
+                                                  DisplayMemberPath="Label"
+                                                  SelectionChanged="DashboardRoundCombo_SelectionChanged"
+                                                  DropDownClosed="DashboardRaceSelector_DropDownClosed"
+                                                  ToolTip="Created qualifying rounds (Q) and main runs (M). Changing rounds loads its first remaining race."
+                                                  FontSize="14" FontWeight="SemiBold" Height="36" Margin="0,4,0,3"/>
+                                        <ComboBox x:Name="CurrentRaceCombo" Grid.Row="1" Grid.Column="2"
+                                                  ItemsSource="{Binding RaceDashboardSessions}"
+                                                  DisplayMemberPath="DashboardDisplay"
+                                                  SelectionChanged="CurrentRaceCombo_SelectionChanged"
+                                                  DropDownClosed="DashboardRaceSelector_DropDownClosed"
+                                                  Foreground="{DynamicResource DashboardTextBrush}"
+                                                  FontSize="14" FontWeight="SemiBold"
+                                                  Height="36" Margin="0,4,0,3"/>
+                                    </Grid>
+                                    <Grid Margin="0,0,0,2">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="6"/>
+                                            <ColumnDefinition Width="*"/>
+                                        </Grid.ColumnDefinitions>
+                                        <Button x:Name="PreviousRaceButton"
+                                                Content="◀ PREVIOUS RACE"
+                                                Click="PreviousRaceButton_Click"
+                                                MinHeight="30"
+                                                IsEnabled="False"/>
+                                        <Button x:Name="NextRaceButton"
+                                                Grid.Column="2"
+                                                Content="NEXT RACE ▶"
+                                                Click="NextRaceButton_Click"
+                                                MinHeight="30"
+                                                IsEnabled="False"/>
+                                    </Grid>
+                                    <TextBlock x:Name="QueueCurrentText" Text="No race queued"
+                                               Visibility="Collapsed"/>
+                                    <TextBlock x:Name="QueueCurrentStatusText" Text="Build rounds or mains in Event Setup."
+                                               Foreground="{DynamicResource MutedBrush}" FontSize="11"/>
+                                    <StackPanel Orientation="Horizontal" Margin="0,5,0,0">
+                                        <TextBlock x:Name="RaceStateText" Text="READY" FontWeight="Bold"/>
+                                        <TextBlock Text="  •  " Foreground="{DynamicResource MutedBrush}"/>
+                                        <TextBlock x:Name="FastestSessionText" Text="Fastest: —"
+                                                   Foreground="{DynamicResource WarnBrush}" FontWeight="SemiBold"/>
+                                        <TextBlock Text="  •  " Foreground="{DynamicResource MutedBrush}"/>
+                                        <TextBlock x:Name="LastPassingText" Text="Waiting for a passing…"
+                                                   Foreground="{DynamicResource MutedBrush}"/>
+                                    </StackPanel>
+                                </StackPanel>
+
+                                <StackPanel Grid.Column="1" HorizontalAlignment="Right" VerticalAlignment="Center">
+                                    <TextBlock Text="RACE CLOCK" Foreground="{DynamicResource MutedBrush}"
+                                               HorizontalAlignment="Right" FontWeight="SemiBold"/>
+                                    <TextBlock x:Name="RaceClockText" Text="0:00.0"
+                                               FontSize="28" FontWeight="Bold" HorizontalAlignment="Right"/>
+                                    <CheckBox x:Name="RaceLapCalloutsCheck" Content="LAP CALLOUTS"
+                                              Click="RaceLapCallouts_Click" Margin="0,4,0,0"
+                                              HorizontalAlignment="Right"
+                                              ToolTip="Turn race lap announcements on or off. Check-in names are controlled separately in Settings."/>
+                                </StackPanel>
+
+                                <Button x:Name="StartRaceButton" Grid.Column="2" Content="START"
+                                        Background="{DynamicResource GoodBrush}" Foreground="#101318"
+                                        FontSize="13" FontWeight="Bold" MinWidth="90"
+                                        Click="StartRaceButton_Click"/>
+                                <Button x:Name="FalseStartButton" Grid.Column="3" Content="FALSE START"
+                                        MinWidth="98" IsEnabled="False"
+                                        Click="FalseStartButton_Click"/>
+                                <Button x:Name="RestartRaceButton" Grid.Column="4" Content="RESTART RACE"
+                                        MinWidth="105" IsEnabled="False"
+                                        Click="RestartRaceButton_Click"/>
+                                <Button x:Name="StopRaceButton" Grid.Column="5" Content="END RACE"
+                                        Background="{DynamicResource AccentDarkBrush}"
+                                        MinWidth="90" IsEnabled="False"
+                                        Click="StopRaceButton_Click"/>
+                            </Grid>
+                        </Border>
+
+                        <controls:NextRaceStrip x:Name="MainNextRaceStrip" Grid.Row="1" TextElement.FontSize="16"/>
+                        <Grid Grid.Row="2">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+
+                            <Border Grid.Column="0"
+                                    Background="{DynamicResource DashboardPanelBrush}"
+                                    BorderBrush="{DynamicResource BorderBrush}"
+                                    BorderThickness="0,0,0,1" CornerRadius="0" Padding="5">
+                                <DataGrid x:Name="StandingsGrid"
+                                      ItemsSource="{Binding Standings}"
+                                      AutoGenerateColumns="False"
+                                      IsReadOnly="True"
+                                      CanUserAddRows="False"
+                                      CanUserSortColumns="False"
+                                      CanUserReorderColumns="True"
+                                      ColumnReordered="StandingsGrid_ColumnReordered"
+                                      FrozenColumnCount="3"
+                                      FontSize="17"
+                                      FontWeight="SemiBold"
+                                      Foreground="{DynamicResource DashboardTextBrush}"
+                                      Background="{DynamicResource DashboardRowBrush}"
+                                      RowBackground="{DynamicResource DashboardRowBrush}"
+                                      AlternatingRowBackground="{DynamicResource DashboardAlternateRowBrush}"
+                                      AlternationCount="2"
+                                      RowHeight="60"
+                                      HeadersVisibility="Column"
+                                      SelectionMode="Single"
+                                      SelectionUnit="FullRow"
+                                      SelectionChanged="StandingsGrid_SelectionChanged"
+                                      PreviewMouseRightButtonDown="StandingsGrid_PreviewMouseRightButtonDown"
+                                      AllowDrop="True" DragOver="StandingsGrid_TransponderDragOver" Drop="StandingsGrid_TransponderDrop"
+                                      ScrollViewer.HorizontalScrollBarVisibility="Auto"
+                                      ScrollViewer.VerticalScrollBarVisibility="Auto">
+                                <DataGrid.ContextMenu>
+                                    <ContextMenu>
+                                        <MenuItem Header="CHANGE TRANSPONDER..."
+                                                  Click="ChangeRaceTransponder_Click"/>
+                                        <MenuItem Header="CLEAR TRANSPONDER"
+                                                  Click="ClearRaceTransponder_Click"/>
+                                        <Separator/>
+                                        <MenuItem Header="REMOVE FROM THIS RACE"
+                                                  Click="RemoveRaceDriver_Click"/>
+                                        <MenuItem Header="ADD RACER TO THIS RACE..."
+                                                  Click="AddRaceDriver_Click"/>
+                                    </ContextMenu>
+                                </DataGrid.ContextMenu>
+
+                                <DataGrid.Resources>
+                                    <Style TargetType="TextBlock">
+                                        <Setter Property="TextAlignment" Value="Center"/>
+                                        <Setter Property="HorizontalAlignment" Value="Stretch"/>
+                                        <Setter Property="VerticalAlignment" Value="Center"/>
+                                    </Style>
+                                    <Style x:Key="DashboardCenteredCellTextStyle" TargetType="TextBlock">
+                                        <Setter Property="TextAlignment" Value="Center"/>
+                                        <Setter Property="HorizontalAlignment" Value="Stretch"/>
+                                        <Setter Property="VerticalAlignment" Value="Center"/>
+                                    </Style>
+                                </DataGrid.Resources>
+                                <DataGrid.ColumnHeaderStyle>
+                                    <Style TargetType="DataGridColumnHeader" BasedOn="{StaticResource {x:Type DataGridColumnHeader}}">
+                                        <Setter Property="Background" Value="{DynamicResource DashboardPanelBrush}"/>
+                                        <Setter Property="Foreground" Value="{DynamicResource DashboardTextBrush}"/>
+                                        <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}"/>
+                                        <Setter Property="BorderThickness" Value="0,0,1,1"/>
+                                        <Setter Property="Padding" Value="9,8"/>
+                                        <Setter Property="FontSize" Value="13"/>
+                                        <Setter Property="FontWeight" Value="Bold"/>
+                                        <Setter Property="HorizontalContentAlignment" Value="Center"/>
+                                    </Style>
+                                </DataGrid.ColumnHeaderStyle>
+                                <DataGrid.CellStyle><Style TargetType="DataGridCell" BasedOn="{StaticResource SharedDashboardCellStyle}"/></DataGrid.CellStyle>
+                                <DataGrid.RowStyle><Style TargetType="DataGridRow" BasedOn="{StaticResource SharedDashboardRowStyle}"><Setter Property="MinHeight" Value="56"/></Style></DataGrid.RowStyle>
+                                <DataGrid.Columns>
+                                    <DataGridTemplateColumn Header="POS" Width="64" CanUserReorder="False" CellTemplate="{StaticResource RacePositionTemplate}"/>
+                                    <DataGridTextColumn ElementStyle="{StaticResource DashboardCenteredCellTextStyle}" Header="#" Binding="{Binding CarNumber}" Width="54" CanUserReorder="False"/>
+                                    <DataGridTemplateColumn Header="DRIVER" Width="235" CanUserReorder="False"><DataGridTemplateColumn.CellTemplate><StaticResource ResourceKey="RaceDriverNameTemplate"/></DataGridTemplateColumn.CellTemplate></DataGridTemplateColumn>
+                                    <DataGridTextColumn ElementStyle="{StaticResource DashboardCenteredCellTextStyle}" Header="LAPS" Binding="{Binding Laps}" Width="70"/>
+                                    <DataGridTextColumn ElementStyle="{StaticResource DashboardCenteredCellTextStyle}" Header="LAST LAP" Binding="{Binding LastLap}" Width="105"/>
+                                    <DataGridTemplateColumn Header="BEST LAP" Width="135">
+                                        <DataGridTemplateColumn.CellTemplate>
+                                            <DataTemplate>
+                                                <Border x:Name="BestLapCell" Background="Transparent" Padding="2,1">
+                                                    <TextBlock x:Name="BestLapText"
+                                                               Text="{Binding BestLapDisplay}"
+                                                               TextAlignment="Center"
+                                                               HorizontalAlignment="Stretch"
+                                                               VerticalAlignment="Center"
+                                                               FontWeight="SemiBold"/>
+                                                </Border>
+                                                <DataTemplate.Triggers>
+                                                    <DataTrigger Binding="{Binding IsNewPersonalBest}" Value="True">
+                                                        <Setter TargetName="BestLapCell" Property="Background"
+                                                                Value="{DynamicResource DashboardNewBestLapHighlightBrush}"/>
+                                                        <Setter TargetName="BestLapText" Property="Foreground"
+                                                                Value="{DynamicResource DashboardNewBestLapHighlightTextBrush}"/>
+                                                    </DataTrigger>
+                                                </DataTemplate.Triggers>
+                                            </DataTemplate>
+                                        </DataGridTemplateColumn.CellTemplate>
+                                    </DataGridTemplateColumn>
+                                    <DataGridTextColumn ElementStyle="{StaticResource DashboardCenteredCellTextStyle}" Header="CLOCK" Binding="{Binding Clock}" Width="95"/>
+                                    <DataGridTextColumn ElementStyle="{StaticResource DashboardCenteredCellTextStyle}" Header="GAP LEADER" Binding="{Binding GapToLeader}" Width="110"/>
+                                    <DataGridTextColumn ElementStyle="{StaticResource DashboardCenteredCellTextStyle}" Header="GAP BEHIND" Binding="{Binding GapBehind}" Width="110"/>
+                                    <DataGridTextColumn ElementStyle="{StaticResource DashboardCenteredCellTextStyle}" Header="TOP 2" Binding="{Binding Top2}" Width="120"/>
+                                    <DataGridTextColumn ElementStyle="{StaticResource DashboardCenteredCellTextStyle}" Header="TOP 3" Binding="{Binding Top3}" Width="120"/>
+                                    <DataGridTextColumn ElementStyle="{StaticResource DashboardCenteredCellTextStyle}" Header="TOP 5" Binding="{Binding Top5}" Width="120"/>
+                                    <DataGridTextColumn ElementStyle="{StaticResource DashboardCenteredCellTextStyle}" Header="AVG" Binding="{Binding AverageLap}" Width="88"/>
+                                    <DataGridTextColumn ElementStyle="{StaticResource DashboardCenteredCellTextStyle}" Header="AVG 5" Binding="{Binding Average5}" Width="88"/>
+                                    <DataGridTextColumn ElementStyle="{StaticResource DashboardCenteredCellTextStyle}" Header="AVG 10" Binding="{Binding Average10}" Width="92"/>
+                                    <DataGridTextColumn ElementStyle="{StaticResource DashboardCenteredCellTextStyle}" Header="AVG 15" Binding="{Binding Average15}" Width="92"/>
+                                    <DataGridTextColumn ElementStyle="{StaticResource DashboardCenteredCellTextStyle}" Header="CONSIST" Binding="{Binding Consistency}" Width="95"/>
+                                    <DataGridTextColumn ElementStyle="{StaticResource DashboardCenteredCellTextStyle}" Header="PACE" Binding="{Binding Pace}" Width="120"/>
+                                    <DataGridTextColumn ElementStyle="{StaticResource DashboardCenteredCellTextStyle}" Header="TOTAL" Binding="{Binding TotalTime}" Width="100"/>
+                                    <DataGridTextColumn ElementStyle="{StaticResource DashboardCenteredCellTextStyle}" Header="STATUS" Binding="{Binding Status}" Width="120"/>
+                                    <DataGridTemplateColumn Header="ACTION" Width="105">
+                                        <DataGridTemplateColumn.CellTemplate>
+                                            <DataTemplate>
+                                                <Button Content="{Binding ManualActionText}" Tag="{Binding CarNumber}"
+                                                        Click="ManualCarButton_Click"
+                                                        Padding="9,4" Margin="1" MinHeight="30"/>
+                                            </DataTemplate>
+                                        </DataGridTemplateColumn.CellTemplate>
+                                    </DataGridTemplateColumn>
+                                </DataGrid.Columns>
+                            </DataGrid>
+                            </Border>
+
+                            <Grid x:Name="RaceSidePanelHost"
+                                  Grid.Column="1"
+                                  Margin="8,0,0,0">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="46"/>
+                                </Grid.ColumnDefinitions>
+
+                                <Border x:Name="RaceSidePanelContentHost"
+                                        Grid.Column="0"
+                                        Width="390"
+                                        Background="{DynamicResource DashboardPanelBrush}"
+                                        BorderBrush="{DynamicResource BorderBrush}"
+                                        BorderThickness="0,0,0,1"
+                                        CornerRadius="0">
+                                    <Grid>
+                                        <!-- LAPS panel -->
+                                        <Grid x:Name="DriverLapPanelContent">
+                                            <Grid.RowDefinitions>
+                                                <RowDefinition Height="Auto"/>
+                                                <RowDefinition Height="*"/>
+                                            </Grid.RowDefinitions>
+
+                                            <StackPanel x:Name="DriverLapPanelHeader"
+                                                        Margin="9,8,9,5">
+                                                <TextBlock Text="DRIVER LAPS"
+                                                           FontSize="14"
+                                                           FontWeight="Bold"/>
+                                                <ComboBox x:Name="DriverLapDriverCombo"
+                                                          ItemsSource="{Binding SessionRacers}"
+                                                          DisplayMemberPath="DisplayName"
+                                                          SelectionChanged="DriverLapDriverCombo_SelectionChanged"
+                                                          Margin="0,5,0,3"/>
+                                                <TextBlock x:Name="DriverLapTitleText"
+                                                           Text="Select a driver"
+                                                           FontWeight="SemiBold"/>
+                                                <TextBlock x:Name="DriverLapSummaryText"
+                                                           Text="Select a driver"
+                                                           Foreground="{DynamicResource MutedBrush}"
+                                                           TextWrapping="Wrap"/>
+                                            </StackPanel>
+
+                                            <Grid Grid.Row="1" Margin="7,0,7,7">
+                                                <Grid.RowDefinitions>
+                                                    <RowDefinition Height="*"/>
+                                                    <RowDefinition Height="Auto"/>
+                                                </Grid.RowDefinitions>
+
+                                                <DataGrid x:Name="DriverLapGrid"
+                                                          Grid.Row="0"
+                                                          ItemsSource="{Binding DriverLapRows}"
+                                                          AutoGenerateColumns="False"
+                                                          IsReadOnly="True"
+                                                          CanUserAddRows="False"
+                                                          CanUserSortColumns="False"
+                                                          SelectionMode="Single"
+                                                          SelectionChanged="DriverLapGrid_SelectionChanged"
+                                                          HeadersVisibility="Column"
+                                                          FontSize="13"
+                                                          RowHeight="36"
+                                                          ScrollViewer.VerticalScrollBarVisibility="Auto"
+                                                          ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+                                                    <DataGrid.Resources>
+                                                        <Style TargetType="TextBlock">
+                                                            <Setter Property="TextAlignment" Value="Center"/>
+                                                            <Setter Property="HorizontalAlignment" Value="Stretch"/>
+                                                            <Setter Property="VerticalAlignment" Value="Center"/>
+                                                        </Style>
+                                                    </DataGrid.Resources>
+                                                    <DataGrid.CellStyle>
+                                                        <Style TargetType="DataGridCell">
+                                                            <Setter Property="HorizontalContentAlignment" Value="Center"/>
+                                                            <Setter Property="VerticalContentAlignment" Value="Center"/>
+                                                        </Style>
+                                                    </DataGrid.CellStyle>
+                                                    <DataGrid.ColumnHeaderStyle>
+                                                        <Style TargetType="DataGridColumnHeader" BasedOn="{StaticResource {x:Type DataGridColumnHeader}}">
+                                                            <Setter Property="Background" Value="{DynamicResource DashboardPanelBrush}"/>
+                                                            <Setter Property="Foreground" Value="{DynamicResource DashboardTextBrush}"/>
+                                                            <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}"/>
+                                                            <Setter Property="BorderThickness" Value="0,0,1,1"/>
+                                                            <Setter Property="Padding" Value="7,6"/>
+                                                            <Setter Property="HorizontalContentAlignment" Value="Center"/>
+                                                            <Setter Property="FontWeight" Value="Bold"/>
+                                                        </Style>
+                                                    </DataGrid.ColumnHeaderStyle>
+                                                    <DataGrid.RowStyle>
+                                                        <Style TargetType="DataGridRow">
+                                                            <Style.Triggers>
+                                                                <DataTrigger Binding="{Binding IsBreakout}" Value="True">
+                                                                    <Setter Property="Background"
+                                                                            Value="{DynamicResource DashboardMinimumLapGlowBrush}"/>
+                                                                    <Setter Property="Foreground" Value="#101318"/>
+                                                                    <Setter Property="FontWeight" Value="Bold"/>
+                                                                </DataTrigger>
+                                                            </Style.Triggers>
+                                                        </Style>
+                                                    </DataGrid.RowStyle>
+                                                    <DataGrid.Columns>
+                                                        <DataGridTextColumn Header="#" Binding="{Binding LapLabel}" Width="52"/>
+                                                        <DataGridTextColumn Header="LAP TIME" Binding="{Binding LapTime}" Width="86"/>
+                                                        <DataGridTextColumn Header="TOTAL" Binding="{Binding Elapsed}" Width="86"/>
+                                                        <DataGridTextColumn Header="STATUS" Binding="{Binding Status}" Width="*"/>
+                                                    </DataGrid.Columns>
+                                                </DataGrid>
+
+                                                <Border Grid.Row="1"
+                                                        Margin="0,7,0,0"
+                                                        Padding="7"
+                                                        Background="{DynamicResource PanelAltBrush}"
+                                                        BorderBrush="{DynamicResource BorderBrush}"
+                                                        BorderThickness="1"
+                                                        CornerRadius="5">
+                                                    <StackPanel>
+                                                        <TextBlock Text="LAP CORRECTION"
+                                                                   FontWeight="Bold"/>
+                                                        <TextBlock x:Name="LapCorrectionStatusText"
+                                                                   Text="Corrections are available after this race is complete."
+                                                                   Foreground="{DynamicResource MutedBrush}"
+                                                                   TextWrapping="Wrap"
+                                                                   Margin="0,2,0,5"/>
+                                                        <TextBox x:Name="LapCorrectionTimeText"
+                                                                 ToolTip="Lap time: 3.422 or 1:03.422"
+                                                                 Margin="0,0,0,4"/>
+                                                        <Grid>
+                                                            <Grid.ColumnDefinitions>
+                                                                <ColumnDefinition Width="*"/>
+                                                                <ColumnDefinition Width="4"/>
+                                                                <ColumnDefinition Width="*"/>
+                                                                <ColumnDefinition Width="4"/>
+                                                                <ColumnDefinition Width="*"/>
+                                                            </Grid.ColumnDefinitions>
+                                                            <Button x:Name="AddLapButton"
+                                                                    Content="+ ADD"
+                                                                    Click="AddLapCorrection_Click"
+                                                                    IsEnabled="False"/>
+                                                            <Button x:Name="ChangeLapButton"
+                                                                    Grid.Column="2"
+                                                                    Content="CHANGE"
+                                                                    Click="ChangeLapCorrection_Click"
+                                                                    IsEnabled="False"/>
+                                                            <Button x:Name="DeleteLapButton"
+                                                                    Grid.Column="4"
+                                                                    Content="DELETE"
+                                                                    Click="DeleteLapCorrection_Click"
+                                                                    IsEnabled="False"
+                                                                    Background="{DynamicResource AccentDarkBrush}"/>
+                                                        </Grid>
+                                                    </StackPanel>
+                                                </Border>
+                                            </Grid>
+                                        </Grid>
+
+                                        <!-- POS / live overall round projection -->
+                                        <Grid x:Name="RoundPositionPanelContent"
+                                              Visibility="Collapsed">
+                                            <Grid.RowDefinitions>
+                                                <RowDefinition Height="Auto"/>
+                                                <RowDefinition Height="*"/>
+                                            </Grid.RowDefinitions>
+
+                                            <StackPanel Margin="9,8,9,6">
+                                                <TextBlock Text="LIVE ROUND POSITION"
+                                                           FontSize="14"
+                                                           FontWeight="Bold"/>
+                                                <TextBlock x:Name="RoundProjectionInfoText"
+                                                           Text="Load a qualifying heat."
+                                                           Foreground="{DynamicResource MutedBrush}"
+                                                           TextWrapping="Wrap"
+                                                           Margin="0,2,0,0"/>
+                                            </StackPanel>
+
+                                            <DataGrid Grid.Row="1"
+                                                      ItemsSource="{Binding RoundProjectionRows}"
+                                                      AutoGenerateColumns="False"
+                                                      IsReadOnly="True"
+                                                      CanUserAddRows="False"
+                                                      CanUserSortColumns="False"
+                                                      HeadersVisibility="Column"
+                                                      FontSize="13"
+                                                      RowHeight="38"
+                                                      AlternationCount="2"
+                                                      Margin="7,0,7,7"
+                                                      ScrollViewer.VerticalScrollBarVisibility="Auto"
+                                                      ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+                                                <DataGrid.ColumnHeaderStyle>
+                                                    <Style TargetType="DataGridColumnHeader" BasedOn="{StaticResource {x:Type DataGridColumnHeader}}">
+                                                        <Setter Property="Background" Value="{DynamicResource DashboardPanelBrush}"/>
+                                                        <Setter Property="Foreground" Value="{DynamicResource DashboardTextBrush}"/>
+                                                        <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}"/>
+                                                        <Setter Property="BorderThickness" Value="0,0,1,1"/>
+                                                        <Setter Property="Padding" Value="7,6"/>
+                                                        <Setter Property="HorizontalContentAlignment" Value="Center"/>
+                                                        <Setter Property="FontWeight" Value="Bold"/>
+                                                    </Style>
+                                                </DataGrid.ColumnHeaderStyle>
+                                                <DataGrid.CellStyle>
+                                                    <Style TargetType="DataGridCell">
+                                                        <Setter Property="HorizontalContentAlignment" Value="Center"/>
+                                                        <Setter Property="VerticalContentAlignment" Value="Center"/>
+                                                    </Style>
+                                                </DataGrid.CellStyle>
+                                                <DataGrid.RowStyle>
+                                                    <Style TargetType="DataGridRow">
+                                                        <Setter Property="Background"
+                                                                Value="{DynamicResource DashboardRowBrush}"/>
+                                                        <Style.Triggers>
+                                                            <Trigger Property="ItemsControl.AlternationIndex" Value="1">
+                                                                <Setter Property="Background"
+                                                                        Value="{DynamicResource DashboardAlternateRowBrush}"/>
+                                                            </Trigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </DataGrid.RowStyle>
+                                                <DataGrid.Columns>
+                                                    <DataGridTextColumn Header="POS" Binding="{Binding ProjectedPositionDisplay}" Width="54"/>
+
+                                                    <DataGridTemplateColumn Header="DRIVER" Width="*">
+                                                        <DataGridTemplateColumn.CellTemplate>
+                                                            <DataTemplate>
+                                                                <Border x:Name="MovementNameHighlight"
+                                                                        Background="Transparent"
+                                                                        CornerRadius="5"
+                                                                        Padding="5,3">
+                                                                    <TextBlock x:Name="MovementDriverText"
+                                                                               Text="{Binding DriverName}"
+                                                                               TextAlignment="Center"
+                                                                               FontWeight="SemiBold"/>
+                                                                </Border>
+                                                                <DataTemplate.Triggers>
+                                                                    <MultiDataTrigger>
+                                                                        <MultiDataTrigger.Conditions>
+                                                                            <Condition Binding="{Binding IsCurrentHeat}" Value="True"/>
+                                                                            <Condition Binding="{Binding MovementState}" Value="UP"/>
+                                                                        </MultiDataTrigger.Conditions>
+                                                                        <Setter TargetName="MovementNameHighlight"
+                                                                                Property="Background"
+                                                                                Value="{DynamicResource DashboardPositionUpBrush}"/>
+                                                                        <Setter TargetName="MovementDriverText"
+                                                                                Property="Foreground"
+                                                                                Value="{DynamicResource DashboardPositionUpTextBrush}"/>
+                                                                        <Setter TargetName="MovementDriverText"
+                                                                                Property="FontWeight"
+                                                                                Value="Bold"/>
+                                                                    </MultiDataTrigger>
+                                                                    <MultiDataTrigger>
+                                                                        <MultiDataTrigger.Conditions>
+                                                                            <Condition Binding="{Binding IsCurrentHeat}" Value="True"/>
+                                                                            <Condition Binding="{Binding MovementState}" Value="DOWN"/>
+                                                                        </MultiDataTrigger.Conditions>
+                                                                        <Setter TargetName="MovementNameHighlight"
+                                                                                Property="Background"
+                                                                                Value="{DynamicResource DashboardPositionDownBrush}"/>
+                                                                        <Setter TargetName="MovementDriverText"
+                                                                                Property="Foreground"
+                                                                                Value="{DynamicResource DashboardPositionDownTextBrush}"/>
+                                                                        <Setter TargetName="MovementDriverText"
+                                                                                Property="FontWeight"
+                                                                                Value="Bold"/>
+                                                                    </MultiDataTrigger>
+                                                                    <MultiDataTrigger>
+                                                                        <MultiDataTrigger.Conditions>
+                                                                            <Condition Binding="{Binding IsCurrentHeat}" Value="True"/>
+                                                                            <Condition Binding="{Binding MovementState}" Value="SAME"/>
+                                                                        </MultiDataTrigger.Conditions>
+                                                                        <Setter TargetName="MovementNameHighlight"
+                                                                                Property="Background"
+                                                                                Value="{DynamicResource DashboardPositionSameBrush}"/>
+                                                                        <Setter TargetName="MovementDriverText"
+                                                                                Property="Foreground"
+                                                                                Value="{DynamicResource DashboardPositionSameTextBrush}"/>
+                                                                        <Setter TargetName="MovementDriverText"
+                                                                                Property="FontWeight"
+                                                                                Value="Bold"/>
+                                                                    </MultiDataTrigger>
+                                                                </DataTemplate.Triggers>
+                                                            </DataTemplate>
+                                                        </DataGridTemplateColumn.CellTemplate>
+                                                    </DataGridTemplateColumn>
+
+                                                    <DataGridTextColumn Header="PACE / FINISH" Binding="{Binding PaceFinish}" Width="118"/>
+                                                    <DataGridTextColumn Header="MOVE" Binding="{Binding MovementDisplay}" Width="78"/>
+                                                </DataGrid.Columns>
+                                            </DataGrid>
+                                        </Grid>
+                                    </Grid>
+                                </Border>
+
+                                <!-- Always-visible side tabs replace the hard-to-see arrow. -->
+                                <StackPanel Grid.Column="1"
+                                            VerticalAlignment="Top"
+                                            Margin="4,0,0,0">
+                                    <Button x:Name="LapsSideTabButton"
+                                            Content="LAPS"
+                                            Opacity="1"
+                                            Width="42"
+                                            Height="62"
+                                            Padding="2"
+                                            FontWeight="Bold"
+                                            Click="LapsSideTabButton_Click"
+                                            ToolTip="Driver lap history / corrections"/>
+                                    <Button Content="FMT" Width="42" Height="62" Padding="2" Click="RoundFormat_Click" ToolTip="Temporary format for this class and round"/>
+                                    <Button x:Name="PositionSideTabButton"
+                                            Content="POS"
+                                            Opacity="0.72"
+                                            Width="42"
+                                            Height="62"
+                                            Padding="2"
+                                            FontWeight="Bold"
+                                            Margin="0,4,0,0"
+                                            Click="PositionSideTabButton_Click"
+                                            ToolTip="Live projected overall position for this class / round"/>
+                                </StackPanel>
+                            </Grid>
+                        </Grid>
+
+                        <!-- Legacy/internal controls are intentionally hidden. The dashboard is event-driven. -->
+                        <Grid Visibility="Collapsed">
+                            <TextBox x:Name="RaceEventText"/>
+                            <TextBox x:Name="RaceSessionText"/>
+                            <ComboBox x:Name="RaceClassCombo" ItemsSource="{Binding Classes}" DisplayMemberPath="Name"
+                                      SelectionChanged="RaceClassCombo_SelectionChanged"/>
+                            <ComboBox x:Name="SessionTypeCombo" SelectionChanged="SessionTypeCombo_SelectionChanged">
+                                <ComboBoxItem>Practice</ComboBoxItem>
+                                <ComboBoxItem>Qualifying</ComboBoxItem>
+                                <ComboBoxItem IsSelected="True">Race</ComboBoxItem>
+                            </ComboBox>
+                            <TextBox x:Name="RaceMinutesText" Text="5"/>
+                            <TextBox x:Name="StartStyleText"/>
+                            <TextBox x:Name="MinimumLapText" Text="1.0"/>
+                            <TextBlock x:Name="SessionRosterText"/>
+                            <Button x:Name="ResetRaceButton" Click="ResetRaceButton_Click"/>
+                            <TextBlock x:Name="QueueNextText"/>
+                            <TextBlock x:Name="QueueNextStatusText"/>
+                            <TextBlock x:Name="QueueProgressText"/>
+                            <TextBlock x:Name="QueueEventStatusText"/>
+                            <Button x:Name="LoadCurrentQueueButton" Click="LoadCurrentQueue_Click"/>
+                            <Button x:Name="LoadNextQueueButton" Click="LoadNextQueue_Click"/>
+                        </Grid>
+                    </Grid>
+                </Grid>
+            </TabItem>
+
+
+            <TabItem x:Name="PracticeTab" Header="PRACTICE">
+                <Grid Margin="4" Background="{DynamicResource DashboardBackgroundBrush}">
+                    <Border Background="{DynamicResource HoneycombPatternBrush}" Opacity="0" IsHitTestVisible="False"/>
+                    <Grid Margin="3">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="*"/>
+                        </Grid.RowDefinitions>
+
+                        <Border Background="{DynamicResource DashboardPanelBrush}"
+                                BorderBrush="{DynamicResource BorderBrush}"
+                                BorderThickness="0,0,0,1" CornerRadius="0" Padding="8" Margin="0,0,0,6">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="220"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+
+                                <Button x:Name="PracticeToggleButton"
+                                        Content="START PRACTICE"
+                                        Click="PracticeToggleButton_Click"
+                                        Background="{DynamicResource GoodBrush}"
+                                        Foreground="#101318"
+                                        MinWidth="125"
+                                        FontWeight="Bold"/>
+
+                                <StackPanel Grid.Column="1" Margin="12,0">
+                                    <TextBlock x:Name="PracticeStatusText"
+                                               Text="Practice is off"
+                                               FontSize="15" FontWeight="Bold"/>
+                                    <CheckBox x:Name="PracticeLapCalloutsCheck" Content="LAP CALLOUTS"
+                                              Click="PracticeLapCallouts_Click" Margin="0,5,0,5"
+                                              ToolTip="Turn practice lap announcements on or off. The first crossing can still announce the driver's name."/>
+                                    <TextBlock Text="While Practice is active, race sessions cannot be started. Driver cards appear only after the first detected crossing."
+                                               Foreground="{DynamicResource MutedBrush}"
+                                               TextWrapping="Wrap"/>
+                                </StackPanel>
+
+                                <ComboBox x:Name="PracticeManualDriverCombo"
+                                          Grid.Column="2"
+                                          ItemsSource="{Binding Drivers}"
+                                          DisplayMemberPath="DisplayName"
+                                          IsEnabled="False"
+                                          ToolTip="Manual practice simulation driver"/>
+                                <Button x:Name="PracticeManualPassButton"
+                                        Grid.Column="3"
+                                        Content="MANUAL PASS"
+                                        Click="PracticeManualPass_Click"
+                                        IsEnabled="False"
+                                        MinWidth="105"/>
+                            </Grid>
+                        </Border>
+
+                        <TabControl x:Name="PracticeViewTabs"
+                                    Grid.Row="1"
+                                    SelectionChanged="PracticeViewTabs_SelectionChanged">
+                            <TabItem Header="LIVE PRACTICE">
+                                <Grid Margin="4">
+                                    <ItemsControl x:Name="PracticeCardsControl"
+                                                  ItemsSource="{Binding VisiblePracticeCards}"
+                                                  HorizontalContentAlignment="Stretch"
+                                                  VerticalContentAlignment="Stretch">
+                                        <ItemsControl.ItemsPanel>
+                                            <ItemsPanelTemplate>
+                                                <UniformGrid
+                                                    Columns="{Binding PracticeGridColumns, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                    Rows="{Binding PracticeGridRows, RelativeSource={RelativeSource AncestorType=Window}}"/>
+                                            </ItemsPanelTemplate>
+                                        </ItemsControl.ItemsPanel>
+
+                                        <ItemsControl.ItemContainerStyle>
+                                            <Style TargetType="ContentPresenter">
+                                                <Setter Property="HorizontalAlignment" Value="Stretch"/>
+                                                <Setter Property="VerticalAlignment" Value="Stretch"/>
+                                            </Style>
+                                        </ItemsControl.ItemContainerStyle>
+
+                                        <ItemsControl.ItemTemplate><StaticResource ResourceKey="SharedPracticeCardTemplate"/></ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+
+                                    <Border HorizontalAlignment="Right"
+                                            VerticalAlignment="Bottom"
+                                            Margin="0,0,8,6"
+                                            Padding="7,3"
+                                            Background="{DynamicResource PanelBrush}"
+                                            BorderBrush="{DynamicResource BorderBrush}"
+                                            BorderThickness="1"
+                                            CornerRadius="4"
+                                            IsHitTestVisible="False">
+                                        <TextBlock x:Name="PracticeLayoutStatusText"
+                                                   Text="0 active racers • 5 per row • 2 rows"
+                                                   FontSize="10"
+                                                   Foreground="{DynamicResource MutedBrush}"/>
+                                    </Border>
+                                </Grid>
+                            </TabItem>
+
+                            <TabItem Header="PAST PRACTICE">
+                                <Grid Margin="4">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="1.35*"/>
+                                        <ColumnDefinition Width="8"/>
+                                        <ColumnDefinition Width="0.85*"/>
+                                    </Grid.ColumnDefinitions>
+                                    <DataGrid x:Name="PracticeHistoryGrid"
+                                              ItemsSource="{Binding PracticeHistory}"
+                                              AutoGenerateColumns="False"
+                                              IsReadOnly="True"
+                                              CanUserAddRows="False"
+                                              SelectionChanged="PracticeHistoryGrid_SelectionChanged">
+                                        <DataGrid.Columns>
+                                            <DataGridTextColumn Header="DATE" Binding="{Binding DateDisplay}" Width="90"/>
+                                            <DataGridTextColumn Header="TIME" Binding="{Binding TimeDisplay}" Width="175"/>
+                                            <DataGridTextColumn Header="DRIVER" Binding="{Binding DriverName}" Width="*"/>
+                                            <DataGridTextColumn Header="LAPS" Binding="{Binding LapCount}" Width="60"/>
+                                            <DataGridTextColumn Header="BEST" Binding="{Binding BestLapDisplay}" Width="80"/>
+                                            <DataGridTextColumn Header="AVG" Binding="{Binding AverageLapDisplay}" Width="80"/>
+                                        </DataGrid.Columns>
+                                    </DataGrid>
+
+                                    <Border Grid.Column="2"
+                                            Background="{DynamicResource PanelBrush}"
+                                            BorderBrush="{DynamicResource BorderBrush}"
+                                            BorderThickness="0,0,0,1" CornerRadius="0" Padding="7">
+                                        <Grid>
+                                            <Grid.RowDefinitions>
+                                                <RowDefinition Height="Auto"/>
+                                                <RowDefinition Height="*"/>
+                                            </Grid.RowDefinitions>
+                                            <TextBlock x:Name="PracticeHistoryLapTitle"
+                                                       Text="SELECT A PRACTICE STINT"
+                                                       FontSize="14" FontWeight="Bold"/>
+                                            <DataGrid Grid.Row="1"
+                                                      ItemsSource="{Binding PracticeHistoryLaps}"
+                                                      AutoGenerateColumns="False"
+                                                      IsReadOnly="True"
+                                                      CanUserAddRows="False"
+                                                      Margin="0,6,0,0">
+                                                <DataGrid.Columns>
+                                                    <DataGridTextColumn Header="#" Binding="{Binding LapNumber}" Width="48"/>
+                                                    <DataGridTextColumn Header="LAP" Binding="{Binding LapTimeDisplay}" Width="80"/>
+                                                    <DataGridTextColumn Header="TIME" Binding="{Binding TimeDisplay}" Width="*"/>
+                                                </DataGrid.Columns>
+                                            </DataGrid>
+                                        </Grid>
+                                    </Border>
+                                </Grid>
+                            </TabItem>
+                        </TabControl>
+                    </Grid>
+                </Grid>
+            </TabItem>
+
+            <TabItem x:Name="EventTab" Header="EVENT">
+                <Grid Margin="4">
+                    <Border Background="{DynamicResource HoneycombPatternBrush}" Opacity="0" IsHitTestVisible="False"/>
+                    <Grid Margin="2">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="275"/>
+                            <RowDefinition Height="*"/>
+                        </Grid.RowDefinitions>
+
+                        <!-- Event lifecycle -->
+                        <Border Background="{DynamicResource PanelBrush}" BorderBrush="{DynamicResource BorderBrush}"
+                                BorderThickness="0,0,0,1" CornerRadius="0" Padding="7" Margin="0,0,0,10">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <ComboBox x:Name="EventSelectCombo"
+                                          ItemsSource="{Binding Events}"
+                                          DisplayMemberPath="DisplayName"
+                                          SelectionChanged="EventSelectCombo_SelectionChanged"
+                                          Margin="0,0,8,0"/>
+                                <TextBlock x:Name="EventStatusText" Grid.Column="1" Text="—"
+                                           FontWeight="Bold" VerticalAlignment="Center" Margin="8"/>
+                                <Button Grid.Column="2" Content="+ NEW EVENT" Click="NewEvent_Click" MinWidth="98"/>
+                                <Button x:Name="EndEventButton" Grid.Column="3" Content="END CURRENT EVENT"
+                                        Click="EndEvent_Click" Background="{DynamicResource AccentDarkBrush}" MinWidth="155"/>
+                            </Grid>
+                        </Border>
+
+                        <!-- Classes left / roster right -->
+                        <Grid Grid.Row="1">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="0.72*"/>
+                                <ColumnDefinition Width="10"/>
+                                <ColumnDefinition Width="1.8*"/>
+                            </Grid.ColumnDefinitions>
+
+                            <Border x:Name="EventClassesPanel"
+                                    Background="{DynamicResource PanelBrush}" BorderBrush="{DynamicResource BorderBrush}"
+                                    BorderThickness="0,0,0,1" CornerRadius="0" Padding="7">
+                                <Grid>
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition Height="Auto"/>
+                                        <RowDefinition Height="*"/>
+                                        <RowDefinition Height="Auto"/>
+                                    </Grid.RowDefinitions>
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                        </Grid.ColumnDefinitions>
+                                        <StackPanel>
+                                            <TextBlock Text="CLASSES" FontWeight="Bold" FontSize="13"/>
+                                            <TextBlock Text="Check classes for this event."
+                                                       Foreground="{DynamicResource MutedBrush}" FontSize="11"/>
+                                        </StackPanel>
+                                        <Button x:Name="EventNewClassButton" Grid.Column="1" Content="+ CLASS"
+                                                Click="EventNewClass_Click"/>
+                                    </Grid>
+
+                                    <ListBox x:Name="EventClassChecklist" Grid.Row="1"
+                                             ItemsSource="{Binding EventClassChoices}"
+                                             SelectionChanged="EventClassChecklist_SelectionChanged"
+                                             ScrollViewer.VerticalScrollBarVisibility="Auto"
+                                             Margin="0,8,0,6"
+                                             Padding="0">
+                                        <ListBox.ItemContainerStyle>
+                                            <Style TargetType="ListBoxItem">
+                                                <Setter Property="Foreground" Value="{DynamicResource TextBrush}"/>
+                                                <Setter Property="Background" Value="Transparent"/>
+                                                <Setter Property="Padding" Value="7,6"/>
+                                                <Setter Property="Margin" Value="0"/>
+                                                <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+                                                <Setter Property="Template">
+                                                    <Setter.Value>
+                                                        <ControlTemplate TargetType="ListBoxItem">
+                                                            <Border x:Name="Row" Background="{TemplateBinding Background}"
+                                                                    BorderBrush="{DynamicResource BorderBrush}"
+                                                                    BorderThickness="0,0,0,1"
+                                                                    Padding="{TemplateBinding Padding}">
+                                                                <ContentPresenter/>
+                                                            </Border>
+                                                            <ControlTemplate.Triggers>
+                                                                <Trigger Property="IsMouseOver" Value="True">
+                                                                    <Setter TargetName="Row" Property="Background" Value="{DynamicResource PanelHoverBrush}"/>
+                                                                </Trigger>
+                                                                <Trigger Property="IsSelected" Value="True">
+                                                                    <Setter TargetName="Row" Property="Background" Value="{DynamicResource AccentDarkBrush}"/>
+                                                                    <Setter Property="Foreground" Value="#FFFFFF"/>
+                                                                </Trigger>
+                                                            </ControlTemplate.Triggers>
+                                                        </ControlTemplate>
+                                                    </Setter.Value>
+                                                </Setter>
+                                            </Style>
+                                        </ListBox.ItemContainerStyle>
+                                        <ListBox.ItemTemplate>
+                                            <DataTemplate>
+                                                <Grid Margin="2">
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="34"/>
+                                                        <ColumnDefinition Width="32"/>
+                                                        <ColumnDefinition Width="*"/>
+                                                    </Grid.ColumnDefinitions>
+                                                    <CheckBox IsChecked="{Binding Included, Mode=OneWay}"
+                                                              IsEnabled="{Binding IsEditable}"
+                                                              Tag="{Binding ClassId}"
+                                                              Click="EventClassCheckBox_Click"
+                                                              HorizontalAlignment="Center"
+                                                              VerticalAlignment="Center"/>
+                                                    <TextBlock Grid.Column="1" Text="{Binding OrderDisplay}"
+                                                               Foreground="{DynamicResource MutedBrush}"
+                                                               VerticalAlignment="Center"/>
+                                                    <TextBlock Grid.Column="2" Text="{Binding ClassName}"
+                                                               FontWeight="SemiBold" VerticalAlignment="Center"/>
+                                                </Grid>
+                                            </DataTemplate>
+                                        </ListBox.ItemTemplate>
+                                    </ListBox>
+
+                                    <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right">
+                                        <Button x:Name="EventClassUpButton" Content="UP" Click="MoveEventClassUp_Click"/>
+                                        <Button x:Name="EventClassDownButton" Content="DOWN" Click="MoveEventClassDown_Click"/>
+                                    </StackPanel>
+                                </Grid>
+                            </Border>
+
+                            <Border x:Name="EventRosterPanel" Grid.Column="2"
+                                    Background="{DynamicResource PanelBrush}" BorderBrush="{DynamicResource BorderBrush}"
+                                    BorderThickness="0,0,0,1" CornerRadius="0" Padding="7">
+                                <Grid>
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition Height="Auto"/>
+                                        <RowDefinition Height="*"/>
+                                    </Grid.RowDefinitions>
+
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="220"/>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                        </Grid.ColumnDefinitions>
+                                        <StackPanel Grid.Column="0" Margin="0,0,8,0">
+                                            <TextBlock Text="CLASS ROSTER" FontWeight="Bold" FontSize="13"/>
+                                            <ComboBox x:Name="EventRosterClassCombo"
+                                                      ItemsSource="{Binding EventSelectedClasses}"
+                                                      DisplayMemberPath="ClassName"
+                                                      SelectionChanged="EventRosterClassCombo_SelectionChanged"/>
+                                        </StackPanel>
+                                        <StackPanel Grid.Column="1" Margin="0,0,8,0">
+                                            <TextBlock Text="Search drivers" Foreground="{DynamicResource MutedBrush}"/>
+                                            <TextBox x:Name="EventDriverSearchText"
+                                                     TextChanged="EventDriverSearchText_Changed"
+                                                     Margin="0,4,0,0"/>
+                                        </StackPanel>
+                                        <Button x:Name="EventNewDriverButton" Grid.Column="2" Content="+ NEW DRIVER"
+                                                Click="EventNewDriver_Click"
+                                                VerticalAlignment="Bottom" Margin="3,4,0,0"/>
+                                    </Grid>
+
+                                    <ListBox x:Name="EventDriverChecklist" Grid.Row="1"
+                                             ItemsSource="{Binding EventDriverChoices}"
+                                             SelectionChanged="EventDriverChecklist_SelectionChanged"
+                                             ScrollViewer.VerticalScrollBarVisibility="Auto"
+                                             Margin="0,5,0,0"
+                                             Padding="0">
+                                        <ListBox.ItemContainerStyle>
+                                            <Style TargetType="ListBoxItem">
+                                                <Setter Property="Foreground" Value="{DynamicResource TextBrush}"/>
+                                                <Setter Property="Background" Value="Transparent"/>
+                                                <Setter Property="Padding" Value="7,5"/>
+                                                <Setter Property="Margin" Value="0"/>
+                                                <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+                                                <Setter Property="Template">
+                                                    <Setter.Value>
+                                                        <ControlTemplate TargetType="ListBoxItem">
+                                                            <Border x:Name="Row" Background="{TemplateBinding Background}"
+                                                                    BorderBrush="{DynamicResource BorderBrush}"
+                                                                    BorderThickness="0,0,0,1"
+                                                                    Padding="{TemplateBinding Padding}">
+                                                                <ContentPresenter/>
+                                                            </Border>
+                                                            <ControlTemplate.Triggers>
+                                                                <Trigger Property="IsMouseOver" Value="True">
+                                                                    <Setter TargetName="Row" Property="Background" Value="{DynamicResource PanelHoverBrush}"/>
+                                                                </Trigger>
+                                                                <Trigger Property="IsSelected" Value="True">
+                                                                    <Setter TargetName="Row" Property="Background" Value="{DynamicResource AccentDarkBrush}"/>
+                                                                    <Setter Property="Foreground" Value="#FFFFFF"/>
+                                                                </Trigger>
+                                                            </ControlTemplate.Triggers>
+                                                        </ControlTemplate>
+                                                    </Setter.Value>
+                                                </Setter>
+                                            </Style>
+                                        </ListBox.ItemContainerStyle>
+                                        <ListBox.ItemTemplate>
+                                            <DataTemplate>
+                                                <Grid Margin="2,1">
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="38"/>
+                                                        <ColumnDefinition Width="1.1*"/>
+                                                        <ColumnDefinition Width="1*"/>
+                                                        <ColumnDefinition Width="145"/>
+                                                    </Grid.ColumnDefinitions>
+                                                    <CheckBox IsChecked="{Binding Included, Mode=OneWay}"
+                                                              IsEnabled="{Binding IsEditable}"
+                                                              Tag="{Binding DriverId}"
+                                                              Click="EventDriverCheckBox_Click"
+                                                              HorizontalAlignment="Center"
+                                                              VerticalAlignment="Center"/>
+                                                    <TextBlock Grid.Column="1" Text="{Binding DisplayName}"
+                                                               FontWeight="SemiBold" VerticalAlignment="Center"/>
+                                                    <TextBlock Grid.Column="2" Text="{Binding FullName}"
+                                                               Foreground="{DynamicResource MutedBrush}"
+                                                               VerticalAlignment="Center"/>
+                                                    <TextBox Grid.Column="3"
+                                                             Text="{Binding TransponderId, UpdateSourceTrigger=PropertyChanged}"
+                                                             Tag="{Binding DriverId}"
+                                                             IsEnabled="{Binding Included}"
+                                                             IsReadOnly="{Binding IsReadOnly}"
+                                                             LostFocus="EventDriverTransponderInline_LostFocus"
+                                                             ToolTip="Event transponder (optional)"
+                                                             Margin="4,2"/>
+                                                </Grid>
+                                            </DataTemplate>
+                                        </ListBox.ItemTemplate>
+                                    </ListBox>
+                                </Grid>
+                            </Border>
+                        </Grid>
+
+                        <!-- Sessions / builder -->
+                        <Border Grid.Row="2"
+                                Background="{DynamicResource PanelBrush}" BorderBrush="{DynamicResource BorderBrush}"
+                                BorderThickness="0,0,0,1" CornerRadius="0" Padding="7" Margin="0,6,0,0">
+                            <Grid>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="*"/>
+                                </Grid.RowDefinitions>
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    <StackPanel>
+                                        <TextBlock Text="ROUNDS / MAINS" FontWeight="Bold" FontSize="13"/>
+                                        <TextBlock Text="Select a saved race to edit its round or mains lineup."
+                                                   Foreground="{DynamicResource MutedBrush}" FontSize="11"/>
+                                    </StackPanel>
+                                    <WrapPanel Grid.Column="1">
+                                    <Button x:Name="RoundMainBuilderButton"
+                                            Content="OPEN ROUNDS / MAINS"
+                                            Click="OpenRoundMainBuilder_Click"
+                                            Background="{DynamicResource AccentDarkBrush}"
+                                            Foreground="White"
+                                            BorderBrush="{DynamicResource BorderStrongBrush}"
+                                            MinWidth="290" Padding="20,10"/>
+                                    </WrapPanel>
+                                </Grid>
+
+                                <DataGrid x:Name="PlannedSessionGrid" Grid.Row="1"
+                                          ItemsSource="{Binding PlannedSessions}"
+                                          AutoGenerateColumns="False" IsReadOnly="True" CanUserAddRows="False"
+                                          SelectionChanged="PlannedSessionGrid_SelectionChanged"
+                                          Sorting="PlannedSessionGrid_Sorting"
+                                          Loaded="PlannedSessionGrid_Loaded"
+                                          SizeChanged="PlannedSessionGrid_SizeChanged"
+                                          IsVisibleChanged="PlannedSessionGrid_IsVisibleChanged"
+                                          VirtualizingPanel.IsVirtualizingWhenGrouping="True"
+                                          ScrollViewer.CanContentScroll="True"
+                                          Margin="0,5,0,0">
+                                    <DataGrid.GroupStyle>
+                                        <GroupStyle>
+                                            <GroupStyle.HeaderTemplate>
+                                                <DataTemplate>
+                                                    <Border Margin="0,7,0,2" Padding="10,6"
+                                                            BorderBrush="{DynamicResource AccentBrush}" BorderThickness="4,0,0,1"
+                                                            HorizontalAlignment="Stretch">
+                                                        <Border.Style>
+                                                            <Style TargetType="Border">
+                                                                <Setter Property="Background" Value="{DynamicResource PanelAltBrush}"/>
+                                                                <Style.Triggers>
+                                                                    <DataTrigger Binding="{Binding Items[0].IsAlternateRoundBand}" Value="True">
+                                                                        <Setter Property="Background" Value="{DynamicResource PanelHoverBrush}"/>
+                                                                    </DataTrigger>
+                                                                </Style.Triggers>
+                                                            </Style>
+                                                        </Border.Style>
+                                                        <StackPanel Orientation="Horizontal">
+                                                            <TextBlock Text="{Binding Name}" FontSize="13" FontWeight="Bold"
+                                                                       Foreground="{DynamicResource TextBrush}"/>
+                                                            <TextBlock Text="{Binding ItemCount, StringFormat='  •  Races: {0}'}"
+                                                                       Margin="8,0,0,0" VerticalAlignment="Center"
+                                                                       Foreground="{DynamicResource MutedBrush}"/>
+                                                        </StackPanel>
+                                                    </Border>
+                                                </DataTemplate>
+                                            </GroupStyle.HeaderTemplate>
+                                        </GroupStyle>
+                                    </DataGrid.GroupStyle>
+
+                                    <DataGrid.Columns>
+                                        <DataGridTextColumn Header="#" Binding="{Binding RaceNumber}" Width="45"/>
+                                        <DataGridTextColumn Header="STATUS" Binding="{Binding StatusDisplay}" Width="85"/>
+                                        <DataGridTextColumn Header="TYPE" Binding="{Binding TypeDisplay}" Width="85"/>
+                                        <DataGridTextColumn x:Name="EventSessionClassColumn" Header="CLASS" Binding="{Binding ClassName}" Width="1.2*"/>
+                                        <DataGridTextColumn Header="ROUND" Binding="{Binding RoundLabel}" Width="65"/>
+                                        <DataGridTextColumn Header="HEAT / MAIN" Binding="{Binding HeatMainDisplay}" Width="82"/>
+                                        <DataGridTextColumn Header="RUN" Binding="{Binding MainRunDisplay}" Width="58"/>
+                                        <DataGridTextColumn Header="RACERS" Binding="{Binding RacerCount}" Width="70"/>
+                                        <DataGridTextColumn x:Name="EventSessionNameColumn" Header="SESSION" Binding="{Binding Name}" Width="1.6*"/>
+                                    </DataGrid.Columns>
+                                </DataGrid>
+                            </Grid>
+                        </Border>
+
+                        <!-- Internal legacy controls retained for migration/history routines, not shown to the operator. -->
+                        <Grid Visibility="Collapsed">
+                            <Border x:Name="EventSetupPanel"/>
+                            <Border x:Name="QualRoundBuilderPanel"/>
+                            <TextBox x:Name="EventNameEditor" LostFocus="EventNameEditor_LostFocus"/>
+                            <TextBox x:Name="EventDateTextBox" LostFocus="EventDateTextBox_LostFocus"/>
+                            <TextBlock x:Name="EventRosterClassTitleText"/>
+                            <TextBlock x:Name="SelectedEventDriverText"/>
+                            <TextBlock x:Name="SelectedEventDriverFullNameText"/>
+                            <TextBox x:Name="EventDriverTransponderText"/>
+                            <TextBox x:Name="QualRoundText" Text="1"/>
+                            <ComboBox x:Name="QualRoundOrderCombo">
+                                <ComboBoxItem IsSelected="True">Random</ComboBoxItem>
+                                <ComboBoxItem>Ranked</ComboBoxItem>
+                                <ComboBoxItem>Previous Round</ComboBoxItem>
+                                <ComboBoxItem>Manual / Driver List</ComboBoxItem>
+                            </ComboBox>
+                            <Button x:Name="BuildQualRoundButton" Click="BuildQualifiers_Click"/>
+                            <Button x:Name="DeleteQualRoundButton" Click="DeleteQualRound_Click"/>
+                            <TextBlock x:Name="SelectedHeatTitleText"/>
+                            <TextBlock x:Name="SelectedHeatInfoText"/>
+                            <DataGrid x:Name="HeatEntrantGrid"
+                                      ItemsSource="{Binding SelectedHeatEntrants}"
+                                      PreviewMouseLeftButtonDown="HeatEntrantGrid_PreviewMouseLeftButtonDown"
+                                      PreviewMouseMove="HeatEntrantGrid_PreviewMouseMove"
+                                      DragOver="HeatEntrantGrid_DragOver"
+                                      Drop="HeatEntrantGrid_Drop"/>
+                        </Grid>
+                    </Grid>
+                </Grid>
+            </TabItem>
+
+            <TabItem x:Name="SeriesTab" Header="SERIES">
+              <Grid Margin="7">
+                <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
+                <DockPanel Margin="0,0,0,8">
+                  <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
+                    <Button Content="+ NEW SERIES" Click="NewSeries_Click"/>
+                    <Button Content="SAVE SERIES" Click="SaveSeries_Click" Background="{DynamicResource GoodBrush}" Foreground="#101318"/>
+                    <Button Content="DELETE" Click="DeleteSeries_Click"/>
+                  </StackPanel>
+                  <ComboBox x:Name="SeriesSelectCombo" ItemsSource="{Binding SeriesDefinitions}" DisplayMemberPath="DisplayName" SelectionChanged="SeriesSelectCombo_SelectionChanged"/>
+                </DockPanel>
+                <TabControl x:Name="SeriesPages" Grid.Row="1" TabStripPlacement="Left" SelectionChanged="SeriesPages_SelectionChanged"
+                    ItemContainerStyle="{StaticResource SideNavigationTabItemStyle}">
+                  <TabItem Header="SERIES">
+                    <Grid Margin="10">
+                      <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="1.4*"/></Grid.ColumnDefinitions>
+                      <ScrollViewer VerticalScrollBarVisibility="Auto"><StackPanel Margin="0,0,15,0">
+                        <TextBlock Text="SERIES INFORMATION" FontWeight="Bold" FontSize="18"/>
+                        <TextBlock Text="Series name" Margin="0,8,0,2"/><TextBox x:Name="SeriesNameText"/><TextBlock Text="Start date (MM/DD/YYYY)" Margin="0,8,0,2"/><TextBox x:Name="SeriesStartDateText"/><TextBlock Text="End date (MM/DD/YYYY)" Margin="0,8,0,2"/><TextBox x:Name="SeriesEndDateText"/><TextBlock Text="Events allowed (0 = unlimited)" Margin="0,8,0,2"/><TextBox x:Name="SeriesMaximumText"/><TextBlock Text="Best number of events to count (0 = all)" Margin="0,8,0,2"/><TextBox x:Name="SeriesBestText"/>
+                        <TextBlock Text="Use 0 for unlimited events or to count every race. Example: 10 events allowed, best 8 scored." TextWrapping="Wrap" Margin="0,10,0,8"/>
+                        <TextBlock Text="Notes"/><TextBox x:Name="SeriesNotesText" AcceptsReturn="True" TextWrapping="Wrap" Height="100"/>
+                      </StackPanel></ScrollViewer>
+                      <Grid Grid.Column="1">
+                        <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
+                        <TextBlock Text="EVENTS IN THIS SERIES" FontWeight="Bold" FontSize="18"/>
+                        <DockPanel Grid.Row="1"><Button DockPanel.Dock="Right" Content="REFRESH EVENTS" Click="RefreshSeriesEvents_Click"/><TextBlock Text="Select or remove weeks manually. Active events stay pending until completed." TextWrapping="Wrap"/></DockPanel>
+                        <ListBox Grid.Row="2" ItemsSource="{Binding SeriesEventChoices}">
+                          <ListBox.ItemTemplate><DataTemplate><CheckBox Content="{Binding Display}" IsChecked="{Binding Included, Mode=TwoWay}" Tag="{Binding EventId}" Click="SeriesEventCheckBox_Click"/></DataTemplate></ListBox.ItemTemplate>
+                        </ListBox>
+                      </Grid>
+                    </Grid>
+                  </TabItem>
+                  <TabItem Header="POINTS SETTINGS">
+                    <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                      <StackPanel Margin="10">
+                        <TextBlock Text="POINTS SETTINGS" FontWeight="Bold" FontSize="18"/>
+                        <TextBlock Text="Decimal points are allowed. Set any bonus to 0 to turn it off. Only completed events score." TextWrapping="Wrap"/>
+                        <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                          <StackPanel Margin="10"><TextBlock Text="QUALIFYING" FontSize="18" FontWeight="Bold"/><CheckBox x:Name="QualEnabled" Content="Award points for this stage" Margin="0,8,0,4"/><TextBlock Text="Position points (1st, 2nd, 3rd…; comma-separated)" Margin="0,8,0,2"/><TextBox x:Name="QualPositionText"/><TextBlock Text="Points for positions beyond that list" Margin="0,8,0,2"/><TextBox x:Name="QualUnlistedText"/><TextBlock Text="Points per completed lap" Margin="0,8,0,2"/><TextBox x:Name="QualLapText"/><TextBlock Text="Participation points (once per event)" Margin="0,8,0,2"/><TextBox x:Name="QualParticipationText"/><TextBlock Text="Win bonus" Margin="0,8,0,2"/><TextBox x:Name="QualWinText"/><TextBlock Text="Fastest lap bonus (once per event/class)" Margin="0,8,0,2"/><TextBox x:Name="QualFastText"/><TextBlock Text="Minimum laps to earn stage points" Margin="0,8,0,2"/><TextBox x:Name="QualMinimumText"/></StackPanel>
+                          <Border Grid.Column="1"><StackPanel Margin="10"><TextBlock Text="MAINS" FontSize="18" FontWeight="Bold"/><CheckBox x:Name="MainEnabled" Content="Award points for this stage" Margin="0,8,0,4"/><TextBlock Text="Position points (1st, 2nd, 3rd…; comma-separated)" Margin="0,8,0,2"/><TextBox x:Name="MainPositionText"/><TextBlock Text="Points for positions beyond that list" Margin="0,8,0,2"/><TextBox x:Name="MainUnlistedText"/><TextBlock Text="Points per completed lap" Margin="0,8,0,2"/><TextBox x:Name="MainLapText"/><TextBlock Text="Participation points (once per event)" Margin="0,8,0,2"/><TextBox x:Name="MainParticipationText"/><TextBlock Text="Win bonus" Margin="0,8,0,2"/><TextBox x:Name="MainWinText"/><TextBlock Text="Fastest lap bonus (once per event/class)" Margin="0,8,0,2"/><TextBox x:Name="MainFastText"/><TextBlock Text="Minimum laps to earn stage points" Margin="0,8,0,2"/><TextBox x:Name="MainMinimumText"/></StackPanel></Border>
+                        </Grid>
+                        <TextBlock Text="Qualifying position awards"/><ComboBox x:Name="SeriesQualModeCombo"/>
+                        <TextBlock Text="Overall uses the event qualifying rank. Every round sums round positions; Best round takes the highest round award. Lap and participation points are counted once across all qualifying runs." TextWrapping="Wrap" Margin="0,4,0,8"/>
+                        <TextBlock Text="TQ bonus (once per event/class)" Margin="0,8,0,2"/><TextBox x:Name="SeriesTqText"/><TextBlock Text="Event attendance points (once for any scored lap)" Margin="0,8,0,2"/><TextBox x:Name="SeriesAttendanceText"/>
+                        <TextBlock Text="Tie-break after total points" Margin="0,8,0,2"/><ComboBox x:Name="SeriesTieCombo"/>
+                        <CheckBox x:Name="SeriesLegacyFallbackCheck" Content="Use qualifying finish for main position points when no mains ran" Margin="0,8,0,0"/>
+                        <TextBlock Text="Main position points use the overall A/B/C finish, including the configured best runs for repeated mains. Fast-lap ties award the full bonus to each tied racer. Unresolved standings ties share the same position." TextWrapping="Wrap" Margin="0,8,0,10"/>
+                      </StackPanel>
+                    </ScrollViewer>
+                  </TabItem>
+                  <TabItem Header="STANDINGS">
+                    <Grid Margin="10">
+                      <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/><RowDefinition Height="0.85*"/></Grid.RowDefinitions>
+                      <DockPanel><Button DockPanel.Dock="Right" Content="REFRESH STANDINGS" Click="RefreshSeriesStandings_Click"/>
+                        <ComboBox x:Name="SeriesClassCombo" ItemsSource="{Binding SeriesClassChoices}" DisplayMemberPath="ClassName" SelectionChanged="SeriesClassCombo_SelectionChanged"/>
+                      </DockPanel>
+                      <TextBlock Grid.Row="1" x:Name="SeriesStandingsInfoText" TextWrapping="Wrap" Margin="0,4,0,6"/>
+                      <DataGrid x:Name="SeriesStandingsGrid" Grid.Row="2" ItemsSource="{Binding SeriesStandings}" IsReadOnly="True" CanUserAddRows="False" AutoGenerateColumns="False" SelectionMode="Single" SelectionChanged="SeriesStanding_SelectionChanged"/>
+                      <WrapPanel Grid.Row="3" Margin="0,7,0,4">
+                        <TextBlock Text="SELECT A RACER FOR WEEKLY BREAKDOWN" VerticalAlignment="Center" Margin="0,0,10,0"/>
+                        <Button Content="ADJUST POINTS / ADD NOTE" Click="AdjustSeriesPoints_Click"/>
+                      </WrapPanel>
+                      <TabControl Grid.Row="4">
+                        <TabItem Header="WEEKS / DROPS"><DataGrid x:Name="SeriesWeeksGrid" IsReadOnly="True" CanUserAddRows="False" AutoGenerateColumns="False">
+                          <DataGrid.Columns>
+                            <DataGridTextColumn Header="EVENT" Binding="{Binding EventName}" Width="*"/>
+                            <DataGridTextColumn Header="DATE" Binding="{Binding EventDate, StringFormat=MM/dd/yyyy}" Width="95"/>
+                            <DataGridTextColumn Header="QUAL" Binding="{Binding Qualifying}" Width="65"/>
+                            <DataGridTextColumn Header="MAIN" Binding="{Binding Mains}" Width="65"/>
+                            <DataGridTextColumn Header="BONUS" Binding="{Binding Bonuses}" Width="65"/>
+                            <DataGridTextColumn Header="ADJUST" Binding="{Binding Adjustment}" Width="65"/>
+                            <DataGridTextColumn Header="TOTAL" Binding="{Binding Total}" Width="65"/>
+                            <DataGridTextColumn Header="STATUS" Binding="{Binding Status}" Width="85"/>
+                            <DataGridTextColumn Header="NOTES" Binding="{Binding Notes}" Width="*"/>
+                          </DataGrid.Columns>
+                        </DataGrid></TabItem>
+                        <TabItem Header="ADJUSTMENT NOTES"><DockPanel>
+                          <Button DockPanel.Dock="Bottom" Content="REMOVE SELECTED ADJUSTMENT" Click="RemoveSeriesAdjustment_Click"/>
+                          <DataGrid x:Name="SeriesAdjustmentsGrid" IsReadOnly="True" CanUserAddRows="False" AutoGenerateColumns="False" SelectionMode="Single"><DataGrid.Columns>
+                            <DataGridTextColumn Header="EVENT / TOTAL" Binding="{Binding EventName}" Width="*"/>
+                            <DataGridTextColumn Header="POINTS" Binding="{Binding Amount}" Width="70"/>
+                            <DataGridTextColumn Header="NOTE" Binding="{Binding Note}" Width="2*"/>
+                            <DataGridTextColumn Header="ENTERED" Binding="{Binding CreatedAt, StringFormat=g}" Width="150"/>
+                          </DataGrid.Columns></DataGrid>
+                        </DockPanel></TabItem>
+                      </TabControl>
+                    </Grid>
+                  </TabItem>
+                </TabControl>
+              </Grid>
+            </TabItem>
+
+            <TabItem Header="CLASSES">
+                <Grid Margin="5">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                    </Grid.RowDefinitions>
+
+                    <Border Background="{DynamicResource PanelBrush}" BorderBrush="{DynamicResource BorderBrush}"
+                            BorderThickness="0,0,0,1" CornerRadius="0" Padding="8" Margin="0,0,0,6">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <StackPanel>
+                                <TextBlock Text="RACING CLASSES" FontWeight="Bold" FontSize="13"/>
+                                <TextBlock Text="Classes define timed/lapped format, minimum lap, qualifying heat size, main rules/bump-ups, and clock style. Creating and editing a class opens a separate setup window."
+                                           Foreground="{DynamicResource MutedBrush}" TextWrapping="Wrap"/>
+                            </StackPanel>
+                            <Button Grid.Column="1" Content="+ NEW CLASS" Click="NewClass_Click" MinWidth="98"/>
+                        </Grid>
+                    </Border>
+
+                    <Grid Grid.Row="1">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="2.1*"/>
+                            <ColumnDefinition Width="12"/>
+                            <ColumnDefinition Width="0.9*"/>
+                        </Grid.ColumnDefinitions>
+
+                        <DataGrid x:Name="ClassGrid" ItemsSource="{Binding Classes}" AutoGenerateColumns="False"
+                                  IsReadOnly="True" CanUserAddRows="False"
+                                  SelectionChanged="ClassGrid_SelectionChanged">
+                            <DataGrid.Columns>
+                                <DataGridTextColumn Header="CLASS" Binding="{Binding Name}" Width="1.15*"/>
+                                <DataGridTextColumn Header="MAIN FORMAT" Binding="{Binding MainRaceFormatDisplay}" Width="110"/>
+                                <DataGridTextColumn Header="QUAL FORMAT" Binding="{Binding RaceFormatDisplay}" Width="110"/>
+                                <DataGridTextColumn Header="LENGTH" Binding="{Binding RaceLengthDisplay}" Width="88"/>
+                                <DataGridTextColumn Header="MIN LAP" Binding="{Binding MinimumLapSeconds}" Width="75"/>
+                                <DataGridTextColumn Header="RACERS / HEAT" Binding="{Binding MaxRacersPerHeat}" Width="100"/>
+                                <DataGridTextColumn Header="RACERS / MAIN" Binding="{Binding MaxRacersPerMain}" Width="100"/>
+                                <DataGridTextColumn Header="QUAL STYLE" Binding="{Binding QualStyleDisplay}" Width="1.55*"/>
+                                <DataGridTextColumn Header="RACE STYLE" Binding="{Binding RaceStyleDisplay}" Width="1.55*"/>
+                            </DataGrid.Columns>
+                        </DataGrid>
+
+                        <Border Grid.Column="2" Background="{DynamicResource PanelBrush}" BorderBrush="{DynamicResource BorderBrush}"
+                                BorderThickness="0,0,0,1" CornerRadius="0" Padding="9">
+                            <StackPanel>
+                                <TextBlock Text="CLASS DETAILS" FontWeight="Bold" FontSize="14"/>
+                                <TextBlock x:Name="ClassDetailNameText" Text="Select a class" FontSize="15" FontWeight="Bold" Margin="0,12,0,8"/>
+
+                                <TextBlock Text="Race format / length" Foreground="{DynamicResource MutedBrush}"/>
+                                <TextBlock x:Name="ClassDetailMinutesText" Text="—" FontSize="12" Margin="0,2,0,9"/>
+
+                                <TextBlock Text="Minimum lap" Foreground="{DynamicResource MutedBrush}"/>
+                                <TextBlock x:Name="ClassDetailMinLapText" Text="—" FontSize="12" Margin="0,2,0,9"/>
+
+                                <TextBlock Text="Automatic grid size" Foreground="{DynamicResource MutedBrush}"/>
+                                <TextBlock x:Name="ClassDetailHeatText" Text="—" FontSize="12" Margin="0,2,0,9"/>
+
+                                <TextBlock Text="Qualification clock" Foreground="{DynamicResource MutedBrush}"/>
+                                <TextBlock x:Name="ClassDetailQualText" Text="—" TextWrapping="Wrap" Margin="0,2,0,9"/>
+
+                                <TextBlock Text="Race clock / main rules" Foreground="{DynamicResource MutedBrush}"/>
+                                <TextBlock x:Name="ClassDetailRaceText" Text="—" TextWrapping="Wrap" Margin="0,2,0,12"/>
+
+                                <WrapPanel>
+                                    <Button Content="EDIT CLASS" Click="EditClass_Click"/>
+                                    <Button Content="DELETE CLASS" Click="DeleteClass_Click" Background="{DynamicResource AccentDarkBrush}"/>
+                                </WrapPanel>
+                            </StackPanel>
+                        </Border>
+                    </Grid>
+                </Grid>
+            </TabItem>
+
+            <TabItem x:Name="DriversTab" Header="DRIVERS">
+                <TabControl x:Name="DriverAreaTabs" SelectionChanged="DriverAreaTabs_SelectionChanged">
+                <TabItem Header="PROFILES">
+                <Grid Margin="5">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="1.05*"/>
+                        <RowDefinition Height="10"/>
+                        <RowDefinition Height="1*"/>
+                    </Grid.RowDefinitions>
+
+                    <Grid Grid.Row="0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="1.5*"/>
+                            <ColumnDefinition Width="12"/>
+                            <ColumnDefinition Width="1*"/>
+                        </Grid.ColumnDefinitions>
+
+                        <Grid>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="*"/>
+                            </Grid.RowDefinitions>
+                            <Border Background="{DynamicResource PanelBrush}" BorderBrush="{DynamicResource BorderBrush}"
+                                    BorderThickness="0,0,0,1" CornerRadius="0" Padding="8" Margin="0,0,0,6">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    <StackPanel>
+                                        <TextBlock Text="DRIVER DIRECTORY" FontWeight="Bold" FontSize="13"/>
+                                        <TextBlock Text="Select a driver to view their profile and class/transponder assignments. New and edit actions open a focused popup."
+                                                   Foreground="{DynamicResource MutedBrush}" Margin="0,3,0,0" TextWrapping="Wrap"/>
+                                    </StackPanel>
+                                    <Button Grid.Column="1" Content="+ NEW DRIVER" Click="NewDriver_Click"
+                                            VerticalAlignment="Center" Margin="12,0,0,0"/>
+                                </Grid>
+                            </Border>
+
+                            <ListBox x:Name="DriverGrid" Grid.Row="1"
+                                     ItemsSource="{Binding Drivers}"
+                                     SelectionChanged="DriverGrid_SelectionChanged">
+                                <ListBox.ItemTemplate>
+                                    <DataTemplate>
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="46"/>
+                                                <ColumnDefinition Width="*"/>
+                                            </Grid.ColumnDefinitions>
+                                            <Border Width="36" Height="36" CornerRadius="18"
+                                                    Background="{DynamicResource PanelAltBrush}"
+                                                    BorderBrush="{DynamicResource BorderStrongBrush}"
+                                                    BorderThickness="1" VerticalAlignment="Center">
+                                                <TextBlock Text="{Binding DisplayName}"
+                                                           FontWeight="Bold" FontSize="12"
+                                                           HorizontalAlignment="Center" VerticalAlignment="Center"
+                                                           TextTrimming="CharacterEllipsis" MaxWidth="28"/>
+                                            </Border>
+                                            <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                                                <TextBlock Text="{Binding DisplayName}" FontWeight="Bold" FontSize="12"/>
+                                                <TextBlock Text="{Binding DirectorySubtext}" Foreground="{DynamicResource MutedBrush}" FontSize="10"/>
+                                            </StackPanel>
+                                        </Grid>
+                                    </DataTemplate>
+                                </ListBox.ItemTemplate>
+                            </ListBox>
+                        </Grid>
+
+                        <Border Grid.Column="2" Background="{DynamicResource PanelBrush}"
+                                BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,0,0,1"
+                                CornerRadius="0" Padding="9">
+                            <StackPanel>
+                                <TextBlock Text="DRIVER PROFILE" FontWeight="Bold" FontSize="14"/>
+                                <TextBlock x:Name="DriverProfileTitleText" Text="Select a driver" FontWeight="Bold" FontSize="15" Margin="0,12,0,10"/>
+
+                                <Grid>
+                                    <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="12"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                                    <StackPanel>
+                                        <TextBlock Text="First name" Foreground="{DynamicResource MutedBrush}"/>
+                                        <TextBlock x:Name="DriverProfileFirstNameText" Text="—" Margin="0,2,0,8"/>
+                                    </StackPanel>
+                                    <StackPanel Grid.Column="2">
+                                        <TextBlock Text="Last name" Foreground="{DynamicResource MutedBrush}"/>
+                                        <TextBlock x:Name="DriverProfileLastNameText" Text="—" Margin="0,2,0,8"/>
+                                    </StackPanel>
+                                </Grid>
+
+                                <TextBlock Text="Nickname / scoring display" Foreground="{DynamicResource MutedBrush}"/>
+                                <TextBlock x:Name="DriverProfileNicknameText" Text="—" Margin="0,2,0,4"/>
+                                <TextBlock Text="Driver UUID" Foreground="{DynamicResource MutedBrush}"/>
+                                <TextBox x:Name="DriverProfileUuidText" IsReadOnly="True" FontSize="11" ToolTip="Permanent UUID reserved for the future driver system. Select and copy with Ctrl+C."/>
+                                <TextBlock Text="Nickname is shown during scoring. If blank, Race Control uses first and last name."
+                                           Foreground="{DynamicResource MutedBrush}" FontSize="11" TextWrapping="Wrap" Margin="0,0,0,12"/>
+
+                                <WrapPanel>
+                                    <Button Content="EDIT DRIVER" Click="EditDriver_Click"/>
+                                    <Button Content="DELETE DRIVER" Click="DeleteDriver_Click" Background="{DynamicResource AccentDarkBrush}"/>
+                                </WrapPanel>
+                            </StackPanel>
+                        </Border>
+                    </Grid>
+
+                    <Grid Grid.Row="2">
+                        <Border x:Name="AssignmentEmptyPrompt"
+                                Background="{DynamicResource PanelBrush}" BorderBrush="{DynamicResource BorderBrush}"
+                                BorderThickness="0,0,0,1" CornerRadius="0" Padding="22">
+                            <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
+                                <TextBlock Text="SELECT A DRIVER" FontWeight="Bold" FontSize="14" HorizontalAlignment="Center"/>
+                                <TextBlock Text="Class, transponder, and ranking information appears here only for the selected driver."
+                                           Foreground="{DynamicResource MutedBrush}" TextWrapping="Wrap"
+                                           TextAlignment="Center" MaxWidth="620" Margin="0,6,0,0"/>
+                            </StackPanel>
+                        </Border>
+
+                        <Border x:Name="AssignmentPanel" Visibility="Collapsed"
+                                Background="{DynamicResource PanelBrush}" BorderBrush="{DynamicResource BorderBrush}"
+                                BorderThickness="0,0,0,1" CornerRadius="0" Padding="12">
+                            <Grid>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="*"/>
+                                </Grid.RowDefinitions>
+
+                                <Grid Margin="0,0,0,10">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    <StackPanel>
+                                        <TextBlock x:Name="SelectedDriverAssignmentsTitleText"
+                                                   Text="DRIVER CLASS / TRANSPONDER SETUP"
+                                                   FontWeight="Bold" FontSize="13"/>
+                                        <TextBlock Text="Ratings are per class. SOF is the last race’s field strength. New drivers start at 1500 / Safety 3.00; SOF appears after racing."
+                                                   Foreground="{DynamicResource MutedBrush}" TextWrapping="Wrap"/>
+                                    </StackPanel>
+                                    <Button Grid.Column="1" Content="+ ADD CLASS ASSIGNMENT"
+                                            Click="NewAssignment_Click" VerticalAlignment="Center" Margin="12,0,0,0"/>
+                                </Grid>
+
+                                <Grid Grid.Row="1">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="2.1*"/>
+                                        <ColumnDefinition Width="12"/>
+                                        <ColumnDefinition Width="0.75*"/>
+                                    </Grid.ColumnDefinitions>
+
+                                    <DataGrid x:Name="AssignmentGrid"
+                                              ItemsSource="{Binding AssignmentRows}"
+                                              AutoGenerateColumns="False" IsReadOnly="True" CanUserAddRows="False"
+                                              SelectionChanged="AssignmentGrid_SelectionChanged">
+                                        <DataGrid.Columns>
+                                            <DataGridTextColumn Header="CLASS" Binding="{Binding ClassName}" Width="1.2*"/>
+                                            <DataGridTextColumn Header="TRANSPONDER" Binding="{Binding TransponderId}" Width="1.2*"/>
+                                            <DataGridTextColumn Header="RATING" Binding="{Binding RatingDisplay}" Width="65"/>
+                                            <DataGridTextColumn Header="SOF" Binding="{Binding SofDisplay}" Width="60"/>
+                                            <DataGridTextColumn Header="SAFETY" Binding="{Binding SafetyDisplay}" Width="65"/>
+                                            <DataGridTextColumn Header="SEED" Binding="{Binding SeedRank}" Width="50"/>
+                                        </DataGrid.Columns>
+                                    </DataGrid>
+
+                                    <Border Grid.Column="2" Background="{DynamicResource PageBrush}"
+                                            BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1"
+                                            CornerRadius="6" Padding="12">
+                                        <StackPanel>
+                                            <TextBlock x:Name="AssignmentEditorTitleText" Text="NEW CLASS ASSIGNMENT"
+                                                       FontWeight="Bold" FontSize="13"/>
+                                            <TextBlock Text="Class" Foreground="{DynamicResource MutedBrush}" Margin="0,6,0,0"/>
+                                            <ComboBox x:Name="AssignmentClassCombo"
+                                                      ItemsSource="{Binding Classes}" DisplayMemberPath="Name"/>
+                                            <TextBlock Text="Transponder number" Foreground="{DynamicResource MutedBrush}"/>
+                                            <TextBox x:Name="AssignmentTransponderText"/>
+                                            <TextBlock Text="Rank / seed" Foreground="{DynamicResource MutedBrush}"/>
+                                            <TextBox x:Name="AssignmentRankText" Text="0"/>
+                                            <TextBlock Text="1 = highest seed. 0 = unranked. Rankings can also be updated from completed event results."
+                                                       Foreground="{DynamicResource MutedBrush}" FontSize="11" TextWrapping="Wrap"
+                                                       Margin="0,-5,0,8"/>
+                                            <WrapPanel>
+                                                <Button Content="SAVE ASSIGNMENT" Click="AddAssignment_Click"
+                                                        Background="{DynamicResource GoodBrush}" Foreground="#101318"/>
+                                                <Button Content="REMOVE" Click="RemoveAssignment_Click"
+                                                        Background="{DynamicResource AccentDarkBrush}"/>
+                                            </WrapPanel>
+                                        </StackPanel>
+                                    </Border>
+                                </Grid>
+                            </Grid>
+                        </Border>
+                    </Grid>
+                </Grid>
+            </TabItem>
+
+                <TabItem Header="RATINGS / SAFETY">
+                <Grid Margin="10">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+                    <DockPanel>
+                        <Button DockPanel.Dock="Right" Content="REFRESH" Click="RefreshDriverRatings_Click"/>
+                        <ComboBox x:Name="RatingClassCombo" DockPanel.Dock="Right" Width="210" DisplayMemberPath="Name" SelectionChanged="RatingClassCombo_SelectionChanged"/>
+                        <TextBlock Text="IMRC DRIVER RANKINGS" FontSize="20" FontWeight="Bold"/>
+                    </DockPanel>
+                    <StackPanel Grid.Row="1">
+                        <TextBlock x:Name="RatingSummaryText" Text="Completed mains build class-specific rankings." Margin="0,4"/>
+                        <TextBlock Text="Consistent laps build Safety. Unusually slow laps flag estimated accidents and apply a separate penalty. Select a driver, then a race to review; traffic and missed reads can also cause flags." TextWrapping="Wrap" Foreground="{DynamicResource MutedBrush}"/>
+                    </StackPanel>
+                    <WrapPanel Grid.Row="2" Margin="0,6">
+                        <StackPanel Margin="0,0,8,0"><TextBlock Text="Slowdown %"/><TextBox x:Name="RatingSlowdownText" Width="90"/></StackPanel>
+                        <StackPanel Margin="0,0,8,0"><TextBlock Text="Extra seconds"/><TextBox x:Name="RatingSecondsText" Width="90"/></StackPanel>
+                        <StackPanel Margin="0,0,8,0"><TextBlock Text="Minimum laps"/><TextBox x:Name="RatingMinimumLapsText" Width="90"/></StackPanel>
+                        <StackPanel Margin="0,0,8,0"><TextBlock Text="Recent laps"/><TextBox x:Name="RatingWindowText" Width="90"/></StackPanel>
+                        <StackPanel Margin="0,0,8,0"><TextBlock Text="Penalty / accident"/><TextBox x:Name="RatingPenaltyText" Width="110" ToolTip="Safety points deducted for each estimated accident in the recent-lap window"/></StackPanel>
+                        <Button Content="SAVE / RECALCULATE" Click="SaveRatingSettings_Click" VerticalAlignment="Center"/>
+                    </WrapPanel>
+                    <DataGrid x:Name="DriverRatingsGrid" Grid.Row="3" ItemsSource="{Binding DriverRatings}" AutoGenerateColumns="False" IsReadOnly="True" CanUserAddRows="False" SelectionChanged="DriverRatingsGrid_SelectionChanged">
+                        <DataGrid.Columns>
+                            <DataGridTextColumn Header="#" Binding="{Binding Rank}" Width="36"/>
+                            <DataGridTextColumn Header="DRIVER" Binding="{Binding DriverName}" Width="*"/>
+                            <DataGridTextColumn Header="CLASS" Binding="{Binding ClassName}" Width="*"/>
+                            <DataGridTextColumn Header="RATING" Binding="{Binding RatingDisplay}" Width="74"/>
+                            <DataGridTextColumn Header="RANK" Binding="{Binding Tier}" Width="95"/>
+                            <DataGridTextColumn Header="SAFETY" Binding="{Binding SafetyDisplay}" Width="72"/>
+                            <DataGridTextColumn Header="SAFETY RANK" Binding="{Binding SafetyTier}" Width="110"/>
+                            <DataGridTextColumn Header="MAINS" Binding="{Binding Races}" Width="65"/>
+                            <DataGridTextColumn Header="LAST SOF" Binding="{Binding LastStrengthOfField, StringFormat=F0}" Width="85"/>
+                        </DataGrid.Columns>
+                    </DataGrid>
+                    <TextBlock Grid.Row="4" Text="DRIVER RACE HISTORY • SOF = average pre-race rating • Safety excludes lap 1" FontWeight="Bold" Margin="0,8,0,4"/>
+                    <DataGrid x:Name="DriverRatingHistoryGrid" Grid.Row="5" ItemsSource="{Binding DriverRatingHistory}" AutoGenerateColumns="False" IsReadOnly="True" CanUserAddRows="False" SelectionChanged="DriverRatingHistoryGrid_SelectionChanged">
+                        <DataGrid.Columns>
+                            <DataGridTextColumn Header="DATE" Binding="{Binding DateDisplay}" Width="120"/>
+                            <DataGridTextColumn Header="EVENT" Binding="{Binding EventName}" Width="*"/>
+                            <DataGridTextColumn Header="RACE" Binding="{Binding SessionName}" Width="*"/>
+                            <DataGridTextColumn Header="SOF" Binding="{Binding StrengthOfField, StringFormat=F0}" Width="65"/>
+                            <DataGridTextColumn Header="CHANGE" Binding="{Binding DeltaDisplay}" Width="72"/>
+                            <DataGridTextColumn Header="CONSISTENCY" Binding="{Binding ConsistencyDisplay}" Width="105"/>
+                            <DataGridTextColumn Header="SR CHANGE" Binding="{Binding SafetyDeltaDisplay}" Width="85"/>
+                            <DataGridTextColumn Header="EST. ACCIDENTS" Binding="{Binding EstimatedIncidents}" Width="110"/>
+                            <DataGridTextColumn Header="SAFETY STATUS" Binding="{Binding SafetyStatus}" Width="160"/>
+                        </DataGrid.Columns>
+                    </DataGrid>
+                    <Grid Grid.Row="6" Margin="0,8,0,0">
+                        <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                        <CheckBox x:Name="RatingExcludeSafetyCheck" Content="Exclude this race from Safety" VerticalAlignment="Center"/>
+                        <TextBox x:Name="RatingReviewNoteText" Grid.Column="1" Margin="10,0" ToolTip="Required review note"/>
+                        <Button Grid.Column="2" Content="SAVE REVIEW" Click="SaveRatingReview_Click"/>
+                    </Grid>
+                </Grid>
+            </TabItem>
+
+                </TabControl>
+            </TabItem>
+
+            <TabItem x:Name="DecoderTab" Header="DECODER">
+                <Grid Margin="5">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="360"/>
+                        <ColumnDefinition Width="10"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+
+                    <ScrollViewer Grid.Column="0" VerticalScrollBarVisibility="Auto">
+                        <StackPanel>
+                            <GroupBox Header="Connection">
+                                <StackPanel>
+                                    <TextBlock Text="Connection type" Foreground="{DynamicResource MutedBrush}"/>
+                                    <ComboBox x:Name="ConnectionTypeCombo" SelectionChanged="ConnectionTypeCombo_SelectionChanged">
+                                        <ComboBoxItem IsSelected="True">USB / Serial (COM)</ComboBoxItem>
+                                        <ComboBoxItem>LAN / TCP</ComboBoxItem>
+                                        <ComboBoxItem>I-Lap / USB Serial</ComboBoxItem>
+                                        <ComboBoxItem>Trackmate / USB Serial</ComboBoxItem>
+                                        <ComboBoxItem>OpenStint / ZeroMQ</ComboBoxItem>
+                                        <ComboBoxItem>Simulator</ComboBoxItem>
+                                    </ComboBox>
+                                    <CheckBox x:Name="AutoReconnectCheck"
+                                              Content="Keep connected until Disconnect or app closes"
+                                              IsEnabled="False"
+                                              IsChecked="True"
+                                              Margin="0,5,0,5"/>
+                                    <TextBlock Text="I-Lap and Trackmate preset 9600 baud, 8-N-1 with no flow control and send their own startup commands. For Trackmate RC/Iridium, select its COM port and close other timing software first. OpenStint uses its running decoder service."
+                                               TextWrapping="Wrap"
+                                               Foreground="{DynamicResource MutedBrush}"
+                                               FontSize="12"/>
+                                </StackPanel>
+                            </GroupBox>
+
+                            <GroupBox x:Name="SerialGroup" Header="USB / Serial">
+                                <StackPanel>
+                                    <TextBlock Text="COM port" Foreground="{DynamicResource MutedBrush}"/>
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                        </Grid.ColumnDefinitions>
+                                        <ComboBox x:Name="PortCombo" Margin="0,3,6,8"/>
+                                        <Button Grid.Column="1" Content="Refresh" Click="RefreshPorts_Click" VerticalAlignment="Top"/>
+                                    </Grid>
+                                    <TextBlock Text="Baud rate" Foreground="{DynamicResource MutedBrush}"/>
+                                    <ComboBox x:Name="BaudCombo" IsEditable="True">
+                                        <ComboBoxItem>9600</ComboBoxItem>
+                                        <ComboBoxItem>19200</ComboBoxItem>
+                                        <ComboBoxItem>38400</ComboBoxItem>
+                                        <ComboBoxItem>57600</ComboBoxItem>
+                                        <ComboBoxItem IsSelected="True">115200</ComboBoxItem>
+                                    </ComboBox>
+                                    <TextBlock Text="Data bits / parity / stop bits" Foreground="{DynamicResource MutedBrush}"/>
+                                    <StackPanel Orientation="Horizontal">
+                                        <ComboBox x:Name="DataBitsCombo" Width="74" Margin="0,3,6,8">
+                                            <ComboBoxItem IsSelected="True">8</ComboBoxItem>
+                                            <ComboBoxItem>7</ComboBoxItem>
+                                        </ComboBox>
+                                        <ComboBox x:Name="ParityCombo" Width="100" Margin="0,3,6,8">
+                                            <ComboBoxItem IsSelected="True">None</ComboBoxItem>
+                                            <ComboBoxItem>Even</ComboBoxItem>
+                                            <ComboBoxItem>Odd</ComboBoxItem>
+                                            <ComboBoxItem>Mark</ComboBoxItem>
+                                            <ComboBoxItem>Space</ComboBoxItem>
+                                        </ComboBox>
+                                        <ComboBox x:Name="StopBitsCombo" Width="78" Margin="0,3,0,8">
+                                            <ComboBoxItem IsSelected="True">1</ComboBoxItem>
+                                            <ComboBoxItem>1.5</ComboBoxItem>
+                                            <ComboBoxItem>2</ComboBoxItem>
+                                        </ComboBox>
+                                    </StackPanel>
+                                    <TextBlock Text="Handshake" Foreground="{DynamicResource MutedBrush}"/>
+                                    <ComboBox x:Name="HandshakeCombo">
+                                        <ComboBoxItem IsSelected="True">None</ComboBoxItem>
+                                        <ComboBoxItem>XOnXOff</ComboBoxItem>
+                                        <ComboBoxItem>RequestToSend</ComboBoxItem>
+                                        <ComboBoxItem>RequestToSendXOnXOff</ComboBoxItem>
+                                    </ComboBox>
+                                </StackPanel>
+                            </GroupBox>
+
+                            <GroupBox x:Name="LanGroup" Header="LAN / TCP" Visibility="Collapsed">
+                                <StackPanel>
+                                    <TextBlock Text="Decoder IP / host" Foreground="{DynamicResource MutedBrush}"/>
+                                    <TextBox x:Name="HostText" Text="192.168.1.50"/>
+                                    <TextBlock Text="TCP port" Foreground="{DynamicResource MutedBrush}"/>
+                                    <TextBox x:Name="TcpPortText" Text="5403"/>
+                                </StackPanel>
+                            </GroupBox>
+
+                            <GroupBox x:Name="OpenStintGroup" Header="OpenStint" Visibility="Collapsed">
+                                <StackPanel>
+                                    <TextBlock Text="Decoder host / IP"/>
+                                    <TextBox x:Name="OpenStintHostText" Text="127.0.0.1"/>
+                                    <TextBlock Text="ZeroMQ port"/>
+                                    <TextBox x:Name="OpenStintPortText" Text="5556"/>
+                                    <TextBlock Text="Run OpenStint first. Use 127.0.0.1 for this PC, or the decoder computer's IP. Passings are received automatically." TextWrapping="Wrap"/>
+                                </StackPanel>
+                            </GroupBox>
+
+                            <StackPanel Orientation="Horizontal">
+                                <Button x:Name="ConnectButton"
+                                        Content="CONNECT"
+                                        Background="{DynamicResource AccentBrush}"
+                                        FontWeight="Bold"
+                                        Click="ConnectButton_Click"
+                                        MinWidth="155"/>
+                                <Button x:Name="DisconnectButton"
+                                        Content="DISCONNECT"
+                                        Click="DisconnectButton_Click"
+                                        MinWidth="155"
+                                        IsEnabled="False"/>
+                            </StackPanel>
+
+                            <Border Background="{DynamicResource PanelBrush}"
+                                    BorderBrush="{DynamicResource BorderBrush}"
+                                    BorderThickness="1"
+                                    CornerRadius="6"
+                                    Padding="10"
+                                    Margin="0,6,0,0">
+                                <StackPanel>
+                                    <StackPanel Orientation="Horizontal">
+                                        <Ellipse x:Name="DecoderStatusDot" Width="12" Height="12" Fill="#6B7280" Margin="0,2,8,0"/>
+                                        <TextBlock x:Name="DecoderStatusText" Text="Disconnected" FontWeight="SemiBold"/>
+                                    </StackPanel>
+                                    <TextBlock Text="Automatic passing recognition: P3, AMB enhanced, AMB20 and I-Lap. Select Trackmate for RC/Iridium decoding and startup, I-Lap for its startup command, or OpenStint for its direct ZeroMQ connection. Set the COM port or host, then Connect."
+                                               TextWrapping="Wrap"
+                                               Foreground="{DynamicResource MutedBrush}"
+                                               FontSize="12"
+                                               Margin="0,5,0,0"/>
+                                </StackPanel>
+                            </Border>
+                        </StackPanel>
+                    </ScrollViewer>
+
+                    <Border Grid.Column="2"
+                            Background="{DynamicResource PanelBrush}"
+                            BorderBrush="{DynamicResource BorderBrush}"
+                            BorderThickness="0,0,0,1"
+                            CornerRadius="0"
+                            Padding="12">
+                        <Grid>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="*"/>
+                                <RowDefinition Height="Auto"/>
+                            </Grid.RowDefinitions>
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <StackPanel>
+                                    <TextBlock Text="LIVE DECODER TRAFFIC" FontSize="13" FontWeight="Bold"/>
+                                    <TextBlock x:Name="DecoderProtocolText" Text="Protocol: Auto — select a connection and Connect." TextWrapping="Wrap"
+                                               Foreground="{DynamicResource MutedBrush}" FontSize="12"/>
+                                </StackPanel>
+                                <Button Grid.Column="1" Content="CLEAR VIEW" Click="ClearTraffic_Click"/>
+                                <Button Grid.Column="2" Content="OPEN LOGS" Click="OpenLogs_Click"/>
+                            </Grid>
+
+                            <Border Grid.Row="1" Margin="0,10,0,10" Padding="8" Background="{DynamicResource PanelAltBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" CornerRadius="5">
+                                <StackPanel>
+                                    <DockPanel>
+                                        <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
+                                            <Button Content="COPY NUMBER" Click="CopyDetectedTransponder_Click"/>
+                                            <Button Content="CLEAR DETECTED" Click="ClearDetectedTransponders_Click"/>
+                                        </StackPanel>
+                                        <TextBlock Text="DETECTED TRANSPONDERS" FontWeight="Bold" FontSize="14" VerticalAlignment="Center"/>
+                                    </DockPanel>
+                                    <TextBlock x:Name="LastDetectedTransponderText" Text="Pass a transponder over the loop to read its number." FontSize="16" FontWeight="Bold" Margin="0,4"/>
+                                    <TextBlock Text="Works without an event or registered driver. Select a number and copy it into a driver assignment." TextWrapping="Wrap" Foreground="{DynamicResource MutedBrush}" Margin="0,0,0,4"/>
+                                    <DataGrid x:Name="DetectedTransponderGrid" ItemsSource="{Binding DetectedTransponders}" AutoGenerateColumns="False" IsReadOnly="True" CanUserAddRows="False" Height="145">
+                                        <DataGrid.Columns>
+                                            <DataGridTextColumn Header="TRANSPONDER" Binding="{Binding TransponderId}" Width="140"/>
+                                            <DataGridTextColumn Header="DRIVER" Binding="{Binding DriverName}" Width="*"/>
+                                            <DataGridTextColumn Header="CROSSES" Binding="{Binding Crossings}" Width="75"/>
+                                            <DataGridTextColumn Header="LAST SEEN" Binding="{Binding LastSeenDisplay}" Width="100"/>
+                                            <DataGridTextColumn Header="HITS" Binding="{Binding Hits}" Width="55"/>
+                                            <DataGridTextColumn Header="SIGNAL" Binding="{Binding Strength}" Width="65"/>
+                                        </DataGrid.Columns>
+                                    </DataGrid>
+                                </StackPanel>
+                            </Border>
+
+                            <DataGrid x:Name="TrafficGrid"
+                                      Grid.Row="2"
+                                      ItemsSource="{Binding Traffic}"
+                                      AutoGenerateColumns="False"
+                                      IsReadOnly="True"
+                                      CanUserAddRows="False"
+                                      Background="{DynamicResource PageBrush}"
+                                      Foreground="{DynamicResource TextBrush}"
+                                      BorderBrush="{DynamicResource BorderBrush}"
+                                      RowBackground="{DynamicResource PageBrush}"
+                                      AlternatingRowBackground="{DynamicResource PanelAltBrush}">
+                                <DataGrid.Columns>
+                                    <DataGridTextColumn Header="TIME" Binding="{Binding Time}" Width="120"/>
+                                    <DataGridTextColumn Header="TRANSPORT" Binding="{Binding Transport}" Width="170"/>
+                                    <DataGridTextColumn Header="BYTES" Binding="{Binding Bytes}" Width="70"/>
+                                    <DataGridTextColumn Header="DECODED" Binding="{Binding DecodeSummary}" Width="210"/>
+                                    <DataGridTextColumn Header="HEX" Binding="{Binding Hex}" Width="2*"/>
+                                    <DataGridTextColumn Header="ASCII" Binding="{Binding Ascii}" Width="2*"/>
+                                </DataGrid.Columns>
+                            </DataGrid>
+
+                            <Grid Grid.Row="3" Margin="0,5,0,0">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBlock x:Name="ChunkCountText" Text="Chunks: 0" Margin="0,0,18,0"/>
+                                <TextBlock x:Name="ByteCountText" Grid.Column="1" Text="Bytes: 0" Margin="0,0,18,0"/>
+                                <TextBlock x:Name="LogPathText" Grid.Column="2" Text="Log starts on first received data" Foreground="{DynamicResource MutedBrush}" TextTrimming="CharacterEllipsis"/>
+                            </Grid>
+                        </Grid>
+                    </Border>
+                </Grid>
+            </TabItem>
+            <TabItem Header="TRACK INFO">
+                <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                    <StackPanel Margin="24" MaxWidth="850" HorizontalAlignment="Stretch">
+                        <TextBlock Text="TRACK INFORMATION" FontSize="24" FontWeight="Bold"/>
+                        <TextBlock Margin="0,8,0,16" TextWrapping="Wrap" Text="Save your track details before creating events. New events keep a copy of this track information for future results publishing."/>
+                        <TextBlock Text="Permanent track ID"/>
+                        <TextBox x:Name="TrackIdText" IsReadOnly="True" Margin="0,4,0,12"/>
+                        <TextBlock Text="Track name *"/>
+                        <TextBox x:Name="TrackNameText" Margin="0,4,0,12"/>
+                        <TextBlock Text="Street address"/>
+                        <TextBox x:Name="TrackAddressText" Margin="0,4,0,12"/>
+                        <TextBlock Text="City"/>
+                        <TextBox x:Name="TrackCityText" Margin="0,4,0,12"/>
+                        <TextBlock Text="State / province"/>
+                        <TextBox x:Name="TrackRegionText" Margin="0,4,0,12"/>
+                        <TextBlock Text="ZIP / postal code"/>
+                        <TextBox x:Name="TrackPostalCodeText" Margin="0,4,0,12"/>
+                        <TextBlock Text="Country"/>
+                        <TextBox x:Name="TrackCountryText" Margin="0,4,0,12"/>
+                        <TextBlock Text="Track type (oval, on-road, off-road, etc.)"/>
+                        <TextBox x:Name="TrackTrackTypeText" Margin="0,4,0,12"/>
+                        <TextBlock Text="Surface (carpet, dirt, asphalt, etc.)"/>
+                        <TextBox x:Name="TrackSurfaceText" Margin="0,4,0,12"/>
+                        <TextBlock Text="Website (https://...)"/>
+                        <TextBox x:Name="TrackWebsiteText" Margin="0,4,0,12"/>
+                        <TextBlock Text="Public contact email"/>
+                        <TextBox x:Name="TrackPublicEmailText" Margin="0,4,0,12"/>
+                        <TextBlock Text="Public contact phone"/>
+                        <TextBox x:Name="TrackPublicPhoneText" Margin="0,4,0,12"/>
+                        <TextBlock Text="Notes / regular racing schedule"/>
+                        <TextBox x:Name="TrackNotesText" Margin="0,4,0,12" AcceptsReturn="True" TextWrapping="Wrap" Height="80" VerticalScrollBarVisibility="Auto"/>
+                        <TextBlock Text="Track time zone"/>
+                        <ComboBox x:Name="TrackTimeZoneCombo" DisplayMemberPath="DisplayName" SelectedValuePath="Id" Margin="0,4,0,16"/>
+                        <WrapPanel>
+                            <Button Content="SAVE TRACK INFO" Click="SaveTrackInfo_Click"/>
+                            <Button Content="ASSIGN SAVED TRACK TO SELECTED EVENT" Click="AssignTrackToEvent_Click"/>
+                        </WrapPanel>
+                        <TextBlock x:Name="TrackSaveStatusText" Margin="0,12,0,0" TextWrapping="Wrap"/>
+                        <Separator Margin="0,24,0,18"/>
+                        <TextBlock Text="IMRC LIVE — WEBSITE CONNECTION" FontSize="20" FontWeight="Bold"/>
+                        <TextBlock Margin="0,8,0,12" TextWrapping="Wrap" Text="Save your Track Info, then click REGISTER TRACK ONLINE. No login is needed: your track is added, its upload key is saved securely, and publishing starts automatically. Associated lineups, racer display names, results and Series points become public. Only IMRC can modify or delete website tracks. Use one publishing race PC per track."/>
+                        <Button Content="REGISTER TRACK ONLINE" Click="RegisterOnlineTrack_Click" HorizontalAlignment="Left" Margin="0,0,0,12"/>
+                        <TextBlock Text="Website address"/>
+                        <TextBox x:Name="OnlineBaseUrlText" Margin="0,4,0,12"/>
+                        <TextBlock Text="Online track ID (from the website)"/>
+                        <TextBox x:Name="OnlineTrackIdText" Margin="0,4,0,12"/>
+                        <TextBlock Text="Upload key (leave blank to keep the saved key)"/>
+                        <PasswordBox x:Name="OnlineUploadKeyBox" Margin="0,4,0,12" Padding="8"/>
+                        <CheckBox x:Name="OnlineEnabledCheck" Content="Enable automatic publishing every 10 seconds" Margin="0,4,0,12"/>
+                        <WrapPanel>
+                            <Button Content="TEST CONNECTION / SAVE" Click="SaveOnlineConnection_Click"/>
+                            <Button Content="PUBLISH NOW" Click="PublishOnlineNow_Click"/>
+                            <Button Content="PAUSE PUBLISHING" Click="DisableOnlinePublishing_Click"/>
+                            <Button Content="OPEN TRACK PAGE" Click="OpenOnlineTrack_Click"/>
+                        </WrapPanel>
+                        <TextBlock x:Name="OnlineStatusText" Margin="0,12,0,0" TextWrapping="Wrap"/>
+                        <TextBlock Margin="0,8,0,0" TextWrapping="Wrap" Text="Results remain public when publishing is paused. Upload keys are encrypted for this Windows user. Internet outages do not stop scoring; pending updates retry automatically while publishing is enabled."/>
+                    </StackPanel>
+                </ScrollViewer>
+            </TabItem>
+        </TabControl>
+
+        <Border Grid.Row="2" Background="{DynamicResource PanelBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1"
+                CornerRadius="6" Padding="8" Margin="0,5,0,0">
+            <TextBlock x:Name="FooterStatusText" Text="Ready." TextTrimming="CharacterEllipsis"/>
+        </Border>
+    </Grid>
+    <Border Grid.Row="1" Background="{DynamicResource PanelBrush}">
+    <Border.Style><Style TargetType="Border"><Setter Property="Visibility" Value="Collapsed"/><Style.Triggers><DataTrigger Binding="{Binding ElementName=RaceTab, Path=IsSelected}" Value="True"><Setter Property="Visibility" Value="Visible"/></DataTrigger></Style.Triggers></Style></Border.Style>
+<StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="8,3">
+ <Button Content="−" Width="30" MinWidth="30" Padding="4" Click="DashboardZoomOut_Click" ToolTip="Zoom out"/>
+ <CheckBox x:Name="DashboardHeaderZoom" Content="Include header" VerticalAlignment="Center" Click="DashboardHeaderZoom_Click" Margin="0,0,10,0"/>
+ <Slider x:Name="DashboardZoom" Minimum="50" Maximum="150" TickFrequency="5" SmallChange="5" LargeChange="10" IsSnapToTickEnabled="True" Value="100" Width="180" VerticalAlignment="Center" ValueChanged="DashboardZoom_ValueChanged" AutomationProperties.Name="Display zoom"/>
+ <Button Content="+" Width="30" MinWidth="30" Padding="4" Click="DashboardZoomIn_Click" ToolTip="Zoom in"/>
+ <TextBlock Text="{Binding ElementName=DashboardZoom, Path=Value, StringFormat={}{0:0}%}" Width="47" VerticalAlignment="Center" TextAlignment="Right"/>
+ </StackPanel>
+    </Border>
+    </Grid>
+</Window>

@@ -1,0 +1,355 @@
+<Window x:Class="IMRCRaceControl.Dialogs.RoundMainBuilderDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Rounds / Mains Lineups"
+        Width="1220"
+        Height="800"
+        MinWidth="980"
+        MinHeight="650"
+        WindowStartupLocation="CenterOwner">
+    <Grid Margin="10">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="190"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <StackPanel>
+            <DockPanel>
+                <Button x:Name="NewRoundButton" DockPanel.Dock="Right" Content="NEW ROUND / MAINS" Click="NewRound_Click" Background="{DynamicResource AccentBrush}" Foreground="White" Padding="18,8"/>
+                
+                <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                    <StackPanel><TextBlock Text="Saved round / mains"/><ComboBox x:Name="SavedRoundFilter" DisplayMemberPath="Label" SelectionChanged="SavedLineupFilter_Changed"/></StackPanel>
+                    <StackPanel Grid.Column="1" Margin="8,0,8,0"><TextBlock Text="Class"/><ComboBox x:Name="SavedClassFilter" DisplayMemberPath="Label" SelectionChanged="SavedLineupFilter_Changed"/></StackPanel>
+                </Grid>
+            </DockPanel>
+            <TextBlock Text="ROUNDS / MAINS LINEUPS" FontSize="23" FontWeight="Bold"/>
+            <TextBlock Text="Filter all saved lineups above. Choose a race to edit its round and class, or create a new round."
+                       Foreground="{DynamicResource MutedBrush}" Margin="0,2,0,6"/>
+        </StackPanel>
+
+        <Border Grid.Row="1"
+                Background="{DynamicResource PanelBrush}"
+                BorderBrush="{DynamicResource BorderBrush}"
+                BorderThickness="0,0,0,1"
+                CornerRadius="0"
+                Padding="9"
+                Margin="0,0,0,7">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                </Grid.RowDefinitions>
+
+                <Grid x:Name="BuildOptionsPanel">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="175"/>
+                        <ColumnDefinition Width="250"/>
+                        <ColumnDefinition Width="100"/>
+                        <ColumnDefinition Width="220"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+
+                    <StackPanel Grid.Column="0" Margin="0,0,8,0">
+                        <TextBlock Text="Build" Foreground="{DynamicResource MutedBrush}"/>
+                        <ComboBox x:Name="ModeCombo" SelectionChanged="ModeCombo_SelectionChanged"/>
+                    </StackPanel>
+
+                    <StackPanel Grid.Column="1" Margin="0,0,8,0">
+                        <TextBlock Text="Class" Foreground="{DynamicResource MutedBrush}"/>
+                        <ComboBox x:Name="ClassCombo" SelectionChanged="BuilderOption_SelectionChanged"/>
+                    </StackPanel>
+
+                    <StackPanel x:Name="RoundPanel" Grid.Column="2" Margin="0,0,8,0">
+                        <TextBlock Text="Round" Foreground="{DynamicResource MutedBrush}"/>
+                        <TextBox x:Name="RoundText"
+                                 Text="1"
+                                 IsReadOnly="True"
+                                 IsTabStop="False"
+                                 ToolTip="Race Control automatically selects the next qualifying round."/>
+                    </StackPanel>
+
+                    <StackPanel x:Name="SortPanel" Grid.Column="3" Margin="0,0,8,0">
+                        <TextBlock Text="Sort" Foreground="{DynamicResource MutedBrush}"/>
+                        <ComboBox x:Name="SortCombo" SelectionChanged="BuilderOption_SelectionChanged"/>
+                    </StackPanel>
+                </Grid>
+
+                <Grid Grid.Row="1" Margin="0,7,0,5">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+
+                    <Button x:Name="GenerateButton"
+                            Grid.Column="0"
+                            Content="GENERATE ROUND"
+                            Click="Generate_Click"
+                            Background="{DynamicResource AccentDarkBrush}"
+                            MinWidth="145"
+                            HorizontalAlignment="Left"/>
+
+                    <TextBlock x:Name="BuilderStatusText"
+                               Grid.Column="1"
+                               Text="Ready."
+                               Foreground="{DynamicResource MutedBrush}"
+                               TextWrapping="Wrap"
+                               VerticalAlignment="Center"
+                               Margin="12,0,0,0"/>
+                </Grid>
+
+                <Border Grid.Row="2"
+                        Padding="7,5"
+                        Margin="0,0,0,6"
+                        Background="{DynamicResource PanelAltBrush}"
+                        BorderBrush="{DynamicResource BorderBrush}"
+                        BorderThickness="1"
+                        CornerRadius="5">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Text="PREVIEW" FontWeight="Bold"/>
+                        <TextBlock Grid.Column="1"
+                                   Text="Changes here are saved only when you press SAVE. Completed races are locked; select an unrun race to edit its drivers."
+                                   Foreground="{DynamicResource MutedBrush}"
+                                   Margin="10,0,0,0"
+                                   TextWrapping="Wrap"/>
+                    </Grid>
+                </Border>
+
+                <Grid Grid.Row="3">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="1.55*"/>
+                        <ColumnDefinition Width="10"/>
+                        <ColumnDefinition Width="0.90*"/>
+                    </Grid.ColumnDefinitions>
+
+                    <Border Background="{DynamicResource PanelAltBrush}"
+                            BorderBrush="{DynamicResource BorderBrush}"
+                            BorderThickness="0,0,0,1"
+                            CornerRadius="0"
+                            Padding="8">
+                        <Grid>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="*"/>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                            </Grid.RowDefinitions>
+
+                            <TextBlock Text="ROUND / MAINS LINEUP" FontWeight="Bold" FontSize="15"/>
+
+                            <DataGrid x:Name="HeatGrid" PreviewMouseLeftButtonUp="HeatGrid_OpenSelectedLineup"
+                                      Grid.Row="1"
+                                      ItemsSource="{Binding HeatPlans}"
+                                      AutoGenerateColumns="False"
+                                      IsReadOnly="True"
+                                      CanUserAddRows="False"
+                                      SelectionChanged="HeatGrid_SelectionChanged"
+                                      ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                                      Margin="0,5,0,0">
+                                <DataGrid.Columns>
+                                    <DataGridTextColumn Header="#" Binding="{Binding RaceNumber}" Width="30" MinWidth="30"/>
+                                    <DataGridTextColumn Header="CLASS" Binding="{Binding ClassName}" Width="1.05*" MinWidth="85"/>
+                                    <DataGridTextColumn Header="SESSION" Binding="{Binding SessionDisplay}" Width="1.20*" MinWidth="100"/>
+                                    <DataGridTextColumn Header="RACERS" Binding="{Binding RacerCount}" Width="0.62*" MinWidth="58"/>
+                                    <DataGridTextColumn Header="RULE" Binding="{Binding MainRuleDisplay}" Width="1.65*" MinWidth="155"/>
+                                </DataGrid.Columns>
+                            </DataGrid>
+
+                            <Border x:Name="MainSeriesSettingsPanel"
+                                    Grid.Row="2"
+                                    Visibility="Collapsed"
+                                    Margin="0,6,0,0"
+                                    Padding="7"
+                                    Background="{DynamicResource PanelBrush}"
+                                    BorderBrush="{DynamicResource BorderBrush}"
+                                    BorderThickness="1"
+                                    CornerRadius="5">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="62"/>
+                                        <ColumnDefinition Width="8"/>
+                                        <ColumnDefinition Width="76"/>
+                                        <ColumnDefinition Width="8"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+
+                                    <StackPanel Grid.Column="0" VerticalAlignment="Center">
+                                        <TextBlock x:Name="SelectedMainSeriesText" Text="SELECT A MAIN" FontWeight="Bold"/>
+                                        <TextBlock Text="Set how many runs this main has and how many finishes count."
+                                                   Foreground="{DynamicResource MutedBrush}" FontSize="10"/>
+                                    </StackPanel>
+
+                                    <StackPanel Grid.Column="1">
+                                        <TextBlock Text="RUNS" Foreground="{DynamicResource MutedBrush}" FontSize="10"/>
+                                        <TextBox x:Name="SelectedMainRunsText" Text="1" TextAlignment="Center"/>
+                                    </StackPanel>
+
+                                    <StackPanel Grid.Column="3">
+                                        <TextBlock Text="COUNT BEST" Foreground="{DynamicResource MutedBrush}" FontSize="10"/>
+                                        <TextBox x:Name="SelectedMainCountBestText" Text="1" TextAlignment="Center"/>
+                                    </StackPanel>
+
+                                    <Button Grid.Column="5"
+                                            Content="APPLY"
+                                            MinWidth="72"
+                                            VerticalAlignment="Bottom"
+                                            Click="ApplySelectedMainSeries_Click"
+                                            Background="{DynamicResource AccentDarkBrush}"/>
+                                </Grid>
+                            </Border>
+
+                            <WrapPanel Grid.Row="3" Margin="0,6,0,0">
+                                <Button x:Name="HeatUpButton" Content="HEAT UP" Click="HeatUp_Click"/>
+                                <Button x:Name="HeatDownButton" Content="HEAT DOWN" Click="HeatDown_Click"/>
+                                <Button x:Name="AddHeatButton" Content="+ EMPTY HEAT" Click="AddHeat_Click"/>
+                                <Button x:Name="RemoveHeatButton" Content="REMOVE EMPTY" Click="RemoveHeat_Click"
+                                        Background="{DynamicResource AccentDarkBrush}"/>
+                                <Button x:Name="AutoSortMainsButton" Content="AUTO SORT MAINS" Visibility="Collapsed"
+                                        Click="AutoSortMains_Click" Background="{DynamicResource AccentDarkBrush}"/>
+                            </WrapPanel>
+                        </Grid>
+                    </Border>
+
+                    <Border Grid.Column="2"
+                            Background="{DynamicResource PanelAltBrush}"
+                            BorderBrush="{DynamicResource BorderBrush}"
+                            BorderThickness="0,0,0,1"
+                            CornerRadius="0"
+                            Padding="8">
+                        <Grid>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="*"/>
+                                <RowDefinition Height="Auto"/>
+                            </Grid.RowDefinitions>
+
+                            <StackPanel>
+                                <TextBlock x:Name="SelectedHeatTitle" Text="SELECT A RACE" FontWeight="Bold" FontSize="15"/>
+                                <TextBlock Text="Driver order becomes car number/order for this race. Use Sort for the starting order, then fine-tune it here."
+                                           Foreground="{DynamicResource MutedBrush}" FontSize="11" TextWrapping="Wrap"/>
+                                <TextBlock Text="{Binding SelectedItem.EditStatus, ElementName=HeatGrid}" Foreground="{DynamicResource MutedBrush}"/>
+                            </StackPanel>
+
+                            <DataGrid x:Name="EntrantGrid" Grid.Row="1"
+                                      AutoGenerateColumns="False"
+                                      IsReadOnly="True"
+                                      CanUserAddRows="False"
+                                      ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                                      Margin="0,5,0,0">
+                                <DataGrid.Columns>
+                                    <DataGridTextColumn Header="CAR" Binding="{Binding CarNumber}" Width="42" MinWidth="42"/>
+                                    <DataGridTextColumn Header="DRIVER" Binding="{Binding DisplayName}" Width="*" MinWidth="120"/>
+                                    <DataGridTextColumn Header="TRANSPONDER" Binding="{Binding TransponderId}" Width="112" MinWidth="100"/>
+                                    <DataGridTextColumn Header="SEED" Binding="{Binding SeedRank}" Width="48" MinWidth="48"/>
+                                </DataGrid.Columns>
+                            </DataGrid>
+
+                            <StackPanel x:Name="RosterEditActions" Grid.Row="2" Margin="0,6,0,0">
+                                <WrapPanel>
+                                    <Button Content="+ ADD DRIVER" Click="AddDriver_Click"/>
+                                    <Button Content="REMOVE DRIVER" Click="RemoveDriver_Click"/>
+                                    <Button Content="DRIVER UP" Click="DriverUp_Click"/>
+                                    <Button Content="DRIVER DOWN" Click="DriverDown_Click"/>
+                                </WrapPanel>
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    <ComboBox x:Name="TargetHeatCombo" DisplayMemberPath="SessionDisplay" Margin="0,3"/>
+                                    <Button Grid.Column="1" Content="MOVE DRIVER" Click="MoveDriver_Click"/>
+                                </Grid>
+                            </StackPanel>
+                        </Grid>
+                    </Border>
+                </Grid>
+            </Grid>
+        </Border>
+
+        <Border Grid.Row="2"
+                Background="{DynamicResource PanelBrush}"
+                BorderBrush="{DynamicResource BorderBrush}"
+                BorderThickness="0,0,0,1"
+                CornerRadius="0"
+                Padding="8"
+                Margin="0,0,0,7">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                </Grid.RowDefinitions>
+
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+
+                    <StackPanel>
+                        <TextBlock Text="SAVED ROUNDS / MAINS — SELECT A RACE TO REOPEN" FontWeight="Bold" FontSize="16"/>
+                        <TextBlock Text="Everything already saved to this event is listed here. Load one to edit its scope, or delete a race that should no longer exist."
+                                   Foreground="{DynamicResource MutedBrush}" FontSize="11" TextWrapping="Wrap"/>
+                    </StackPanel>
+
+                    <Button Grid.Column="1" Content="LOAD / EDIT SELECTED"
+                            Click="LoadSavedSession_Click" MinWidth="145"/>
+
+                    <Button Grid.Column="2" Content="DELETE SELECTED"
+                            Click="DeleteSavedSession_Click" MinWidth="125"
+                            Background="{DynamicResource AccentDarkBrush}"/>
+                </Grid>
+
+                <DataGrid x:Name="SavedSessionGrid"
+                          Grid.Row="1"
+                          ItemsSource="{Binding SavedSessions}"
+                          AutoGenerateColumns="False"
+                          IsReadOnly="True"
+                          CanUserAddRows="False"
+                          SelectionMode="Single"
+                          ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                          RowHeight="27"
+                          ColumnHeaderHeight="27"
+                          Margin="0,5,0,0">
+                    <DataGrid.Columns>
+                        <DataGridTextColumn Header="#" Binding="{Binding RaceNumber}" Width="30" MinWidth="30"/>
+                        <DataGridTextColumn Header="TYPE" Binding="{Binding TypeDisplay}" Width="55" MinWidth="52"/>
+                        <DataGridTextColumn Header="ROUND" Binding="{Binding RoundDisplay}" Width="55" MinWidth="52"/>
+                        <DataGridTextColumn Header="CLASS" Binding="{Binding ClassName}" Width="0.95*" MinWidth="95"/>
+                        <DataGridTextColumn Header="RACE" Binding="{Binding SessionDisplay}" Width="1.05*" MinWidth="105"/>
+                        <DataGridTextColumn Header="STATUS" Binding="{Binding Status}" Width="76" MinWidth="72"/>
+                        <DataGridTextColumn Header="RACERS" Binding="{Binding RacerCount}" Width="58" MinWidth="56"/>
+                        <DataGridTextColumn Header="SORT" Binding="{Binding SortDisplay}" Width="100" MinWidth="90"/>
+                        <DataGridTextColumn Header="DRIVERS / RESULT" Binding="{Binding DriverSummary}" Width="2.2*" MinWidth="190"/>
+                    </DataGrid.Columns>
+                </DataGrid>
+            </Grid>
+        </Border>
+
+        <Grid Grid.Row="3">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="Auto"/>
+            </Grid.ColumnDefinitions>
+
+            <TextBlock Text="SAVE / REBUILD commits only the preview above. DELETE SELECTED removes that saved race after confirmation."
+                       Foreground="{DynamicResource MutedBrush}"
+                       TextWrapping="Wrap"
+                       VerticalAlignment="Center"/>
+
+            <Button Grid.Column="1" Content="CLOSE" Click="Cancel_Click" MinWidth="90"/>
+            <Button x:Name="SaveButton" Grid.Column="2" Content="SAVE / REBUILD"
+                    Click="Save_Click" Background="{DynamicResource GoodBrush}"
+                    Foreground="#101318" MinWidth="125"/>
+        </Grid>
+    </Grid>
+</Window>

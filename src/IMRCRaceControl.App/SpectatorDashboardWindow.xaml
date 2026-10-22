@@ -1,0 +1,336 @@
+<Window x:Class="IMRCRaceControl.SpectatorDashboardWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:controls="clr-namespace:IMRCRaceControl.Controls"
+        Title="IMRC Race Control — Spectator Dashboard"
+        Width="1600"
+        Height="900"
+        MinWidth="1050"
+        MinHeight="650"
+        WindowStartupLocation="CenterOwner"
+        ShowInTaskbar="True"
+        Background="{DynamicResource DashboardBackgroundBrush}"
+        Foreground="{DynamicResource DashboardTextBrush}">
+
+    <Window.Resources>
+        <Style x:Key="SpectatorText" TargetType="TextBlock"><Setter Property="VerticalAlignment" Value="Center"/><Setter Property="TextAlignment" Value="Center"/></Style>
+    </Window.Resources>
+    <Grid>
+    <Grid.RowDefinitions><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+    <Grid x:Name="PopoutScreenRoot" Margin="8">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        <!-- Clean second-screen header: no app navigation / no controls. -->
+        <Border x:Name="SpectatorHeader" Background="{DynamicResource DashboardPanelBrush}"
+                BorderBrush="{DynamicResource BorderBrush}"
+                BorderThickness="0,0,0,1"
+                CornerRadius="0"
+                Padding="10"
+                Margin="0,0,0,7">
+            <StackPanel HorizontalAlignment="Center"
+                        VerticalAlignment="Center">
+                <TextBlock x:Name="RaceHeaderText"
+                           Text="NO RACE SELECTED"
+                           TextAlignment="Center"
+                           FontSize="30"
+                           FontWeight="Bold"/>
+                <TextBlock x:Name="RaceSubheaderText"
+                           Text="Load a race from Race Control"
+                           TextAlignment="Center"
+                           FontSize="19"
+                           FontWeight="SemiBold"
+                           Foreground="{DynamicResource MutedBrush}"
+                           Margin="0,3,0,0"/>
+                <TextBlock x:Name="ClockCaptionText" Text="MASTER CLOCK"
+                           TextAlignment="Center"
+                           Foreground="{DynamicResource MutedBrush}"
+                           FontWeight="SemiBold"
+                           Margin="0,6,0,0"/>
+                <TextBlock x:Name="MasterClockText"
+                           Text="0:00.0"
+                           TextAlignment="Center"
+                           FontSize="44"
+                           FontWeight="Bold"/>
+            </StackPanel>
+        </Border>
+
+        <controls:NextRaceStrip x:Name="SpectatorNextRaceStrip" Grid.Row="1" TextElement.FontSize="20"/>
+        <Grid x:Name="RaceBoard" Grid.Row="2">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition x:Name="SpectatorOverallColumn" Width="390"/>
+            </Grid.ColumnDefinitions>
+
+            <!-- Read-only mirrored race standings. -->
+            <Border Grid.Column="0"
+                    Background="{DynamicResource DashboardPanelBrush}"
+                    BorderBrush="{DynamicResource BorderBrush}"
+                    BorderThickness="0,0,0,1"
+                    CornerRadius="0"
+                    Padding="5"
+                    Margin="0,0,7,0">
+                <DataGrid x:Name="SpectatorStandingsGrid"
+                          AutoGenerateColumns="False"
+                          IsReadOnly="True"
+                          CanUserAddRows="False"
+                          CanUserSortColumns="False"
+                          CanUserReorderColumns="False"
+                          HeadersVisibility="Column"
+                          FontSize="17"
+                          FontWeight="SemiBold"
+                          Foreground="{DynamicResource DashboardTextBrush}"
+                          Background="{DynamicResource DashboardRowBrush}"
+                          RowBackground="{DynamicResource DashboardRowBrush}"
+                          AlternatingRowBackground="{DynamicResource DashboardAlternateRowBrush}"
+                          AlternationCount="2"
+                          RowHeight="56"
+                          SelectionMode="Single"
+                          ScrollViewer.HorizontalScrollBarVisibility="Auto"
+                          ScrollViewer.VerticalScrollBarVisibility="Auto">
+                    <DataGrid.Resources>
+                        <Style x:Key="SpectatorCenteredText" TargetType="TextBlock">
+                            <Setter Property="TextAlignment" Value="Center"/>
+                            <Setter Property="HorizontalAlignment" Value="Stretch"/>
+                            <Setter Property="VerticalAlignment" Value="Center"/>
+                        </Style>
+                    </DataGrid.Resources>
+
+                    <DataGrid.ColumnHeaderStyle>
+                        <Style TargetType="DataGridColumnHeader" BasedOn="{StaticResource {x:Type DataGridColumnHeader}}">
+                            <Setter Property="Background" Value="{DynamicResource DashboardPanelBrush}"/>
+                            <Setter Property="Foreground" Value="{DynamicResource DashboardTextBrush}"/>
+                            <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}"/>
+                            <Setter Property="BorderThickness" Value="0,0,1,1"/>
+                            <Setter Property="Padding" Value="8,7"/>
+                            <Setter Property="FontSize" Value="12"/>
+                            <Setter Property="FontWeight" Value="Bold"/>
+                            <Setter Property="HorizontalContentAlignment" Value="Center"/>
+                        </Style>
+                    </DataGrid.ColumnHeaderStyle>
+
+                    <DataGrid.CellStyle><Style TargetType="DataGridCell" BasedOn="{StaticResource SharedDashboardCellStyle}"/></DataGrid.CellStyle>
+
+                    <DataGrid.RowStyle><Style TargetType="DataGridRow" BasedOn="{StaticResource SharedDashboardRowStyle}"><Setter Property="MinHeight" Value="56"/></Style></DataGrid.RowStyle>
+
+                    <DataGrid.Columns>
+                        <DataGridTemplateColumn Header="POS" Width="55" CellTemplate="{StaticResource RacePositionTemplate}"/>
+                        <DataGridTextColumn Header="#" Binding="{Binding CarNumber}" Width="48"
+                                            ElementStyle="{StaticResource SpectatorCenteredText}"/>
+
+                        <DataGridTemplateColumn Header="DRIVER" Width="190"><DataGridTemplateColumn.CellTemplate><StaticResource ResourceKey="RaceDriverNameTemplate"/></DataGridTemplateColumn.CellTemplate></DataGridTemplateColumn>
+
+                        <DataGridTextColumn Header="LAPS" Binding="{Binding Laps}" Width="58"
+                                            ElementStyle="{StaticResource SpectatorCenteredText}"/>
+                        <DataGridTextColumn Header="LAST LAP" Binding="{Binding LastLap}" Width="88"
+                                            ElementStyle="{StaticResource SpectatorCenteredText}"/>
+
+                        <DataGridTemplateColumn Header="BEST LAP" Width="110">
+                            <DataGridTemplateColumn.CellTemplate>
+                                <DataTemplate>
+                                    <Border x:Name="BestLapCell" Padding="2">
+                                        <TextBlock x:Name="BestLapText"
+                                                   Text="{Binding BestLapDisplay}"
+                                                   TextAlignment="Center"/>
+                                    </Border>
+                                    <DataTemplate.Triggers>
+                                        <DataTrigger Binding="{Binding IsNewPersonalBest}" Value="True">
+                                            <Setter TargetName="BestLapCell"
+                                                    Property="Background"
+                                                    Value="{DynamicResource DashboardNewBestLapHighlightBrush}"/>
+                                            <Setter TargetName="BestLapText"
+                                                    Property="Foreground"
+                                                    Value="{DynamicResource DashboardNewBestLapHighlightTextBrush}"/>
+                                        </DataTrigger>
+                                    </DataTemplate.Triggers>
+                                </DataTemplate>
+                            </DataGridTemplateColumn.CellTemplate>
+                        </DataGridTemplateColumn>
+
+                        <DataGridTextColumn Header="CLOCK" Binding="{Binding Clock}" Width="82"
+                                            ElementStyle="{StaticResource SpectatorCenteredText}"/>
+                        <DataGridTextColumn Header="GAP LEADER" Binding="{Binding GapToLeader}" Width="105"
+                                            ElementStyle="{StaticResource SpectatorCenteredText}"/>
+                        <DataGridTextColumn Header="GAP BEHIND" Binding="{Binding GapBehind}" Width="105"
+                                            ElementStyle="{StaticResource SpectatorCenteredText}"/>
+                        <DataGridTextColumn Header="TOP 2" Binding="{Binding Top2}" Width="105"
+                                            ElementStyle="{StaticResource SpectatorCenteredText}"/>
+                        <DataGridTextColumn Header="TOP 3" Binding="{Binding Top3}" Width="105"
+                                            ElementStyle="{StaticResource SpectatorCenteredText}"/>
+                        <DataGridTextColumn Header="TOP 5" Binding="{Binding Top5}" Width="105"
+                                            ElementStyle="{StaticResource SpectatorCenteredText}"/>
+                        <DataGridTextColumn Header="AVG" Binding="{Binding AverageLap}" Width="78"
+                                            ElementStyle="{StaticResource SpectatorCenteredText}"/>
+                        <DataGridTextColumn Header="AVG 5" Binding="{Binding Average5}" Width="78"
+                                            ElementStyle="{StaticResource SpectatorCenteredText}"/>
+                        <DataGridTextColumn Header="AVG 10" Binding="{Binding Average10}" Width="82"
+                                            ElementStyle="{StaticResource SpectatorCenteredText}"/>
+                        <DataGridTextColumn Header="AVG 15" Binding="{Binding Average15}" Width="82"
+                                            ElementStyle="{StaticResource SpectatorCenteredText}"/>
+                        <DataGridTextColumn Header="CONSIST" Binding="{Binding Consistency}" Width="84"
+                                            ElementStyle="{StaticResource SpectatorCenteredText}"/>
+                        <DataGridTextColumn Header="PACE" Binding="{Binding Pace}" Width="105"
+                                            ElementStyle="{StaticResource SpectatorCenteredText}"/>
+                        <DataGridTextColumn Header="TOTAL" Binding="{Binding TotalTime}" Width="90"
+                                            ElementStyle="{StaticResource SpectatorCenteredText}"/>
+                        <DataGridTextColumn Header="STATUS" Binding="{Binding Status}" Width="100"
+                                            ElementStyle="{StaticResource SpectatorCenteredText}"/>
+                    </DataGrid.Columns>
+                </DataGrid>
+            </Border>
+
+            <!-- Same live overall projection shown by Race → POS. -->
+            <Border Grid.Column="1"
+                    Background="{DynamicResource DashboardPanelBrush}"
+                    BorderBrush="{DynamicResource BorderBrush}"
+                    BorderThickness="0,0,0,1"
+                    CornerRadius="0"
+                    Padding="7">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                    </Grid.RowDefinitions>
+
+                    <StackPanel>
+                        <TextBlock Text="ESTIMATED OVERALL POSITION"
+                                   TextAlignment="Center"
+                                   FontSize="15"
+                                   FontWeight="Bold"/>
+                        <TextBlock x:Name="ProjectionInfoText"
+                                   Text="Load a qualifying heat."
+                                   TextAlignment="Center"
+                                   Foreground="{DynamicResource MutedBrush}"
+                                   TextWrapping="Wrap"
+                                   Margin="3,3,3,7"/>
+                    </StackPanel>
+
+                    <DataGrid x:Name="SpectatorProjectionGrid"
+                              Grid.Row="1"
+                              AutoGenerateColumns="False"
+                              IsReadOnly="True"
+                              CanUserAddRows="False"
+                              CanUserSortColumns="False"
+                              CanUserReorderColumns="False"
+                              HeadersVisibility="Column"
+                              RowHeight="40"
+                              FontSize="13"
+                              AlternationCount="2"
+                              ScrollViewer.VerticalScrollBarVisibility="Auto"
+                              ScrollViewer.HorizontalScrollBarVisibility="Auto" CellStyle="{StaticResource SharedDashboardCellStyle}">
+                        <DataGrid.ColumnHeaderStyle>
+                            <Style TargetType="DataGridColumnHeader" BasedOn="{StaticResource {x:Type DataGridColumnHeader}}">
+                                <Setter Property="Background" Value="{DynamicResource DashboardPanelBrush}"/>
+                                <Setter Property="Foreground" Value="{DynamicResource DashboardTextBrush}"/>
+                                <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}"/>
+                                <Setter Property="BorderThickness" Value="0,0,1,1"/>
+                                <Setter Property="Padding" Value="7,6"/>
+                                <Setter Property="HorizontalContentAlignment" Value="Center"/>
+                                <Setter Property="FontWeight" Value="Bold"/>
+                            </Style>
+                        </DataGrid.ColumnHeaderStyle>
+                        <DataGrid.RowStyle>
+                            <Style TargetType="DataGridRow">
+                                <Setter Property="Background" Value="{DynamicResource DashboardRowBrush}"/>
+                                <Style.Triggers>
+                                    <Trigger Property="ItemsControl.AlternationIndex" Value="1">
+                                        <Setter Property="Background"
+                                                Value="{DynamicResource DashboardAlternateRowBrush}"/>
+                                    </Trigger>
+                                </Style.Triggers>
+                            </Style>
+                        </DataGrid.RowStyle>
+                        <DataGrid.Columns>
+                            <DataGridTextColumn ElementStyle="{StaticResource SpectatorText}" Header="POS" Binding="{Binding ProjectedPositionDisplay}" Width="50"/>
+
+                            <DataGridTemplateColumn Header="DRIVER" Width="*">
+                                <DataGridTemplateColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <Border x:Name="MovementNameHighlight" VerticalAlignment="Center"
+                                                Background="Transparent"
+                                                CornerRadius="5"
+                                                Padding="5,3">
+                                            <TextBlock x:Name="MovementDriverText" VerticalAlignment="Center"
+                                                       Text="{Binding DriverName}"
+                                                       TextAlignment="Center"
+                                                       FontWeight="SemiBold"/>
+                                        </Border>
+                                        <DataTemplate.Triggers>
+                                            <MultiDataTrigger>
+                                                <MultiDataTrigger.Conditions>
+                                                    <Condition Binding="{Binding IsCurrentHeat}" Value="True"/>
+                                                    <Condition Binding="{Binding MovementState}" Value="UP"/>
+                                                </MultiDataTrigger.Conditions>
+                                                <Setter TargetName="MovementNameHighlight"
+                                                        Property="Background"
+                                                        Value="{DynamicResource DashboardPositionUpBrush}"/>
+                                                <Setter TargetName="MovementDriverText"
+                                                        Property="Foreground"
+                                                        Value="{DynamicResource DashboardPositionUpTextBrush}"/>
+                                                <Setter TargetName="MovementDriverText"
+                                                        Property="FontWeight"
+                                                        Value="Bold"/>
+                                            </MultiDataTrigger>
+                                            <MultiDataTrigger>
+                                                <MultiDataTrigger.Conditions>
+                                                    <Condition Binding="{Binding IsCurrentHeat}" Value="True"/>
+                                                    <Condition Binding="{Binding MovementState}" Value="DOWN"/>
+                                                </MultiDataTrigger.Conditions>
+                                                <Setter TargetName="MovementNameHighlight"
+                                                        Property="Background"
+                                                        Value="{DynamicResource DashboardPositionDownBrush}"/>
+                                                <Setter TargetName="MovementDriverText"
+                                                        Property="Foreground"
+                                                        Value="{DynamicResource DashboardPositionDownTextBrush}"/>
+                                                <Setter TargetName="MovementDriverText"
+                                                        Property="FontWeight"
+                                                        Value="Bold"/>
+                                            </MultiDataTrigger>
+                                            <MultiDataTrigger>
+                                                <MultiDataTrigger.Conditions>
+                                                    <Condition Binding="{Binding IsCurrentHeat}" Value="True"/>
+                                                    <Condition Binding="{Binding MovementState}" Value="SAME"/>
+                                                </MultiDataTrigger.Conditions>
+                                                <Setter TargetName="MovementNameHighlight"
+                                                        Property="Background"
+                                                        Value="{DynamicResource DashboardPositionSameBrush}"/>
+                                                <Setter TargetName="MovementDriverText"
+                                                        Property="Foreground"
+                                                        Value="{DynamicResource DashboardPositionSameTextBrush}"/>
+                                                <Setter TargetName="MovementDriverText"
+                                                        Property="FontWeight"
+                                                        Value="Bold"/>
+                                            </MultiDataTrigger>
+                                        </DataTemplate.Triggers>
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellTemplate>
+                            </DataGridTemplateColumn>
+
+                            <DataGridTextColumn ElementStyle="{StaticResource SpectatorText}" Header="PACE / FINISH" Binding="{Binding PaceFinish}" Width="108"/>
+                            <DataGridTextColumn ElementStyle="{StaticResource SpectatorText}" Header="MOVE" Binding="{Binding MovementDisplay}" Width="75"/>
+                        </DataGrid.Columns>
+                    </DataGrid>
+                </Grid>
+            </Border>
+        </Grid>
+        <ItemsControl x:Name="SpectatorPracticeCards" Grid.Row="2" Visibility="Collapsed"
+                      ItemTemplate="{StaticResource SharedPracticeCardTemplate}">
+            <ItemsControl.ItemsPanel><ItemsPanelTemplate><UniformGrid
+                Columns="{Binding PracticeGridColumns}" Rows="{Binding PracticeGridRows}"/>
+            </ItemsPanelTemplate></ItemsControl.ItemsPanel>
+        </ItemsControl>
+        <TextBlock x:Name="PracticeEmptyText" Grid.Row="2" Text="Waiting for practice crossings" Visibility="Collapsed"
+                   FontSize="24" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+    </Grid>
+<Border Grid.Row="1" Background="{DynamicResource DashboardPanelBrush}"><StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="8,3">
+ <Button Content="−" Width="30" MinWidth="30" Padding="4" Click="PopoutZoomSliderOut_Click" ToolTip="Zoom out"/>
+ <CheckBox x:Name="PopoutHeaderZoom" Content="Include header" VerticalAlignment="Center" Click="PopoutHeaderZoom_Click" Margin="0,0,10,0"/>
+ <Slider x:Name="PopoutZoomSlider" Minimum="50" Maximum="150" TickFrequency="5" SmallChange="5" LargeChange="10" IsSnapToTickEnabled="True" Value="100" Width="180" VerticalAlignment="Center" ValueChanged="PopoutZoom_ValueChanged" AutomationProperties.Name="Display zoom"/>
+ <Button Content="+" Width="30" MinWidth="30" Padding="4" Click="PopoutZoomSliderIn_Click" ToolTip="Zoom in"/>
+ <TextBlock Text="{Binding ElementName=PopoutZoomSlider, Path=Value, StringFormat={}{0:0}%}" Width="47" VerticalAlignment="Center" TextAlignment="Right"/>
+ </StackPanel></Border>
+</Grid>
+</Window>

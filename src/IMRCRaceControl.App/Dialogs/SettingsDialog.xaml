@@ -1,0 +1,267 @@
+<Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" x:Class="IMRCRaceControl.Dialogs.SettingsDialog" Title="Race Control Settings" Width="1060" Height="760" MinWidth="980" MinHeight="620" WindowStartupLocation="CenterOwner" ResizeMode="CanResize" FontSize="12">
+    <Grid Margin="20">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <StackPanel>
+            <TextBlock Text="Settings" FontSize="22" FontWeight="Bold"/>
+            <TextBlock Text="Application appearance, race audio, and Race Dashboard display." Foreground="{DynamicResource MutedBrush}" Margin="0,2,0,10"/>
+        </StackPanel>
+
+        <TabControl Grid.Row="1" TabStripPlacement="Left" ItemContainerStyle="{StaticResource SideNavigationTabItemStyle}">
+            <TabItem Header="RACE INFO DISPLAY"><ScrollViewer VerticalScrollBarVisibility="Auto"><StackPanel Margin="16">
+                <TextBlock Text="RACE DASHBOARD" FontWeight="Bold" Margin="0,0,0,12" FontSize="24"/><TextBlock Text="Choose the fields shown on the operator Race Dashboard. Position, car number and driver stay visible." TextWrapping="Wrap" Margin="0,0,0,8"/><ItemsControl ItemsSource="{Binding DashboardColumnOptions}"><ItemsControl.ItemsPanel><ItemsPanelTemplate><WrapPanel/></ItemsPanelTemplate></ItemsControl.ItemsPanel><ItemsControl.ItemTemplate><DataTemplate><CheckBox Content="{Binding Label}" IsChecked="{Binding IsVisible, Mode=TwoWay}" Width="180" Margin="0,4,12,4"/></DataTemplate></ItemsControl.ItemTemplate></ItemsControl><TextBlock Text="POP-OUT / WEB" FontSize="24" FontWeight="Bold" Margin="0,26,0,12"/>
+                <TextBlock Text="These fields and sections apply to both Pop-Out and Web. Driver zoom is adjusted on each screen; Include header lets it scale too." TextWrapping="Wrap" Margin="0,8,0,14"/>
+                <CheckBox x:Name="SpectatorHeaderCheck" Content="Show race header"/>
+                <CheckBox x:Name="SpectatorClockCheck" Content="Show master clock"/>
+                <CheckBox x:Name="SpectatorNextCheck" Content="Show scrolling NEXT UP"/>
+                <CheckBox x:Name="WebOverallCheck" Content="Show Estimated Overall Position"/>
+                <TextBlock Text="VISIBLE RACE INFORMATION" FontWeight="Bold" Margin="0,18,0,8"/>
+                <TextBlock Text="Position, car number and driver name always remain visible." Margin="0,0,0,8"/>
+                <WrapPanel x:Name="SpectatorColumnChecks"/>
+                <Button Content="OPEN WEB / NETWORK ADDRESSES" Click="OpenWeb_Click" HorizontalAlignment="Left" Margin="0,20,0,10"/>
+            </StackPanel></ScrollViewer></TabItem>
+            <TabItem Header="APPEARANCE"><ScrollViewer VerticalScrollBarVisibility="Auto"><StackPanel Margin="16"><Border Background="Transparent" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0" Padding="8,14">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="210"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <StackPanel>
+                                <TextBlock Text="Application theme" FontWeight="Bold" FontSize="16"/>
+                                <TextBlock Text="Theme changes preview immediately." Foreground="{DynamicResource MutedBrush}" FontSize="11" TextWrapping="Wrap"/>
+                            </StackPanel>
+                            <ComboBox x:Name="ThemeCombo" Grid.Column="1" SelectionChanged="ThemeCombo_SelectionChanged" Margin="10,0,0,0"/>
+                        </Grid>
+                    </Border>
+
+                    <StackPanel>
+                                <TextBlock Text="DASHBOARD COLORS" FontWeight="Bold" FontSize="16"/>
+                                <TextBlock Text="Each theme has dashboard defaults. Change any value to create a custom dashboard palette." Foreground="{DynamicResource MutedBrush}" FontSize="11" TextWrapping="Wrap" Margin="0,2,0,10"/>
+
+                                <TextBlock Text="Background" Foreground="{DynamicResource MutedBrush}"/>
+                                <TextBox x:Name="DashboardBackgroundText"/>
+
+                                <TextBlock Text="Panels" Foreground="{DynamicResource MutedBrush}"/>
+                                <TextBox x:Name="DashboardPanelText"/>
+
+                                <TextBlock Text="Driver rows" Foreground="{DynamicResource MutedBrush}"/>
+                                <TextBox x:Name="DashboardRowText"/>
+
+                                <CheckBox x:Name="DashboardAlternateRowsCheck" Content="Alternate every other driver row" Checked="DashboardColorPreview_Changed" Unchecked="DashboardColorPreview_Changed" Margin="0,6,0,4"/>
+
+                                <TextBlock Text="Alternate driver rows" Foreground="{DynamicResource MutedBrush}"/>
+                                <TextBox x:Name="DashboardAlternateRowText" TextChanged="DashboardColorPreview_TextChanged"/>
+
+                                <TextBlock Text="Dashboard text" Foreground="{DynamicResource MutedBrush}"/>
+                                <TextBox x:Name="DashboardTextText"/>
+
+                                <TextBox x:Name="DashboardHighlightText" Visibility="Collapsed"/>
+                                <TextBlock Text="Driver crossing notice (dashboard + pop-out)" TextWrapping="Wrap"/>
+                                <ComboBox x:Name="CrossingStyleCombo"><ComboBoxItem Content="Box around driver"/><ComboBoxItem Content="Underline driver"/></ComboBox>
+                                <TextBlock Text="Crossing color"/>
+                                <TextBox x:Name="DriverCrossingColorText" ToolTip="Color name or #RRGGBB; default green #35C76F"/>
+                                <TextBlock Text="Finished drivers"/>
+                                <ComboBox x:Name="FinishedStyleCombo"><ComboBoxItem Content="Color entire row"/><ComboBoxItem Content="Color text only"/><ComboBoxItem Content="No special color"/></ComboBox>
+                                <TextBlock Text="Finished-driver color"/>
+                                <TextBox x:Name="FinishedDriverColorText" ToolTip="Color name or #RRGGBB"/>
+                                <WrapPanel>
+                                    <Button Content="Grey" Tag="#808080" Click="FinishedColorPreset_Click"/>
+                                    <Button Content="Blue" Tag="#6098C8" Click="FinishedColorPreset_Click"/>
+                                    <Button Content="Green" Tag="#65A877" Click="FinishedColorPreset_Click"/>
+                                </WrapPanel>
+
+                                <TextBlock Text="Session fastest-lap driver highlight" Foreground="{DynamicResource MutedBrush}"/>
+                                <TextBox x:Name="DashboardFastestLapText" TextChanged="DashboardColorPreview_TextChanged"/>
+
+                                <TextBlock Text="New personal-best lap highlight" Foreground="{DynamicResource MutedBrush}"/>
+                                <TextBox x:Name="DashboardNewBestLapText" TextChanged="DashboardColorPreview_TextChanged"/>
+
+                                <TextBlock Text="Driver check-in outline" Foreground="{DynamicResource MutedBrush}"/>
+                                <TextBox x:Name="DashboardCheckInGlowText" TextChanged="DashboardColorPreview_TextChanged"/>
+
+                                <TextBlock Text="Below-minimum lap outline" Foreground="{DynamicResource MutedBrush}"/>
+                                <TextBox x:Name="DashboardMinimumLapGlowText" TextChanged="DashboardColorPreview_TextChanged"/>
+
+                                <TextBlock Text="Below-minimum outline duration (seconds)" Foreground="{DynamicResource MutedBrush}"/>
+                                <TextBox x:Name="DashboardMinimumLapGlowSecondsText" Text="1.0"/>
+
+                                <TextBlock Text="Live position moved UP" Foreground="{DynamicResource MutedBrush}" Margin="0,7,0,0"/>
+                                <TextBox x:Name="DashboardPositionUpText" TextChanged="DashboardColorPreview_TextChanged"/>
+
+                                <TextBlock Text="Live position moved DOWN" Foreground="{DynamicResource MutedBrush}"/>
+                                <TextBox x:Name="DashboardPositionDownText" TextChanged="DashboardColorPreview_TextChanged"/>
+
+                                <TextBlock Text="Live position stayed SAME" Foreground="{DynamicResource MutedBrush}"/>
+                                <TextBox x:Name="DashboardPositionSameText" TextChanged="DashboardColorPreview_TextChanged"/>
+
+                                <Button Content="RESET TO THEME DEFAULTS" Click="ResetDashboardColors_Click" HorizontalAlignment="Left" Margin="0,8,0,0"/>
+                                <TextBlock Text="Before a race, drivers who have not checked in get a colored outline around their name. A crossing below the minimum lap time temporarily changes that outline color. No glow/shadow is drawn behind the driver text. In POS/Estimated Overall, only drivers in the current heat receive UP/DOWN/SAME name highlights using the colors above. Crossing highlight temporarily overrides the fastest-lap row. A new personal best highlights only the BEST LAP cell until that driver's next lap." Foreground="{DynamicResource MutedBrush}" TextWrapping="Wrap" Margin="0,10,0,0"/>
+                                <TextBlock Text="Column order is changed directly on the Race Dashboard by dragging column headers. The layout is saved automatically." Foreground="{DynamicResource MutedBrush}" TextWrapping="Wrap" Margin="0,8,0,0"/>
+                            </StackPanel>
+                        </StackPanel></ScrollViewer></TabItem><TabItem Header="AUDIO">
+                <TabControl Margin="12,0,0,0">
+                    <TabItem Header="RACE ANNOUNCEMENTS"><ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled"><StackPanel Margin="12">
+                        <StackPanel Margin="0,0,0,16">
+                            <StackPanel>
+                                <TextBlock Text="RACE ANNOUNCEMENTS" FontWeight="Bold" FontSize="16"/>
+                                <TextBlock Text="LEADER NAMES" FontWeight="Bold" Margin="0,12,0,6"/>
+                                <Slider x:Name="RaceLeaderIntervalSlider" Minimum="0" Maximum="60" TickFrequency="1" IsSnapToTickEnabled="True" Margin="0,8"/>
+                                <TextBlock Text="{Binding Value, ElementName=RaceLeaderIntervalSlider, StringFormat='Leader interval: {0:0} seconds (0 = off)'}" Margin="0,0,0,12"/>
+                                <WrapPanel>
+                                    <TextBlock Text="Drivers (1–5):" VerticalAlignment="Center"/>
+                                    <ComboBox x:Name="RaceLeaderCountCombo" Width="75" Margin="8,0,20,0"/>
+                                    <Button Content="TEST LEADERS" Click="TestLeaders_Click"/>
+                                </WrapPanel>
+                                <TextBlock Text="Announces up to the selected number of drivers in position order, using their spoken names." TextWrapping="Wrap" Margin="0,6"/>
+                                <TextBlock Text="Leader / time-callout speed (−10 slower, 0 normal, +10 faster)"/>
+                                <Slider x:Name="RaceAnnouncementRateSlider" Minimum="-10" Maximum="10" TickFrequency="1" IsSnapToTickEnabled="True" Margin="0,8"/>
+                                <TextBlock Text="{Binding Value, ElementName=RaceAnnouncementRateSlider, StringFormat='Announcement speed: {0:0}'}"/>
+                                <WrapPanel Margin="0,4"><CheckBox x:Name="RaceTwoMinutesCheck" Content="Announce 2 minutes to go" VerticalAlignment="Center"/><Button Content="TEST" Click="TestTwoMinutes_Click"/></WrapPanel>
+                                <WrapPanel Margin="0,4"><CheckBox x:Name="RaceOneMinuteCheck" Content="Announce 1 minute to go" VerticalAlignment="Center"/><Button Content="TEST" Click="TestOneMinute_Click"/></WrapPanel>
+                                <CheckBox x:Name="RaceCountdownCheck" Content="Speak final seconds of the master clock" Margin="0,4"/>
+                                <Slider x:Name="RaceCountdownSlider" Minimum="1" Maximum="30" TickFrequency="1" IsSnapToTickEnabled="True" Margin="0,8"/>
+                                <TextBlock Text="{Binding Value, ElementName=RaceCountdownSlider, StringFormat='Count down the final {0:0} seconds'}"/>
+                                <TextBlock Text="The master clock starts at race start, runs below zero, and plays its end tone once at zero. Time callouts follow this clock, including in individual-start races. Drivers still finish on their own final crossing. Countdown uses a brisk voice to keep up. Time callouts are disabled for lap-count races." TextWrapping="Wrap" Foreground="{DynamicResource MutedBrush}" Margin="0,6"/>
+                                <WrapPanel Margin="0,6">
+                                    <CheckBox x:Name="RaceHalfwayCheck" Content="Announce Halfway" VerticalAlignment="Center"/>
+                                    <Button Content="TEST HALFWAY" Click="TestHalfway_Click"/>
+                                </WrapPanel>
+                                <TextBlock Text="Halfway is spoken once using master race time, or half the target laps in a lap-count race." TextWrapping="Wrap" Foreground="{DynamicResource MutedBrush}"/>
+                            </StackPanel>
+                        </StackPanel>
+
+
+                    </StackPanel></ScrollViewer></TabItem>
+                    <TabItem Header="LAPS &amp; VOICE"><ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled"><StackPanel Margin="12">
+                        <StackPanel Margin="0,0,0,16">
+                            <StackPanel>
+                                <TextBlock Text="LAP CALLOUTS" FontWeight="Bold" FontSize="16"/>
+                                <CheckBox x:Name="LapSpeechEnabledCheck" Content="Announce accepted race laps" Margin="0,8,0,6"/>
+                                <CheckBox x:Name="PracticeLapSpeechEnabledCheck" Content="Announce accepted practice laps" Margin="0,0,0,6"/>
+                                <CheckBox x:Name="LapSpeechTenthsCheck" Content="Say only the tenths digit (5.0 → zero; 5.1 → one)" Margin="0,0,0,6"/>
+                                <CheckBox x:Name="LapSpeechNameCheck" Content="Announce driver names at check-in" Margin="0,0,0,8"/>
+                                <TextBlock Text="Normal: 4.339 → four three; 15.444 → fifteen four (continuous speech, no pause). Keeps the tenths digit, advancing only within 0.01 second of the next tenth (4.297 → four three)." TextWrapping="Wrap" Foreground="{DynamicResource MutedBrush}"/>
+                                <TextBlock Text="Check-in names are spoken once on race check-in or the first crossing of each practice stint, using the phonetic nickname/name in Drivers → Edit Driver. Lap callouts contain numbers only. Scored times are unchanged." TextWrapping="Wrap" Foreground="{DynamicResource MutedBrush}" Margin="0,5,0,8"/>
+                                <TextBlock Text="Announcement voice" FontWeight="SemiBold"/>
+                                <ComboBox x:Name="LapSpeechVoiceCombo" HorizontalAlignment="Stretch"/>
+                                <TextBlock Text="Choose an installed Windows voice. The same voice is used for laps, check-in names, and TEST NAME." Foreground="{DynamicResource MutedBrush}" TextWrapping="Wrap" Margin="0,0,0,8"/>
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="20"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+                                    <StackPanel>
+                                        <TextBlock Text="Lap-number speed (−10 to +10)" FontWeight="SemiBold"/>
+                                        <Slider x:Name="LapSpeechRateSlider" Minimum="-10" Maximum="10" TickFrequency="1" IsSnapToTickEnabled="True" Value="2" Margin="0,8"/>
+                                        <TextBlock Text="{Binding Value, ElementName=LapSpeechRateSlider, StringFormat='Current lap speed: {0:0} (old maximum: 6)'}" Foreground="{DynamicResource MutedBrush}"/>
+                                    </StackPanel>
+                                    <StackPanel Grid.Column="2">
+                                        <TextBlock Text="Name speed (−10 to +10)" FontWeight="SemiBold"/>
+                                        <Slider x:Name="NameSpeechRateSlider" Minimum="-10" Maximum="10" TickFrequency="1" IsSnapToTickEnabled="True" Value="0" Margin="0,8"/>
+                                        <TextBlock Text="{Binding Value, ElementName=NameSpeechRateSlider, StringFormat='Current name speed: {0:0} (normal: 0)'}" Foreground="{DynamicResource MutedBrush}"/>
+                                    </StackPanel>
+                                </Grid>
+                                <TextBlock Text="Speech volume" Margin="0,8,0,0"/>
+                                <Slider x:Name="LapSpeechVolumeSlider" Minimum="0" Maximum="100" TickFrequency="5" IsSnapToTickEnabled="True" Value="100" Margin="0,8"/>
+                                <TextBlock Text="When lap calls arrive faster than the voice can speak" FontWeight="SemiBold" Margin="0,8,0,0"/>
+                                <ComboBox x:Name="LapSpeechBusyCombo"/>
+                                <TextBlock Text="Maximum age of a waiting lap call (milliseconds)"/>
+                                <Slider x:Name="LapSpeechAgeSlider" Minimum="250" Maximum="1000" TickFrequency="250" IsSnapToTickEnabled="True" Value="500" Margin="0,8"/>
+                                <TextBlock Text="{Binding Value, ElementName=LapSpeechAgeSlider, StringFormat='Discard waiting calls older than {0:0} ms'}" Foreground="{DynamicResource MutedBrush}"/>
+                                <TextBlock Text="Eight cars on four-second laps = two calls per second. Calls never speak over each other. Busy-track modes skip old calls; all laps are still scored. Ending a race or stopping practice clears speech immediately." TextWrapping="Wrap" Foreground="{DynamicResource MutedBrush}" Margin="0,6,0,8"/>
+                                <WrapPanel VerticalAlignment="Center">
+                                    <TextBlock Text="Test lap:" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                                    <TextBox x:Name="LapSpeechTestText" Text="4.339" Width="95"/>
+                                    <Button Content="TEST CALLOUT" Click="TestLapSpeech_Click"/>
+                                    <Button Content="TEST NAME SPEED" Click="TestNameSpeed_Click"/>
+                                </WrapPanel>
+                                <Button x:Name="BusyTrackTestButton" Content="TEST 8 CARS / 4-SECOND LAPS" Click="BusyTrackTest_Click" HorizontalAlignment="Left" Margin="0,6,0,6"/>
+                                <TextBlock x:Name="LapSpeechTestResult" TextWrapping="Wrap" Foreground="{DynamicResource MutedBrush}"/>
+                                <TextBlock Text="Uses your Windows voice and audio output. Spoken laps replace the passing beep. Start and finish tones and minimum-lap warnings remain active. Busy-track callouts may be skipped to stay current." TextWrapping="Wrap" FontSize="11" Foreground="{DynamicResource MutedBrush}" Margin="0,6,0,0"/>
+                            </StackPanel>
+                        </StackPanel>
+
+
+                    </StackPanel></ScrollViewer></TabItem>
+                    <TabItem Header="TONES"><ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled"><StackPanel Margin="8" MaxWidth="800" HorizontalAlignment="Left">
+                                <WrapPanel Margin="0,6">
+                                    <CheckBox x:Name="RaceFirstCrossingCheck" Content="Distinct first-crossing tone for each driver" VerticalAlignment="Center"/>
+                                    
+                                </WrapPanel>
+                                <WrapPanel Margin="0,6">
+                                    <CheckBox x:Name="RaceDriverFinishCheck" Content="Distinct tone when each driver finishes" VerticalAlignment="Center"/>
+                                    
+                                </WrapPanel>
+                                <TextBlock Text="First-crossing and finish tones replace the ordinary passing beep or lap callout for those crossings. A yellow position outline marks a completed driver." TextWrapping="Wrap" Foreground="{DynamicResource MutedBrush}"/>
+
+                        <TextBlock Text="RACE AUDIO CUES" FontWeight="Bold" FontSize="16"/>
+                        <TextBlock Text="Every cue can use a built-in sound or WAV, MP3 or WMA file. Silent mutes the cue, including its custom file. Clear the file to return to the built-in sound." Foreground="{DynamicResource MutedBrush}" TextWrapping="Wrap" Margin="0,2,0,10"/>
+
+                        <StackPanel Margin="0,0,0,2">
+                            <Grid Margin="0,3,0,5"><Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions><Grid.ColumnDefinitions><ColumnDefinition Width="2*"/><ColumnDefinition Width="1.25*"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><TextBlock Text="START OF RACE" FontWeight="SemiBold" VerticalAlignment="Center" Grid.Row="0" Grid.Column="0" Margin="5,0,0,2" Grid.ColumnSpan="5"/><ComboBox x:Name="StartToneCombo" Margin="5,2" Grid.Row="1" Grid.Column="0"/><ComboBox x:Name="StartLengthCombo" Margin="5,2" Grid.Row="1" Grid.Column="1"/><Button Content="BROWSE" Click="BrowseStart_Click" MinWidth="72" Grid.Row="1" Grid.Column="2"/><Button Content="TEST" Click="TestStart_Click" MinWidth="58" Grid.Row="1" Grid.Column="3"/><TextBox x:Name="StartFileText" IsReadOnly="True" Margin="5,2" ToolTip="Optional custom audio file" Grid.Row="2" Grid.Column="0" Grid.ColumnSpan="5" MinHeight="22" Padding="4,1" FontSize="10"/></Grid>
+                        </StackPanel>
+
+                        <StackPanel Margin="0,0,0,2">
+                            <Grid Margin="0,3,0,5"><Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions><Grid.ColumnDefinitions><ColumnDefinition Width="2*"/><ColumnDefinition Width="1.25*"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><TextBlock Text="BELOW MINIMUM LAP" FontWeight="SemiBold" VerticalAlignment="Center" Grid.Row="0" Grid.Column="0" Margin="5,0,0,2" Grid.ColumnSpan="5"/><ComboBox x:Name="MinimumToneCombo" Margin="5,2" Grid.Row="1" Grid.Column="0"/><ComboBox x:Name="MinimumLengthCombo" Margin="5,2" Grid.Row="1" Grid.Column="1"/><Button Content="BROWSE" Click="BrowseMinimum_Click" MinWidth="72" Grid.Row="1" Grid.Column="2"/><Button Content="TEST" Click="TestMinimum_Click" MinWidth="58" Grid.Row="1" Grid.Column="3"/><TextBox x:Name="MinimumFileText" IsReadOnly="True" Margin="5,2" Grid.Row="2" Grid.Column="0" Grid.ColumnSpan="5" MinHeight="22" Padding="4,1" FontSize="10"/></Grid>
+                        </StackPanel>
+
+                        <StackPanel Margin="0,0,0,2">
+                            <Grid Margin="0,3,0,5"><Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions><Grid.ColumnDefinitions><ColumnDefinition Width="2*"/><ColumnDefinition Width="1.25*"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><TextBlock Text="MASTER CLOCK ZERO" FontWeight="SemiBold" VerticalAlignment="Center" Grid.Row="0" Grid.Column="0" Margin="5,0,0,2" Grid.ColumnSpan="5"/><ComboBox x:Name="EndToneCombo" Margin="5,2" Grid.Row="1" Grid.Column="0"/><ComboBox x:Name="EndLengthCombo" Margin="5,2" Grid.Row="1" Grid.Column="1"/><Button Content="BROWSE" Click="BrowseEnd_Click" MinWidth="72" Grid.Row="1" Grid.Column="2"/><Button Content="TEST" Click="TestEnd_Click" MinWidth="58" Grid.Row="1" Grid.Column="3"/><TextBox x:Name="EndFileText" IsReadOnly="True" Margin="5,2" Grid.Row="2" Grid.Column="0" Grid.ColumnSpan="5" MinHeight="22" Padding="4,1" FontSize="10"/></Grid>
+                        </StackPanel>
+
+                        <StackPanel Margin="0,0,0,2">
+                            <Grid Margin="0,3,0,5"><Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions><Grid.ColumnDefinitions><ColumnDefinition Width="2*"/><ColumnDefinition Width="1.25*"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><TextBlock Text="RACER CROSSING" FontWeight="SemiBold" VerticalAlignment="Center" Grid.Row="0" Grid.Column="0" Margin="5,0,0,2" Grid.ColumnSpan="5"/><ComboBox x:Name="PassingToneCombo" Margin="5,2" Grid.Row="1" Grid.Column="0"/><ComboBox x:Name="PassingLengthCombo" Margin="5,2" Grid.Row="1" Grid.Column="1"/><Button Content="BROWSE" Click="BrowsePassing_Click" MinWidth="72" Grid.Row="1" Grid.Column="2"/><Button Content="TEST" Click="TestPassing_Click" MinWidth="58" Grid.Row="1" Grid.Column="3"/><TextBox x:Name="PassingFileText" IsReadOnly="True" Margin="5,2" Grid.Row="2" Grid.Column="0" Grid.ColumnSpan="5" MinHeight="22" Padding="4,1" FontSize="10"/></Grid>
+                        </StackPanel>
+
+<Separator Margin="0,3"/>
+                        <Grid Margin="0,3,0,5"><Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions><Grid.ColumnDefinitions><ColumnDefinition Width="2*"/><ColumnDefinition Width="1.25*"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><TextBlock Text="FIRST CROSSING" FontWeight="SemiBold" VerticalAlignment="Center" Grid.Row="0" Grid.Column="0" Margin="5,0,0,2" Grid.ColumnSpan="5"/><ComboBox x:Name="FirstCrossingToneCombo" Margin="5,2" Grid.Row="1" Grid.Column="0"/><ComboBox x:Name="FirstCrossingLengthCombo" Margin="5,2" Grid.Row="1" Grid.Column="1"/><Button Content="BROWSE" Click="BrowseFirstCrossing_Click" Grid.Row="1" Grid.Column="2"/><Button Content="CLEAR" Click="ClearFirstCrossing_Click" Grid.Row="1" Grid.Column="3"/><Button Content="TEST" Click="TestFirstCrossingTone_Click" Grid.Row="1" Grid.Column="4"/><TextBox x:Name="FirstCrossingFileText" IsReadOnly="True" Margin="5,2" Grid.Row="2" Grid.Column="0" Grid.ColumnSpan="5" MinHeight="22" Padding="4,1" FontSize="10"/></Grid><Separator Margin="0,3"/>
+                        <Grid Margin="0,3,0,5"><Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions><Grid.ColumnDefinitions><ColumnDefinition Width="2*"/><ColumnDefinition Width="1.25*"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><TextBlock Text="DRIVER FINISH" FontWeight="SemiBold" VerticalAlignment="Center" Grid.Row="0" Grid.Column="0" Margin="5,0,0,2" Grid.ColumnSpan="5"/><ComboBox x:Name="DriverFinishToneCombo" Margin="5,2" Grid.Row="1" Grid.Column="0"/><ComboBox x:Name="DriverFinishLengthCombo" Margin="5,2" Grid.Row="1" Grid.Column="1"/><Button Content="BROWSE" Click="BrowseDriverFinish_Click" Grid.Row="1" Grid.Column="2"/><Button Content="CLEAR" Click="ClearDriverFinish_Click" Grid.Row="1" Grid.Column="3"/><Button Content="TEST" Click="TestDriverFinishTone_Click" Grid.Row="1" Grid.Column="4"/><TextBox x:Name="DriverFinishFileText" IsReadOnly="True" Margin="5,2" Grid.Row="2" Grid.Column="0" Grid.ColumnSpan="5" MinHeight="22" Padding="4,1" FontSize="10"/></Grid><Separator Margin="0,3"/>
+                        <Grid Margin="0,3,0,5"><Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions><Grid.ColumnDefinitions><ColumnDefinition Width="2*"/><ColumnDefinition Width="1.25*"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><TextBlock Text="HALFWAY TONE" FontWeight="SemiBold" VerticalAlignment="Center" Grid.Row="0" Grid.Column="0" Margin="5,0,0,2" Grid.ColumnSpan="5"/><ComboBox x:Name="HalfwayToneCombo" Margin="5,2" Grid.Row="1" Grid.Column="0"/><ComboBox x:Name="HalfwayLengthCombo" Margin="5,2" Grid.Row="1" Grid.Column="1"/><Button Content="BROWSE" Click="BrowseHalfway_Click" Grid.Row="1" Grid.Column="2"/><Button Content="CLEAR" Click="ClearHalfway_Click" Grid.Row="1" Grid.Column="3"/><Button Content="TEST" Click="TestHalfwayTone_Click" Grid.Row="1" Grid.Column="4"/><TextBox x:Name="HalfwayFileText" IsReadOnly="True" Margin="5,2" Grid.Row="2" Grid.Column="0" Grid.ColumnSpan="5" MinHeight="22" Padding="4,1" FontSize="10"/></Grid>                        <WrapPanel Margin="0,10,0,0">
+                            <Button Content="CLEAR START FILE" Click="ClearStart_Click"/>
+                            <Button Content="CLEAR MIN LAP FILE" Click="ClearMinimum_Click"/>
+                            <Button Content="CLEAR END FILE" Click="ClearEnd_Click"/>
+                            <Button Content="CLEAR PASS FILE" Click="ClearPassing_Click"/>
+                        </WrapPanel>
+
+                        <TextBlock Text="Short custom cues are limited to about 0.45 seconds. Normal custom cues are capped at 3 seconds; Long at 5 seconds so a long downloaded audio file cannot take over race audio." Foreground="{DynamicResource MutedBrush}" TextWrapping="Wrap" Margin="0,8,0,0"/>
+
+                    </StackPanel></ScrollViewer></TabItem>
+                </TabControl>
+            </TabItem>
+
+
+            <TabItem Header="PRACTICE"><ScrollViewer VerticalScrollBarVisibility="Auto"><StackPanel Margin="16"><TextBlock Text="LIVE PRACTICE INFORMATION" FontWeight="Bold" FontSize="20"/><TextBlock Text="Choose the extra statistics shown on active practice cards. Laps, Best and Average remain visible." TextWrapping="Wrap" Margin="0,8,0,12"/><ItemsControl ItemsSource="{Binding PracticeStatOptions}"><ItemsControl.ItemsPanel><ItemsPanelTemplate><WrapPanel/></ItemsPanelTemplate></ItemsControl.ItemsPanel><ItemsControl.ItemTemplate><DataTemplate><CheckBox Content="{Binding Label}" IsChecked="{Binding IsVisible, Mode=TwoWay}" Width="180" Margin="0,4,12,4"/></DataTemplate></ItemsControl.ItemTemplate></ItemsControl><StackPanel Margin="0,20,0,0">
+                            <TextBlock Text="PRACTICE CARD BEHAVIOR" FontWeight="Bold" FontSize="16"/>
+                            <TextBlock Text="Practice cards fill the screen in a configurable grid. A card appears only after that driver's first detected crossing." Foreground="{DynamicResource MutedBrush}" TextWrapping="Wrap" Margin="0,4,0,10"/>
+
+                            <TextBlock Text="Cards per row" FontWeight="SemiBold"/>
+                            <ComboBox x:Name="PracticeCardsPerRowCombo" Margin="0,4,0,10"/>
+
+                            <TextBlock Text="The Practice screen always reserves at least two rows. With 4 / 5 / 6 cards per row, full-size capacity is 8 / 10 / 12 active racers before the cards begin shrinking." Foreground="{DynamicResource MutedBrush}" TextWrapping="Wrap" Margin="0,0,0,12"/>
+
+                            <TextBlock Text="Default live statistics:" FontWeight="SemiBold"/>
+                            <TextBlock Text="• Top 2 Consecutive&#10;• Avg Top 5&#10;• Consistency" Foreground="{DynamicResource MutedBrush}" Margin="0,3,0,10"/>
+
+                            <TextBlock Text="Lap rows alternate between two subtle shades to make long practice runs easier to read." Foreground="{DynamicResource MutedBrush}" TextWrapping="Wrap" Margin="0,0,0,10"/>
+
+                            <TextBlock Text="A Practice card retires after roughly 10 × that driver's average lap with no new crossing. Up to 36 active cards are displayed; additional active stints remain tracked in the database/session state until a display slot opens. The completed stint is stored in local SQLite." Foreground="{DynamicResource MutedBrush}" TextWrapping="Wrap"/>
+                        </StackPanel>
+                    </StackPanel></ScrollViewer></TabItem></TabControl>
+
+        <Grid Grid.Row="2" Margin="0,10,0,0">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="Auto"/>
+            </Grid.ColumnDefinitions>
+            <TextBlock Text="Custom audio is copied into Race Control's local application data when settings are saved." Foreground="{DynamicResource MutedBrush}" VerticalAlignment="Center" TextWrapping="Wrap"/>
+            <Button Grid.Column="1" Content="Cancel" Click="Cancel_Click" MinWidth="90"/>
+            <Button Grid.Column="2" Content="Save settings" Click="Save_Click" Background="{DynamicResource GoodBrush}" Foreground="#101318" MinWidth="120"/>
+        </Grid>
+    </Grid>
+</Window>

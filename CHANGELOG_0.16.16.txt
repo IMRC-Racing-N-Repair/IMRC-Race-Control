@@ -1,0 +1,8 @@
+IMRC Race Control v0.16.16
+- Renamed Settings tab to RACE INFO DISPLAY.
+- Race Dashboard choices appear first; Pop-Out / Web follows. Both section headings are 24pt bold.
+- Open Rounds / Mains automatically opens a compact generator when there are no saved lineups.
+- New Round / Mains opens the same compact generator with Build, Class, automatic Round #, Sort, Generate and Cancel.
+- Generate returns a draft to the existing lineup editor for review and save. Saved event data is unchanged until the editor saves. Cancel preserves the existing lineup.
+- Dialog backdrop behavior is retained; spectator Pop-Out and Web are unaffected.
+Validation: Windows-targeted build passed with zero warnings/errors. All 865 regression checks passed. Settings section order and control preservation checks passed. Windows interactive visual verification remains required.

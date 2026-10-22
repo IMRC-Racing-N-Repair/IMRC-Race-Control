@@ -1,0 +1,10 @@
+IMRC Race Control v0.16.15
+- Settings: Race Dashboard field choices now sit under Pop-Out / Web and use the same wrapping checkbox layout.
+- Dashboard colors moved into Appearance, beneath application theme.
+- Practice choices use the same open checkbox layout, followed by card behavior controls.
+- Audio Tones: reduced row spacing and file-field height; constrained control width. All tone controls/actions preserved.
+- Event: removed redundant Edit Selected Round / Mains; enlarged Open Rounds / Mains.
+- Lineup browser: removed Edit Selected Lineup; clicking a saved race opens its editable class/round scope, preserving completed-race protections.
+- New Round / Mains uses the current theme accent and opens a separate owned dialog. Successful save updates the event and refreshes the browser beneath; failures keep the child open.
+- Owned application dialogs dim their inactive owner with a 43% black overlay. Each nested level restores its owner when closed. The spectator Pop-Out and browser Web display receive no overlay.
+Validation: 865 regression checks passed; Settings control names preserved and XAML structure verified. Windows-targeted build passed. Interactive Windows visual verification remains required.

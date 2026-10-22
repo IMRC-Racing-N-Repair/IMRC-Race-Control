@@ -1,0 +1,67 @@
+# GitHub installation and release setup
+
+This project is ready to upload to the root of a GitHub repository. Upload the **contents** of this folder, including `.github`, `.config`, `scripts`, `src` and `tests`. Keep the repository structure as provided; the workflows expect `src/IMRCRaceControl.App/IMRCRaceControl.App.csproj` at the root.
+
+## First release
+
+1. Select the destination GitHub repository. For the included token-free app updater, release assets must be publicly downloadable. The repository URL is embedded automatically by the release workflow; no username or access token is embedded in the app.
+2. Push/upload the source to the repository's default branch. Enable GitHub Actions if it is disabled.
+3. In **Actions**, choose **Build draft release**, then **Run workflow** on that branch.
+4. Wait for the Windows build and regression checks to pass. The run produces the installer and all update files, then creates a **draft** `v0.16.17` release.
+5. Review the draft release and its notes. Publish it when ready. Do not mark a normal user update as a prerelease: the stable updater intentionally ignores prereleases and drafts.
+6. Users install the `IMRCRaceControl-...-Setup.exe` asset once. They do not need the source ZIP or the .NET SDK. The packaged app includes the Windows .NET runtime.
+
+The first release establishes the installer/update system. Older ZIP/source versions must install the Setup.exe once before they can use automatic updates.
+
+## Every later update
+
+1. Change the app and increment `<Version>` in `src/IMRCRaceControl.App/IMRCRaceControl.App.csproj`, for example `0.16.17` to `0.16.18`. Update the visible version in `MainWindow.xaml` to match.
+2. Commit/push the changes.
+3. Run **Build draft release** again. Alternatively, push a matching tag such as `v0.16.18`.
+4. Test the resulting Windows installer, review the draft release, and publish it.
+
+Normal commits run build checks without publishing a release. A draft is invisible to installed apps until you publish it. Each release version is immutable: fix a failed/incorrect release by using a newer version, rather than replacing a published installer with a different binary under the same version.
+
+## Files attached to a release
+
+Keep the **entire generated payload** on the same release, especially:
+
+- `*Setup.exe`: installer for users.
+- `*-full.nupkg`: complete update package.
+- `releases.win.json` (or the matching generated channel feed): updater metadata.
+- Other generated release files, including the portable ZIP and legacy feed where produced.
+- `SHA256SUMS.txt`: release artifact checksums.
+
+The workflow creates the draft with all payload files using Velopack's GitHub uploader. Do not upload only Setup.exe; installed apps also need the update feed and package. This first implementation uses full update packages; delta packages can be added later without changing the installation model.
+
+## What users see
+
+- An IMRC loading screen while the database/dashboard starts.
+- A short, asynchronous update check after launch. Internet failure leaves the installed version usable.
+- A prompt when a newer stable GitHub release is available.
+- A refresh arrow in the top bar for a manual check.
+- Updates are refused during an armed/running race, final laps, practice, or result saving.
+- After accepting an update, the main controls pause, preferences are saved, the package downloads, and the app restarts into the updated version. Existing race data stays in the existing LocalAppData data directory.
+
+## Build an installer locally on Windows
+
+Install the .NET 10 SDK, then run PowerShell from the repository root:
+
+```powershell
+./scripts/Build-Installer.ps1 -Repository https://github.com/YOUR_ACCOUNT/YOUR_REPOSITORY
+```
+
+Output is in `artifacts/releases`. The `vpk` tool and in-app dependency are both pinned to `1.2.161`. The existing `PUBLISH_WINDOWS_X64.bat` remains available for a standalone development EXE; that EXE is not the installed updater-enabled distribution.
+
+## Validation and distribution status
+
+The source can be compiled using Windows targeting on Linux. Actual Setup.exe generation and installation/update/restart testing require Windows; the provided release workflow runs on a Windows runner. No installer or release has been published by preparing these files.
+
+No code-signing certificate is included. Add Windows signing to the release build when your publisher certificate is available; never commit a certificate or its password to the repository.
+
+Reference: https://docs.velopack.io/distributing/github-actions
+Reference: https://docs.velopack.io/integrating/update-sources
+
+## First Windows acceptance check
+
+Before publishing the first release, install its Setup.exe on Windows, open an existing event, and confirm that data and preferences remain available. Build the next version as a separate draft; the installed app should not offer it until the draft is published. After publishing, verify that the update prompt downloads, restarts and opens the next version. Also verify offline launch, declining an update, and blocked manual updates during race/practice. These installed-app checks have not been run in the Linux preparation environment.

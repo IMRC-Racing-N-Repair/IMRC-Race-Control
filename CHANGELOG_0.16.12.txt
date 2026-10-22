@@ -1,0 +1,10 @@
+IMRC Race Control v0.16.12
+
+- Lap-count races: the first accepted target-lap crossing finishes that driver and triggers the shared finish. All other drivers finish on their next accepted crossing, even when laps down.
+- Invalid/minimum-lap crossings do not finish a driver. Finished drivers cannot add laps. Undo rebuilds the shared finish state.
+- Final-lap status applies to every remaining driver after the target is reached.
+- Once all enabled drivers finish, stop the clock, announce "All drivers are done", complete and save the race automatically.
+- The configured race-end tone now plays when the lap target is reached.
+- Hold completed results, header, clock and overall positions in the spectator pop-out and local browser webcast until Next Race is clicked. Operator navigation and practice cannot replace the held results.
+
+Validation: 865 automated checks passed. Windows-targeted WPF build passed with zero warnings/errors. Interactive appearance/audio require Windows runtime verification.
