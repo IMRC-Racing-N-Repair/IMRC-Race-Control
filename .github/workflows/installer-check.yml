@@ -25,7 +25,7 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: IMRC-Race-Control-Setup
-          path: artifacts/releases/Setup.exe
+          path: artifacts/releases/RaceControl-Installer.exe
           if-no-files-found: error
       - uses: actions/upload-artifact@v4
         with:

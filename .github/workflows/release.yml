@@ -54,11 +54,13 @@ jobs:
           if (-not $entry.Success) { throw 'Add the current version to CHANGELOG.md before preparing a release' }
           $instructions = @'
           ## Install IMRC Race Control
-          Download **Setup.exe** below and run it. You do not need to download or extract the other files.
+          Download **RaceControl-Installer.exe** below and run it. You do not need to download or extract the other files.
           
           The remaining package/feed assets are used automatically for online updates.
+
+          This release is unsigned. Windows may display an unknown publisher or app reputation warning; no paid signing service is configured.
           
-          This release stores race data outside the installation directory, migrates surviving earlier data, and keeps automatic database backups. Version 0.16.17 users should install this new Setup.exe once; no uninstall of the old version is required before migration.
+          This release stores race data outside the installation directory, migrates surviving earlier data, and keeps automatic database backups. Version 0.16.17 users should install this new RaceControl-Installer.exe once; no uninstall of the old version is required before migration.
           '@
           $instructions + "`n`n## Changes in $env:RELEASE_VERSION`n" + $entry.Groups['changes'].Value.Trim() | Set-Content artifacts/ReleaseNotes.md
       - name: Create draft GitHub release
@@ -87,6 +89,6 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw 'Draft release asset upload failed' }
           $uploaded = gh release view $tag --repo $env:GITHUB_REPOSITORY --json assets | ConvertFrom-Json
           if ($LASTEXITCODE -ne 0) { throw 'Could not verify uploaded assets' }
-          foreach ($name in @('Setup.exe','releases.win.json','RELEASES','SHA256SUMS.txt',"IMRCRaceControl.App-$env:RELEASE_VERSION-full.nupkg")) {
+          foreach ($name in @('RaceControl-Installer.exe','releases.win.json','RELEASES','SHA256SUMS.txt',"IMRCRaceControl.App-$env:RELEASE_VERSION-full.nupkg")) {
             if ($name -notin $uploaded.assets.name) { throw "Release asset missing: $name" }
           }

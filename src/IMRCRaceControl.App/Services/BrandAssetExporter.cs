@@ -1,4 +1,5 @@
 using System.Windows;
+using System.Windows.Controls;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using IMRCRaceControl.Controls;
@@ -8,33 +9,51 @@ internal static class BrandAssetExporter
     public static void Export(string output)
     {
         Directory.CreateDirectory(output);
-        var logo = new BrandLogo();
-        logo.Measure(new Size(800,307)); logo.Arrange(new Rect(0,0,800,307)); logo.UpdateLayout();
-        var image = new RenderTargetBitmap(800,307,96,96,PixelFormats.Pbgra32); image.Render(logo);
-        var png = new PngBitmapEncoder(); png.Frames.Add(BitmapFrame.Create(image));
-        using(var file=File.Create(Path.Combine(output,"IMRC-Race-Control.png"))) png.Save(file);
-        var visual = new DrawingVisual();
-        using(var drawing=visual.RenderOpen())
+        var source = new BitmapImage(new Uri("pack://application:,,,/IMRCRaceControl;component/Assets/RC-Approved.png"));
+        var sizes = new[] { 16,24,32,48,64,128,256 };
+        var frames = new List<byte[]>();
+        foreach (var size in sizes)
         {
-            drawing.DrawImage(image,new Rect(4,80,248,95.17));
+            var visual = new DrawingVisual();
+            RenderOptions.SetBitmapScalingMode(visual,BitmapScalingMode.HighQuality);
+            var padding = Math.Max(1,size/64d);
+            using (var drawing = visual.RenderOpen())
+                drawing.DrawImage(source,new Rect(padding,padding,size-2*padding,size-2*padding));
+            var rendered = new RenderTargetBitmap(size,size,96,96,PixelFormats.Pbgra32);
+            rendered.Render(visual);
+            var png = Encode(rendered); frames.Add(png);
+            File.WriteAllBytes(Path.Combine(output,$"RC-Icon-{size}.png"),png);
         }
-        var iconImage = new RenderTargetBitmap(256,256,96,96,PixelFormats.Pbgra32); iconImage.Render(visual);
-        var iconPng = new PngBitmapEncoder(); iconPng.Frames.Add(BitmapFrame.Create(iconImage));
-        using var bytes=new MemoryStream(); iconPng.Save(bytes); var payload=bytes.ToArray();
-        using var writer=new BinaryWriter(File.Create(Path.Combine(output,"IMRC-Race-Control.ico")));
-        writer.Write((ushort)0); writer.Write((ushort)1); writer.Write((ushort)1);
-        writer.Write((byte)0); writer.Write((byte)0); writer.Write((byte)0); writer.Write((byte)0);
-        writer.Write((ushort)1); writer.Write((ushort)32); writer.Write(payload.Length); writer.Write(22); writer.Write(payload);
-        // Keep actual Windows-rendered previews for reviewing all supported themes.
+        // Use the square RC artwork directly, rather than shrinking a wide wordmark
+        // into a tiny strip in the desktop shortcut or Windows taskbar.
+        File.WriteAllBytes(Path.Combine(output,"IMRC-Race-Control.png"),frames[^1]);
+        using (var writer = new BinaryWriter(File.Create(Path.Combine(output,"IMRC-Race-Control.ico"))))
+        {
+            writer.Write((ushort)0); writer.Write((ushort)1); writer.Write((ushort)sizes.Length);
+            var offset = 6+16*sizes.Length;
+            for (var i=0;i<sizes.Length;i++)
+            {
+                var dimension = sizes[i]==256 ? (byte)0 : (byte)sizes[i];
+                writer.Write(dimension); writer.Write(dimension); writer.Write((byte)0); writer.Write((byte)0);
+                writer.Write((ushort)1); writer.Write((ushort)32); writer.Write(frames[i].Length); writer.Write(offset);
+                offset += frames[i].Length;
+            }
+            foreach (var frame in frames) writer.Write(frame);
+        }
         foreach (var theme in Enum.GetValues<IMRCRaceControl.Models.AppTheme>())
         {
             ThemeService.Apply(theme);
-            var preview = new System.Windows.Controls.Border { Width=840,Height=347,Padding=new Thickness(20),Child=new BrandLogo() };
-            preview.SetResourceReference(System.Windows.Controls.Border.BackgroundProperty,"PanelBrush");
+            var preview = new Border { Width=840,Height=347,Padding=new Thickness(20),Child=new BrandLogo() };
+            preview.SetResourceReference(Border.BackgroundProperty,"PanelBrush");
             preview.Measure(new Size(840,347)); preview.Arrange(new Rect(0,0,840,347)); preview.UpdateLayout();
             var rendered = new RenderTargetBitmap(840,347,96,96,PixelFormats.Pbgra32); rendered.Render(preview);
-            var encoder = new PngBitmapEncoder(); encoder.Frames.Add(BitmapFrame.Create(rendered));
-            using var file=File.Create(Path.Combine(output,$"IMRC-Race-Control-{theme}.png")); encoder.Save(file);
+            File.WriteAllBytes(Path.Combine(output,$"IMRC-Race-Control-{theme}.png"),Encode(rendered));
         }
+    }
+
+    private static byte[] Encode(BitmapSource image)
+    {
+        var encoder = new PngBitmapEncoder(); encoder.Frames.Add(BitmapFrame.Create(image));
+        using var stream = new MemoryStream(); encoder.Save(stream); return stream.ToArray();
     }
 }

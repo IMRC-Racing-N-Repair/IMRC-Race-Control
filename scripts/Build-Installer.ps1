@@ -19,12 +19,12 @@ if ($renderer.ExitCode -ne 0) { throw "Brand asset rendering failed (exit $($ren
 $icon = Join-Path $branding 'IMRC-Race-Control.ico'
 $splash = Join-Path $branding 'IMRC-Race-Control.png'
 if (-not (Test-Path $icon)) { throw 'Brand icon was not rendered' }
-# Rebuild the application with the same icon used by Setup.exe and the updater.
+# Rebuild the application with the same icon used by RaceControl-Installer.exe and the updater.
 Checked @('publish',$project,'-c','Release','-r','win-x64','--self-contained','true','-o','artifacts/publish',"-p:UpdateRepository=$Repository","-p:ApplicationIcon=$icon",'-p:PublishSingleFile=false')
 Checked @('tool','run','vpk','--','pack','--packId','IMRCRaceControl.App','--packVersion',$version,'--packDir','artifacts/publish','--mainExe','IMRCRaceControl.exe','--packTitle','IMRC Race Control','--packAuthors','IMRC Racing N Repair','--icon',$icon,'--splashImage',$splash,'--outputDir','artifacts/releases')
 $setup = @(Get-ChildItem 'artifacts/releases/*Setup.exe')
 if ($setup.Count -ne 1) { throw 'Expected exactly one installer' }
-Move-Item $setup[0].FullName 'artifacts/releases/Setup.exe'
+Move-Item $setup[0].FullName 'artifacts/releases/RaceControl-Installer.exe'
 # Portable source bundles are not needed by users or by the updater.
 Get-ChildItem 'artifacts/releases/*Portable.zip' | Remove-Item
 # Internal vpk upload inventory still uses its generated names; gh uploads the final filenames.

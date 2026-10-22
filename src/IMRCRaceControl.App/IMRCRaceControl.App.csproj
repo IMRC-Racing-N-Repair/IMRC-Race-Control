@@ -8,13 +8,13 @@
     <AssemblyName>IMRCRaceControl</AssemblyName>
     <RootNamespace>IMRCRaceControl</RootNamespace>
     <!-- Match this version in CHANGELOG.md and the dashboard header. -->
-    <Version>0.16.19</Version>
+    <Version>0.16.20</Version>
     <StartupObject>IMRCRaceControl.Program</StartupObject>
     <ApplicationManifest>app.manifest</ApplicationManifest>
   </PropertyGroup>
 
   <ItemGroup>
-    <Resource Include="Assets/IMRC-Original.png" />
+    <Resource Include="Assets/RC-Approved.png" />
     <ApplicationDefinition Remove="App.xaml" />
     <Page Include="App.xaml" />
     <AssemblyMetadata Include="UpdateRepository" Value="$(UpdateRepository)" />

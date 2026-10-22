@@ -2,6 +2,13 @@
 
 Keep all release history in this file. Add each new version at the top; do not create version-specific changelog files.
 
+## 0.16.20
+
+- Apply the approved white RC monogram with black outline and blue accent to the shortcut, app, installer and loading screen.
+- Generate desktop/taskbar icon sizes from 16 to 256 pixels so Windows uses a clear square icon instead of a tiny horizontal logo.
+- Rename the downloadable installer to RaceControl-Installer.exe and update build artifacts, release checks, documentation and installation messages.
+- Keep this release unsigned with no paid signing service configured; document download checksums and possible Windows publisher/reputation warnings.
+
 ## 0.16.19
 
 - Move Update and Data tools from the main header into Settings > Application.

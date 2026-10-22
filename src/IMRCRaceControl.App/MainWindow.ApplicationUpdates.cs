@@ -21,7 +21,7 @@ public partial class MainWindow
             var manager = ApplicationUpdateService.CreateManager();
             if (manager is null || !manager.IsInstalled)
             {
-                if (manual) MessageBox.Show(this,"Online updates are available in the installed GitHub release build. Install using its Setup.exe first.","Application updates");
+                if (manual) MessageBox.Show(this,"Online updates are available in the installed GitHub release build. Install using its RaceControl-Installer.exe first.","Application updates");
                 return;
             }
             FooterStatusText.Text = "Checking for application updates…";

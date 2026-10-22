@@ -92,7 +92,6 @@ public static class ThemeService
                 "#E34B4B", "#7E2E35", "#42CE82", "#F1C75B", "#EF6A6A", "#365B78")
         };
 
-        SetBrush("BrandOutlineBrush", theme == AppTheme.Light ? "#00FFFFFF" : "#FFFFFFFF");
         SetBrush("PageBrush", palette.Page);
         SetBrush("PanelBrush", palette.Panel);
         SetBrush("PanelAltBrush", palette.PanelAlt);
