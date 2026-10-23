@@ -60,6 +60,7 @@ internal static class InstallerSplashExporter
         // Insert the standard GIF loop extension after the global palette. This
         // avoids relying on WIC's platform-specific application-extension metadata.
         var offset = 13 + ((bytes[10] & 0x80) != 0 ? 3 * (1 << ((bytes[10] & 7) + 1)) : 0);
+        SetFrameDelays(bytes, offset, frameCount);
         using (var file = File.Create(Path.Combine(output, "Installer-Splash.gif")))
         {
             file.Write(bytes, 0, offset);
@@ -70,11 +71,51 @@ internal static class InstallerSplashExporter
         }
         using var check = File.OpenRead(Path.Combine(output, "Installer-Splash.gif"));
         var decoded = new GifBitmapDecoder(check, BitmapCreateOptions.PreservePixelFormat, BitmapCacheOption.OnLoad);
-        if (decoded.Frames.Count != frameCount || decoded.Frames.Any(f => f.PixelWidth != width || f.PixelHeight != height))
+        if (decoded.Frames.Count != frameCount || decoded.Frames.Any(f => f.PixelWidth != width || f.PixelHeight != height ||
+                f.Metadata is not BitmapMetadata timing || Convert.ToUInt16(timing.GetQuery("/grctlext/Delay")) != 8))
             throw new InvalidDataException("Installer animation failed validation.");
     }
 
     private static SolidColorBrush Brush(string color) => new((Color)ColorConverter.ConvertFromString(color));
+
+    private static void SetFrameDelays(byte[] bytes, int position, int expectedFrames)
+    {
+        // WIC may discard the requested GIF delay. Walk actual GIF blocks rather
+        // than searching compressed image data for byte patterns.
+        var controls = 0;
+        while (position < bytes.Length)
+        {
+            var marker = bytes[position++];
+            if (marker == 0x3B) break;
+            if (marker == 0x21)
+            {
+                var label = bytes[position++];
+                if (label == 0xF9 && bytes[position] == 4)
+                {
+                    bytes[position + 2] = 8; // 8 hundredths of a second
+                    bytes[position + 3] = 0;
+                    controls++;
+                }
+                SkipBlocks(bytes, ref position);
+            }
+            else if (marker == 0x2C)
+            {
+                var packed = bytes[position + 8];
+                position += 9;
+                if ((packed & 0x80) != 0) position += 3 * (1 << ((packed & 7) + 1));
+                position++; // LZW minimum code size
+                SkipBlocks(bytes, ref position);
+            }
+            else throw new InvalidDataException("Unexpected installer GIF block.");
+        }
+        if (controls != expectedFrames) throw new InvalidDataException("Installer GIF frame timing is incomplete.");
+    }
+
+    private static void SkipBlocks(byte[] bytes, ref int position)
+    {
+        int length;
+        while ((length = bytes[position++]) != 0) position += length;
+    }
 
     private static void Text(DrawingContext dc, string text, double x, double y, double size, string color, FontWeight weight)
     {

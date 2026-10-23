@@ -17,6 +17,7 @@ $branding = Join-Path (Get-Location) 'artifacts/branding'
 $renderer = Start-Process -FilePath (Join-Path (Get-Location) 'artifacts/publish/IMRCRaceControl.exe') -ArgumentList @('--export-brand',"`"$branding`"") -Wait -PassThru
 if ($renderer.ExitCode -ne 0) { throw "Brand asset rendering failed (exit $($renderer.ExitCode))" }
 $icon = Join-Path $branding 'IMRC-Race-Control.ico'
+# The renderer validates animation frame dimensions and 80ms timing before packaging.
 $splash = Join-Path $branding 'Installer-Splash.gif'
 if (-not (Test-Path $splash)) { throw 'Branded installer animation was not rendered' }
 if (-not (Test-Path $icon)) { throw 'Brand icon was not rendered' }
