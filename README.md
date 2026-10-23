@@ -21,15 +21,6 @@ dotnet build src/IMRCRaceControl.App/IMRCRaceControl.App.csproj
 dotnet run --project src/IMRCRaceControl.App/IMRCRaceControl.App.csproj
 ```
 
-## Release process
-
-1. Update the app version and push source changes.
-2. Open **Actions → Build draft release → Run workflow**.
-3. The Windows workflow checks the code and generates an installer plus update packages.
-4. Review and publish the resulting draft release when ready.
-
-Normal source pushes run build checks. Changes to the version/project file also prepare a draft release for review; publishing stays manual. Drafts and prereleases are excluded from stable app updates. Existing ZIP/source builds need the first RaceControl-Installer.exe installation once before automatic updates are available.
-
 ## Features
 
 - Race-day event, qualifying, heat and main lineup management.
@@ -40,4 +31,3 @@ Normal source pushes run build checks. Changes to the version/project file also 
 
 Race data and preferences are stored outside the installed program directory in LocalAppData.
 
-See [VALIDATION.md](VALIDATION.md) for checks completed and Windows acceptance tests still required.
