@@ -27,6 +27,7 @@ public partial class App : Application
     protected override async void OnStartup(StartupEventArgs e)
     {
         base.OnStartup(e);
+        ShortcutIconService.RefreshExisting();
         // Keep the process alive while preferences load, without creating an
         // unthemed window. SQLite remains authoritative over the JSON backup.
         ShutdownMode = ShutdownMode.OnExplicitShutdown;

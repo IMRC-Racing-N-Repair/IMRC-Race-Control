@@ -2,6 +2,13 @@
 
 Keep all release history in this file. Add each new version at the top; do not create version-specific changelog files.
 
+## 0.16.21
+
+- Embed the approved RC icon in every application build.
+- Refresh existing Race Control desktop and Start menu shortcuts with a dedicated artwork-specific icon path, avoiding stale executable icon caches.
+- Repair shortcuts that still launch the previous installation when opening the new installed app; keep race data untouched.
+- Verify the application and installer use identical icon files during packaging.
+
 ## 0.16.20
 
 - Apply the approved white RC monogram with black outline and blue accent to the shortcut, app, installer and loading screen.
