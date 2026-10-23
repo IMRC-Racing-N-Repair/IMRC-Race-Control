@@ -2,6 +2,13 @@
 
 Keep all release history in this file. Add each new version at the top; do not create version-specific changelog files.
 
+## 0.16.22
+
+- Replace the installer logo-only splash with a branded dark Race Control panel, approved RC artwork, red accents, version, and installation text.
+- Show a looping activity indicator while installing or updating, without displaying a simulated completion percentage.
+- Keep the single RaceControl-Installer.exe download and existing data protection.
+- Export a Windows-rendered preview and verify every installer animation frame during packaging.
+
 ## 0.16.21
 
 - Embed the approved RC icon in every application build.

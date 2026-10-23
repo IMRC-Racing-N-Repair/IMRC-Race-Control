@@ -10,6 +10,7 @@ internal static class BrandAssetExporter
     {
         Directory.CreateDirectory(output);
         var source = new BitmapImage(new Uri("pack://application:,,,/IMRCRaceControl;component/Assets/RC-Approved.png"));
+        InstallerSplashExporter.Export(output, source);
         var sizes = new[] { 16,24,32,48,64,128,256 };
         var frames = new List<byte[]>();
         foreach (var size in sizes)

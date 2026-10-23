@@ -17,13 +17,14 @@ $branding = Join-Path (Get-Location) 'artifacts/branding'
 $renderer = Start-Process -FilePath (Join-Path (Get-Location) 'artifacts/publish/IMRCRaceControl.exe') -ArgumentList @('--export-brand',"`"$branding`"") -Wait -PassThru
 if ($renderer.ExitCode -ne 0) { throw "Brand asset rendering failed (exit $($renderer.ExitCode))" }
 $icon = Join-Path $branding 'IMRC-Race-Control.ico'
-$splash = Join-Path $branding 'IMRC-Race-Control.png'
+$splash = Join-Path $branding 'Installer-Splash.gif'
+if (-not (Test-Path $splash)) { throw 'Branded installer animation was not rendered' }
 if (-not (Test-Path $icon)) { throw 'Brand icon was not rendered' }
 # Verify the committed application icon matches the Windows-rendered installer icon.
 if ((Get-FileHash $icon).Hash -ne (Get-FileHash "src/IMRCRaceControl.App/Assets/RC.ico").Hash) { throw "Application and installer icons differ" }
 # Rebuild with the same icon used by RaceControl-Installer.exe and the updater.
 Checked @('publish',$project,'-c','Release','-r','win-x64','--self-contained','true','-o','artifacts/publish',"-p:UpdateRepository=$Repository","-p:ApplicationIcon=$icon",'-p:PublishSingleFile=false')
-Checked @('tool','run','vpk','--','pack','--packId','IMRCRaceControl.App','--packVersion',$version,'--packDir','artifacts/publish','--mainExe','IMRCRaceControl.exe','--packTitle','IMRC Race Control','--packAuthors','IMRC Racing N Repair','--icon',$icon,'--splashImage',$splash,'--outputDir','artifacts/releases')
+Checked @('tool','run','vpk','--','pack','--packId','IMRCRaceControl.App','--packVersion',$version,'--packDir','artifacts/publish','--mainExe','IMRCRaceControl.exe','--packTitle','IMRC Race Control','--packAuthors','IMRC Racing N Repair','--icon',$icon,'--splashImage',$splash,'--splashProgressColor','None','--outputDir','artifacts/releases')
 $setup = @(Get-ChildItem 'artifacts/releases/*Setup.exe')
 if ($setup.Count -ne 1) { throw 'Expected exactly one installer' }
 Move-Item $setup[0].FullName 'artifacts/releases/RaceControl-Installer.exe'

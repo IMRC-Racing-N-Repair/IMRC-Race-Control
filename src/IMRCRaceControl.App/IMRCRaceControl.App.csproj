@@ -8,7 +8,7 @@
     <AssemblyName>IMRCRaceControl</AssemblyName>
     <RootNamespace>IMRCRaceControl</RootNamespace>
     <!-- Match this version in CHANGELOG.md and the dashboard header. -->
-    <Version>0.16.21</Version>
+    <Version>0.16.22</Version>
     <StartupObject>IMRCRaceControl.Program</StartupObject>
     <ApplicationIcon>Assets/RC.ico</ApplicationIcon>
     <ApplicationManifest>app.manifest</ApplicationManifest>
