@@ -27,10 +27,15 @@ try {
     if ($blocked.ExitCode -eq 0) { throw 'Installer must not replace files while Race Control is active' }
 } finally { $appGate.Dispose() }
 Write-Host 'Active Race Control session protection passed.' 
-# Install the last public native installer into a separate location to reproduce
-# the exact already-installed scenario from the reported screenshot.
-$root = Join-Path (Get-Location) 'artifacts/installer-smoke/UpgradeApp'
-Invoke-WebRequest -Uri 'https://github.com/IMRC-Racing-N-Repair/IMRC-Race-Control/releases/download/v0.16.22/RaceControl-Installer.exe' -OutFile $baseline
-Run-Setup $baseline '0.16.22'
-Run-Setup $installer $version
-Write-Host 'Upgrade from 0.16.22 passed.'
+# Keep the update-test baseline on the retained public release. Earlier releases
+# can be removed without breaking future installer builds.
+$baselineVersion = '0.16.23'
+if ([Version]$version -gt [Version]$baselineVersion) {
+    $root = Join-Path (Get-Location) 'artifacts/installer-smoke/UpgradeApp'
+    Invoke-WebRequest -Uri "https://github.com/IMRC-Racing-N-Repair/IMRC-Race-Control/releases/download/v$baselineVersion/RaceControl-Installer.exe" -OutFile $baseline
+    Run-Setup $baseline $baselineVersion
+    Run-Setup $installer $version
+    Write-Host "Upgrade from $baselineVersion passed."
+} else {
+    Write-Host "Update baseline is $baselineVersion; the older-version upgrade check runs when building a newer version."
+}
