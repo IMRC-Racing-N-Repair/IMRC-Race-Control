@@ -28,7 +28,16 @@ Checked @('publish',$project,'-c','Release','-r','win-x64','--self-contained','t
 Checked @('tool','run','vpk','--','pack','--packId','IMRCRaceControl.App','--packVersion',$version,'--packDir','artifacts/publish','--mainExe','IMRCRaceControl.exe','--packTitle','IMRC Race Control','--packAuthors','IMRC Racing N Repair','--icon',$icon,'--splashImage',$splash,'--splashProgressColor','None','--outputDir','artifacts/releases')
 $setup = @(Get-ChildItem 'artifacts/releases/*Setup.exe')
 if ($setup.Count -ne 1) { throw 'Expected exactly one installer' }
-Move-Item $setup[0].FullName 'artifacts/releases/RaceControl-Installer.exe'
+# The downloadable EXE owns the complete confirmation/progress/error UI. The
+# embedded Velopack setup runs silently only after explicit Install/Update/Repair.
+$payloadDirectory = Join-Path (Get-Location) 'artifacts/installer-payload'
+New-Item $payloadDirectory -ItemType Directory -Force | Out-Null
+$payload = Join-Path $payloadDirectory 'RaceControl-Setup.exe'
+Move-Item $setup[0].FullName $payload -Force
+Checked @('publish','src/IMRCRaceControl.Installer/IMRCRaceControl.Installer.csproj','-c','Release','-r','win-x64','--self-contained','true','-o','artifacts/installer-shell',"-p:Version=$version","-p:InstallerPayload=$payload",'-p:PublishSingleFile=true','-p:IncludeNativeLibrariesForSelfExtract=true','-p:EnableCompressionInSingleFile=true')
+Copy-Item 'artifacts/installer-shell/RaceControl-Installer.exe' 'artifacts/releases/RaceControl-Installer.exe'
+$preview = Start-Process -FilePath (Join-Path (Get-Location) 'artifacts/releases/RaceControl-Installer.exe') -ArgumentList @('--export-ui',"`"$branding`"") -Wait -PassThru
+if ($preview.ExitCode -ne 0) { throw 'Installer confirmation UI validation failed' }
 # Portable source bundles are not needed by users or by the updater.
 Get-ChildItem 'artifacts/releases/*Portable.zip' | Remove-Item
 # Internal vpk upload inventory still uses its generated names; gh uploads the final filenames.

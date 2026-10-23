@@ -2,6 +2,14 @@
 
 Keep all release history in this file. Add each new version at the top; do not create version-specific changelog files.
 
+## 0.16.23
+
+- Replace the stock already-installed confirmation with a fully themed Race Control installer, including Install, Update, Repair, completion and error screens.
+- Show installed and installer versions, installation location, Open install folder, Cancel, and the matching action in one branded window.
+- Run the embedded installation engine silently only after confirmation; prevent downgrades and ask users to close Race Control before installing.
+- Keep the single self-contained RaceControl-Installer.exe download and existing application/update/data locations.
+- Validate fresh install, update from 0.16.22, and repair on Windows; export actual confirmation-window previews.
+
 ## 0.16.22
 
 - Replace the installer logo-only splash with a branded dark Race Control panel, approved RC artwork, red accents, version, and installation text.

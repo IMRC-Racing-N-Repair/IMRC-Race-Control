@@ -31,7 +31,7 @@
 
                 <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                     <controls:BrandLogo Width="165" Height="64" ToolTip="IMRC Race Control"/>
-                    <TextBlock Text="  v0.16.22" Margin="4,2,0,0"
+                    <TextBlock Text="  v0.16.23" Margin="4,2,0,0"
                                Foreground="{DynamicResource MutedBrush}" FontSize="10"
                                VerticalAlignment="Center"/>
                 </StackPanel>
