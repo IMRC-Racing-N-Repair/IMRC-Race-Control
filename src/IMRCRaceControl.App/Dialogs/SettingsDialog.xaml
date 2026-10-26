@@ -13,6 +13,7 @@
 
         <TabControl Grid.Row="1" TabStripPlacement="Left" ItemContainerStyle="{StaticResource SideNavigationTabItemStyle}">
             <TabItem Header="APPLICATION"><ScrollViewer VerticalScrollBarVisibility="Auto"><StackPanel Margin="16">
+                <TextBlock Text="EVENT REGISTRATION" FontSize="24" FontWeight="Bold" Margin="0,0,0,10"/><CheckBox x:Name="ClassFirstRegistrationCheck" Content="Use class-first registration (previous layout)" Margin="0,0,0,8"/><TextBlock Text="Default: select a driver, then choose their classes and transponder numbers. Both views share the same registrations." TextWrapping="Wrap" Margin="0,0,0,22"/>
                 <TextBlock Text="APPLICATION UPDATES" FontSize="24" FontWeight="Bold" Margin="0,0,0,10"/>
                 <TextBlock Text="Check for the latest published release of IMRC Race Control." TextWrapping="Wrap"/>
                 <Button x:Name="CheckUpdatesButton" Content="CHECK FOR UPDATES" Click="CheckUpdates_Click" HorizontalAlignment="Left" Margin="0,12,0,24"/>

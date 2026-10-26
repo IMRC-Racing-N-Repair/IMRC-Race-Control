@@ -19,6 +19,8 @@ public partial class MainWindow
         if (dialog.ShowDialog() != true)
             return;
 
+        _settings.EventRegistrationDriverFirst = dialog.EventRegistrationDriverFirst;
+        RefreshEventRegistrationView();
         dialog.ApplyRaceAudio(_settings);
         ApplyScreenZoom();
         _settings.WebShowOverallPosition = dialog.WebShowOverallPosition;

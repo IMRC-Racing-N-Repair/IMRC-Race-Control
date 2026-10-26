@@ -1,7 +1,7 @@
 ## Transponder rentals — 0.16.24
 
 - Local Windows-targeted application build: zero errors or warnings.
-- 945 regression checks pass, including canonical/duplicate IDs, duplicate aliases and color/number labels, unique random labels, more than 1,000 rentals, assignment/return, immutable completed lineups, skipped-week history, renamed/deleted entity snapshots and SQLite round trips.
+- 955 regression checks pass, including canonical/duplicate IDs, duplicate aliases and color/number labels, unique random labels, more than 1,000 rentals, assignment/return, immutable completed lineups, skipped-week history, renamed/deleted entity snapshots and SQLite round trips.
 - Windows packaging runs the real Transponder control with sample data in every theme. It checks visible duplicate errors, manual addition, selection and the three actual-use event history, and exports PNG previews plus a multi-class rental/personal lineup print sample and themed event/class/naming dialogs.
 - Added checks for persistent defaults, globally unique lowest-available numbering, random colors, reusable custom patterns and rental nickname-only print formatting, selected/all nickname resets and safe class colors.
 - Existing installer checks cover fresh install, repair, upgrade from the retained public 0.16.23 and active-session protection.
@@ -20,3 +20,5 @@ Interactive Windows checks: hover tooltips, the disabled empty Series screen, Se
 If an earlier repair already deleted the old database, recovery requires a surviving database or backup; the installer cannot recreate deleted records.
 
 - Lineup checks cover prior-round identity matching, future-round exclusion, repeated mains, rating/class matching, provisional defaults and black-text contrast for every vivid class color. Windows preview checks include 100-driver pagination with repeated headings and wrapped names.
+
+- Driver-first registration checks preserve serialized saved races exactly when adding late drivers, keep separate class transponders and round-trip the class-first view preference. Windows build exports the actual registration control.

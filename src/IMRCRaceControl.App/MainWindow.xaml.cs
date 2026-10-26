@@ -767,6 +767,7 @@ public partial class MainWindow : Window
         QualRoundBuilderPanel.IsEnabled = editable;
         EndEventButton.IsEnabled = hasEvent;
         EndEventButton.Content = _activeEvent?.Status == EventStatus.Completed ? "REOPEN EVENT" : "END CURRENT EVENT";
+        RefreshEventRegistrationView();
         EventNewClassButton.IsEnabled = editable;
         EventClassUpButton.IsEnabled = editable;
         EventClassDownButton.IsEnabled = editable;

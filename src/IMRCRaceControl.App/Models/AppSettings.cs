@@ -2,6 +2,7 @@ namespace IMRCRaceControl.Models;
 
 public sealed class AppSettings
 {
+    public bool EventRegistrationDriverFirst { get; set; } = true;
     public RentalTransponderState RentalTransponders { get; set; } = new();
     public OnlinePublishingSettings OnlinePublishing { get; set; } = new();
     public TrackProfile Track { get; set; } = new();

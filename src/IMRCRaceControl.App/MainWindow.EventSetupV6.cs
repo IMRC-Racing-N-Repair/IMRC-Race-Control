@@ -104,6 +104,7 @@ public partial class MainWindow
 
     private void RefreshEventDriverChoices(string? selectDriverId = null)
     {
+        RefreshEventRegistrationView();
         selectDriverId ??= (EventDriverChecklist?.SelectedItem as EventDriverChoice)?.DriverId;
         EventDriverChoices.Clear();
 
@@ -451,29 +452,12 @@ public partial class MainWindow
             : $"Updated {choice.DisplayName}'s event transponder to {assignment.TransponderId}.";
     }
 
-    private async Task<bool> PrepareRosterChangeAsync(string classId)
+    private Task<bool> PrepareRosterChangeAsync(string classId)
     {
-        if (_activeEvent is null)
-            return false;
-
-        var future = _activeEvent.Sessions
-            .Where(s => s.ClassId == classId && s.ProgressStatus is EventSessionStatus.Planned or EventSessionStatus.Loaded)
-            .ToList();
-
-        if (future.Count == 0)
-            return true;
-
-        if (MessageBox.Show(this,
-                $"This class already has {future.Count} uncompleted heat(s). Changing its event roster will remove those heat(s) so the round can be rebuilt. Continue?",
-                "Roster changed", MessageBoxButton.YesNo, MessageBoxImage.Warning) != MessageBoxResult.Yes)
-            return false;
-
-        foreach (var session in future)
-            _activeEvent.Sessions.Remove(session);
-
-        RebuildSessionQueueOrder();
-        RefreshPlannedSessions();
-        return true;
+        if (_activeEvent is null) return Task.FromResult(false);
+        if (_activeEvent.Sessions.Any(s => s.ClassId == classId))
+            ShowRegistrationLineupWarning();
+        return Task.FromResult(true);
     }
 
     private void UpdateFutureSessionTransponder(EventDriverAssignment assignment)

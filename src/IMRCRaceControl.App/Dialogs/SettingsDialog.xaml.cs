@@ -93,6 +93,8 @@ public partial class SettingsDialog : Window
     public string DashboardPositionSameColor { get; private set; } = string.Empty;
     public bool DashboardColorsFollowTheme { get; private set; } = true;
 
+    public bool EventRegistrationDriverFirst => ClassFirstRegistrationCheck.IsChecked != true;
+
     public SettingsDialog(AppSettings settings)
     {
         InitializeComponent();
@@ -101,6 +103,7 @@ public partial class SettingsDialog : Window
         DataContext = this;
 
         _sourceSettings = settings;
+        ClassFirstRegistrationCheck.IsChecked = !settings.EventRegistrationDriverFirst;
         WebOverallCheck.IsChecked = settings.WebShowOverallPosition;
         SpectatorHeaderCheck.IsChecked = settings.SpectatorShowHeader;
         SpectatorClockCheck.IsChecked = settings.SpectatorShowClock;

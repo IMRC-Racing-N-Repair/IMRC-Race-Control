@@ -4,6 +4,10 @@ Keep all release history in this file. Add each new version at the top; do not c
 
 ## 0.16.24
 
+- Default Events to driver-first registration: select a driver, then choose classes and separate event transponder numbers.
+- Add Settings > Application > Use class-first registration to restore the previous view without changing event data.
+- Preserve built rounds and race results on roster additions/removals; warn to update race placement in Open Rounds / Mains and reprint the lineup.
+
 - Redesign lineup sheets with a compact logo/round header, vivid race-number badges, neutral tables and stronger alternating gray rows.
 - Replace Seed with class-specific SOF/SR performance/safety ratings and mark unrated starting values.
 - Show each driver's latest earlier completed round, laps and total time using driver identity across car-number changes.

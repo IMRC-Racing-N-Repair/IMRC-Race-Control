@@ -837,8 +837,9 @@
                             </Grid>
                         </Border>
 
-                        <!-- Classes left / roster right -->
-                        <Grid Grid.Row="1">
+                        <!-- Registration views share the same event assignments. -->
+                        <controls:EventRegistrationView x:Name="DriverRegistrationView" Grid.Row="1"/>
+                        <Grid x:Name="ClassFirstRegistrationPanel" Grid.Row="1">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="0.72*"/>
                                 <ColumnDefinition Width="10"/>

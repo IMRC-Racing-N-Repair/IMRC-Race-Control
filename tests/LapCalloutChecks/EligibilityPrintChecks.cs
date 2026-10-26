@@ -143,6 +143,18 @@ public static class EligibilityPrintChecks
             var luminance=.2126*Linear(red)+.7152*Linear(green)+.0722*Linear(blue);
             Eq(true,(luminance+.05)/.05>=4.5,"Black text readable on "+color.Name);
         }
+        var registrationEvent = new RaceDayEventDefinition { ClassIds=["c"],Sessions=[new() { Id="saved-race",ClassId="c",Round=2,ProgressStatus=EventSessionStatus.Loaded,Entrants=[new() { DriverId="existing",CarNumber=1,TransponderId="111" }] },new() { Id="finished",ClassId="c",ProgressStatus=EventSessionStatus.Completed,Results=[new() { CarNumber=1,Laps=10 }] }] };
+        var savedSessions=JsonSerializer.Serialize(registrationEvent.Sessions);
+        Eq(true,EventRegistration.Set(registrationEvent,"late","c",true,"222"),"Late registration warns when races exist");
+        Eq(savedSessions,JsonSerializer.Serialize(registrationEvent.Sessions),"Late registration preserves loaded races, IDs, rounds and completed results exactly");
+        Eq("222",registrationEvent.DriverAssignments.Single().TransponderId,"Driver registration stores class transponder");
+        Eq(false,EventRegistration.Set(registrationEvent,"late","second",true,"333"),"New class without races needs no placement warning");
+        Eq(true,registrationEvent.ClassIds.Contains("second"),"Driver registration includes selected class in event");
+        Eq(2,registrationEvent.DriverAssignments.Count,"Driver can enter multiple classes with separate transponders");
+        Eq(false,EventRegistration.Set(registrationEvent,"late","c",true,"444"),"Transponder-only edit does not duplicate registration or warning");
+        Eq(savedSessions,JsonSerializer.Serialize(registrationEvent.Sessions),"Registration edits do not rebuild races");
+        Eq(true,new AppSettings().EventRegistrationDriverFirst,"Driver-first registration is default");
+        Eq(false,JsonSerializer.Deserialize<AppSettings>(JsonSerializer.Serialize(new AppSettings { EventRegistrationDriverFirst=false }))!.EventRegistrationDriverFirst,"Class-first preference survives serialization");
         return checks;
     }
 }
