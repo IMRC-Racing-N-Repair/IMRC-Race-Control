@@ -64,7 +64,7 @@ if (-not (Test-Path (Join-Path $branding "Transponder-Print-Continuation.png")))
 
 if (-not (Test-Path (Join-Path $branding "Event-Driver-Registration.png"))) { throw "Missing compact class-card event registration preview" }
 
-if (-not (Test-Path (Join-Path $branding "Dialog-CompletedRaceExportDialog.png"))) { throw "Missing completed race export preview (lap matrix build)" }
+if (-not (Test-Path (Join-Path $branding "Dialog-CompletedRaceExportDialog.png"))) { throw "Missing completed race export preview (breakout lap matrix build)" }
 if (-not (Test-Path (Join-Path $branding "Dialog-ReportPrintDialog.png"))) { throw "Missing completed lap report preview" }
 if (-not (Test-Path (Join-Path $branding "Lap-Matrix-8-1.png"))) { throw "Missing eight-driver lap matrix preview" }
 if (-not (Test-Path (Join-Path $branding "Lap-Matrix-8-2.png"))) { throw "Missing continued lap matrix preview" }

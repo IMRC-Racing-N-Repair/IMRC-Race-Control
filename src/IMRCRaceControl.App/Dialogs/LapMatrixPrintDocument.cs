@@ -24,7 +24,17 @@ internal static class LapMatrixPrintDocument
                 for(var i=0;i<cells.Length;i++)
                 {
                     var text=Text(cells[i],font,header);text.TextAlignment=TextAlignment.Center;text.VerticalAlignment=VerticalAlignment.Center;
-                    var border=new Border { Child=text,Padding=new Thickness(3,5,3,5),MinHeight=28,BorderBrush=Brushes.Gray,BorderThickness=new Thickness(i==0?1:0,header?1:0,1,1),Background=header?Brushes.LightGray:index%2==1?new SolidColorBrush(Color.FromRgb(229,232,236)):Brushes.White };
+                    FrameworkElement content=text;
+                    if(!header && i>0 && cells[i].Contains('\n'))
+                    {
+                        var parts=cells[i].Split('\n');
+                        var stack=new StackPanel { VerticalAlignment=VerticalAlignment.Center,HorizontalAlignment=HorizontalAlignment.Stretch };
+                        var rejected=Text(parts[0],Math.Max(9,font-3));rejected.TextAlignment=TextAlignment.Center;
+                        stack.Children.Add(rejected);
+                        stack.Children.Add(new Border { Height=1,Background=Brushes.Gray,Margin=new Thickness(8,2,8,2) });
+                        var valid=Text(parts[1],font);valid.TextAlignment=TextAlignment.Center;stack.Children.Add(valid);content=stack;
+                    }
+                    var border=new Border { Child=content,Padding=new Thickness(3,5,3,5),MinHeight=28,BorderBrush=Brushes.Gray,BorderThickness=new Thickness(i==0?1:0,header?1:0,1,1),Background=header?Brushes.LightGray:index%2==1?new SolidColorBrush(Color.FromRgb(229,232,236)):Brushes.White };
                     Grid.SetColumn(border,i);grid.Children.Add(border);
                 }
                 return grid;
@@ -38,7 +48,11 @@ internal static class LapMatrixPrintDocument
                 double Measure(FrameworkElement e) {e.Measure(new Size(available,double.PositiveInfinity));return e.DesiredSize.Height;}
                 void Add(FrameworkElement e) {used+=Measure(e);body.Children.Add(e);}
                 var heading=new Grid();heading.ColumnDefinitions.Add(new ColumnDefinition {Width=new GridLength(170)});heading.ColumnDefinitions.Add(new ColumnDefinition());
-                heading.Children.Add(PrintBranding.Logo());var title=Text(report.Title,22,true);title.HorizontalAlignment=HorizontalAlignment.Right;title.VerticalAlignment=VerticalAlignment.Center;Grid.SetColumn(title,1);heading.Children.Add(title);Add(heading);
+                heading.Children.Add(PrintBranding.Logo());
+                var titles=new StackPanel {VerticalAlignment=VerticalAlignment.Center,Margin=new Thickness(10,0,0,0)};
+                var title=Text(section.Title,26,true);title.TextAlignment=TextAlignment.Right;titles.Children.Add(title);
+                var round=Text(section.RoundHeading,15,true);round.TextAlignment=TextAlignment.Right;titles.Children.Add(round);
+                Grid.SetColumn(titles,1);heading.Children.Add(titles);Add(heading);
                 var subtitle=Text(report.Subtitle,10);subtitle.Margin=new Thickness(0,5,0,12);Add(subtitle);
                 Add(Row(section.Columns,true,0));
                 if(section.Rows.Count==0)Add(Text(section.Notes,12));
@@ -49,7 +63,7 @@ internal static class LapMatrixPrintDocument
                     if(used+Measure(row)>height-78)break;
                     Add(row);offset++;
                 }
-                var footer=Text($"Page {document.Pages.Count+1} • Lap times in seconds • — No recorded lap",9);FixedPage.SetLeft(footer,28);FixedPage.SetTop(footer,height-30);page.Children.Add(footer);
+                var footer=Text($"Page {document.Pages.Count+1} • ** Breakout (not counted), above valid lap • — No scored lap",9);FixedPage.SetLeft(footer,28);FixedPage.SetTop(footer,height-30);page.Children.Add(footer);
                 document.Pages.Add(new PageContent {Child=page});
                 if(section.Rows.Count>0 && offset==pageStart)throw new InvalidOperationException("Driver names do not fit this paper size.");
             } while(offset<section.Rows.Count);

@@ -40,7 +40,7 @@ public static class RaceReports
         var report = new RaceReport { Title = "Race lap times", IsLapMatrix=true,
             Subtitle = $"{ev.Name} • {ev.EventDate:MM/dd/yyyy} • {session.RoundLabel} • {session.DashboardDisplay}" };
         var cars = session.Entrants.Select(e => e.CarNumber).Concat(session.Results.Select(r => r.CarNumber))
-            .Concat(session.Laps.Select(l => l.CarNumber)).Distinct().Where(c => carNumber is null || c == carNumber).Order().ToList();
+            .Concat(session.Laps.Select(l => l.CarNumber)).Concat(session.Breakouts.Select(b=>b.CarNumber)).Distinct().Where(c => carNumber is null || c == carNumber).Order().ToList();
         string Name(int car)
         {
             var entrant=session.Entrants.FirstOrDefault(e=>e.CarNumber==car);
@@ -53,9 +53,17 @@ public static class RaceReports
         {
             var columns=new[]{"Lap"}.Concat(group.Select(c=>names.Values.Count(n=>n==names[c])>1 ? $"{names[c]} #{c}" : names[c])).ToArray();
             var byCar=group.ToDictionary(c=>c,c=>session.Laps.Where(l=>l.CarNumber==c).GroupBy(l=>l.LapNumber).ToDictionary(g=>g.Key,g=>g.OrderByDescending(l=>l.Sequence).First().LapTimeDisplay));
-            var lapNumbers=group.SelectMany(c=>byCar[c].Keys).Distinct().Order();
-            var rows=lapNumbers.Select(n=>new[]{n.ToString()}.Concat(group.Select(c=>byCar[c].GetValueOrDefault(n,"—"))).ToArray()).ToList();
-            report.Sections.Add(new ReportSection("",columns,rows,rows.Count==0 ? "No recorded laps." : ""));
+            var breakouts=session.Breakouts.Where(b=>group.Contains(b.CarNumber)).GroupBy(b=>(b.CarNumber,b.AttemptedLapNumber))
+                .ToDictionary(g=>g.Key,g=>string.Join(", ",g.OrderBy(b=>b.Timestamp).ThenBy(b=>b.Sequence).Select(b=>b.LapTimeDisplay+"**")));
+            var lapNumbers=group.SelectMany(c=>byCar[c].Keys).Concat(breakouts.Keys.Select(k=>k.AttemptedLapNumber)).Distinct().Order();
+            string Cell(int car,int lap)
+            {
+                var valid=byCar[car].GetValueOrDefault(lap,"—");
+                return breakouts.TryGetValue((car,lap),out var rejected) ? rejected+"\n"+valid : valid;
+            }
+            var rows=lapNumbers.Select(n=>new[]{n.ToString()}.Concat(group.Select(c=>Cell(c,n))).ToArray()).ToList();
+            var round=session.SessionType==SessionType.Qualifying ? $"QUALIFYING ROUND {session.Round} • HEAT {session.Heat}" : $"MAIN ROUND {session.MainLeg} • {session.HeatMainDisplay}-MAIN";
+            report.Sections.Add(new ReportSection(session.ClassName,columns,rows,rows.Count==0 ? "No recorded laps." : "",$"RACE #{session.RaceNumber} • {round}"));
         }
         return report;
     }
@@ -67,7 +75,7 @@ public static class RaceReports
         foreach (var section in report.Sections)
         {
             lines.Add(string.Join(",",section.Columns.Select(Cell)));
-            lines.AddRange(section.Rows.Select(row=>string.Join(",",row.Select(Cell))));
+            lines.AddRange(section.Rows.Select(row=>string.Join(",",row.Select(value=>Cell(value.Replace("\n"," / "))))));
             if(section.Rows.Count==0) lines.Add(Cell(section.Notes));
             lines.Add("");
         }

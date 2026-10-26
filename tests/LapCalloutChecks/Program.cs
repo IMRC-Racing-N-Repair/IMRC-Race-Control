@@ -105,6 +105,14 @@ Equal(9,wideReport.Sections[0].Columns.Length,"Eight driver columns plus lap num
 Equal("YOSHI",wideReport.Sections[0].Columns[1],"Nickname preferred in matrix header");
 Equal(2,wideReport.Sections[1].Columns.Length,"Remaining driver retained");
 Equal("—",allLapReport.Sections[0].Rows[1][2],"Unequal lap counts align by lap number");
+exportRace.Breakouts.Add(new BreakoutRecord(1,1,"One",2,TimeSpan.FromSeconds(2.95),TimeSpan.FromSeconds(8),TimeSpan.FromSeconds(3),liveStart,"decoder"));
+exportRace.Breakouts.Add(new BreakoutRecord(2,1,"One",3,TimeSpan.FromSeconds(2.1),TimeSpan.FromSeconds(12),TimeSpan.FromSeconds(3),liveStart.AddSeconds(1),"decoder"));
+var breakoutReport=RaceReports.CompletedRace(exportEvent,exportRace,1);
+Equal("2.950**\n5.432",breakoutReport.Sections[0].Rows[1][1],"Breakout above true scored lap with same number");
+Equal("2.100**\n—",breakoutReport.Sections[0].Rows[2][1],"Trailing breakout shown without inventing a lap");
+Equal(true,RaceReports.LapReportCsv(breakoutReport).Contains("2.950** / 5.432"),"CSV keeps breakout and valid lap together");
+Equal(exportRace.ClassName,breakoutReport.Sections[0].Title,"Class heading retained");
+Equal(true,breakoutReport.Sections[0].RoundHeading.Contains("QUALIFYING ROUND"),"Qual and heat heading provided");
 // Race audio follows elapsed race time; repeats and delayed ticks must not replay cues.
 var audioSettings = new AppSettings { RaceLeadersEnabled = true, RaceLeaderCount = 3,
     RaceLeaderIntervalSeconds = 15, RaceHalfwayToneEnabled = true, RaceCountdownEnabled = true,

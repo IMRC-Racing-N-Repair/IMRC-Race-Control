@@ -49,10 +49,10 @@ public sealed class CompletedRaceExportDialog : Window
             if (session is not null)
             {
                 // Include recorded cars even if the event roster was edited after racing.
-                var cars = session.Entrants.Select(e => e.CarNumber).Concat(session.Results.Select(r => r.CarNumber)).Concat(session.Laps.Select(l => l.CarNumber)).Distinct().Order();
+                var cars = session.Entrants.Select(e => e.CarNumber).Concat(session.Results.Select(r => r.CarNumber)).Concat(session.Laps.Select(l => l.CarNumber)).Concat(session.Breakouts.Select(b=>b.CarNumber)).Distinct().Order();
                 foreach (var car in cars)
                 {
-                    var name = session.Entrants.FirstOrDefault(e => e.CarNumber == car)?.DisplayName ?? session.Results.FirstOrDefault(r => r.CarNumber == car)?.DriverName ?? session.Laps.First(l => l.CarNumber == car).DriverName;
+                    var name = session.Entrants.FirstOrDefault(e => e.CarNumber == car)?.DisplayName ?? session.Results.FirstOrDefault(r => r.CarNumber == car)?.DriverName ?? session.Laps.FirstOrDefault(l => l.CarNumber == car)?.DriverName ?? session.Breakouts.First(b=>b.CarNumber==car).DriverName;
                     choices.Add(new(car, $"#{car} • {name}"));
                 }
             }

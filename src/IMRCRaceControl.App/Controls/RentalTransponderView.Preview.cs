@@ -121,6 +121,8 @@ public partial class RentalTransponderView
         foreach(var entrant in lapSession.Entrants)
             for (var lap = 1; lap <= 70-entrant.CarNumber; lap++)
                 lapSession.Laps.Add(new LapRecord(lap*8+entrant.CarNumber,entrant.CarNumber,entrant.DisplayName,lap,TimeSpan.FromSeconds(6+entrant.CarNumber*.13),TimeSpan.FromSeconds(lap*(6+entrant.CarNumber*.13)),DateTimeOffset.Now,"decoder",false));
+        lapSession.Breakouts.Add(new BreakoutRecord(1,1,names[0],11,TimeSpan.FromSeconds(2.95),TimeSpan.FromSeconds(64.25),TimeSpan.FromSeconds(3),DateTimeOffset.Now,"decoder"));
+        lapSession.Breakouts.Add(new BreakoutRecord(2,1,names[0],70,TimeSpan.FromSeconds(2.1),TimeSpan.FromSeconds(430),TimeSpan.FromSeconds(3),DateTimeOffset.Now,"decoder"));
         foreach(var count in new[]{8,3,1})
         {
             var matrix=RaceReports.CompletedRace(printEvent,lapSession);
