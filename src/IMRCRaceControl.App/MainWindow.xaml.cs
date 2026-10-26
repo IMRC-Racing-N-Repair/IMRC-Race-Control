@@ -765,7 +765,8 @@ public partial class MainWindow : Window
 
         // Only controls that can change event data are disabled.
         QualRoundBuilderPanel.IsEnabled = editable;
-        EndEventButton.IsEnabled = editable;
+        EndEventButton.IsEnabled = hasEvent;
+        EndEventButton.Content = _activeEvent?.Status == EventStatus.Completed ? "REOPEN EVENT" : "END CURRENT EVENT";
         EventNewClassButton.IsEnabled = editable;
         EventClassUpButton.IsEnabled = editable;
         EventClassDownButton.IsEnabled = editable;

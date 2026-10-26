@@ -7,6 +7,7 @@ namespace IMRCRaceControl.Dialogs;
 
 public partial class ClassEditorDialog : Window
 {
+    public string PrintColor => (ClassColorCombo.SelectedItem as ClassPrintColor)?.Hex ?? ClassPrintColors.Choices[0].Hex;
     public string ClassName => ClassNameText.Text.Trim();
     public RaceFormat RaceFormat { get; private set; } = global::IMRCRaceControl.Models.RaceFormat.Timed;
     public RaceFormat MainRaceFormat { get; private set; }
@@ -26,6 +27,8 @@ public partial class ClassEditorDialog : Window
     {
         InitializeComponent();
         DataContext = this;
+        ClassColorCombo.ItemsSource = ClassPrintColors.Choices;
+        ClassColorCombo.SelectedItem = ClassPrintColors.Choices.First(c => c.Hex == ClassPrintColors.Safe(cls?.PrintColor));
 
         if (cls is null)
         {

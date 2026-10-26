@@ -98,6 +98,16 @@ public partial class RentalTransponderView : UserControl
         if (dialog.ShowDialog() != true) return;
         await Change(() => dialog.Apply(_settings));
     }
+    private async void ResetNicknameClicked(object sender, RoutedEventArgs e)
+    {
+        if (_settings is null || SelectedId is not { } id) return;
+        await Change(() => RentalTransponderRegistry.ResetNicknames(_settings, id), selectId: id);
+    }
+    private async void ResetAllNicknamesClicked(object sender, RoutedEventArgs e)
+    {
+        if (_settings is null) return;
+        await Change(() => RentalTransponderRegistry.ResetNicknames(_settings));
+    }
     private async void RemoveClicked(object sender, RoutedEventArgs e)
     {
         if (_settings is null || SelectedId is not { } id) return;

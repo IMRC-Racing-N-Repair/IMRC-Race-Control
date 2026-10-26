@@ -18,7 +18,7 @@ public partial class App : Application
                     window.SetResourceReference(FrameworkElement.StyleProperty, typeof(Window));
             }));
         EventManager.RegisterClassHandler(typeof(Window), FrameworkElement.LoadedEvent,
-            new RoutedEventHandler((sender, _) => { if (sender is Window window) Services.ModalBackdrop.Attach(window); }));
+            new RoutedEventHandler((sender, _) => { if (sender is Window window) { Services.DialogChrome.Attach(window); Services.ModalBackdrop.Attach(window); } }));
         DispatcherUnhandledException += App_DispatcherUnhandledException;
         AppDomain.CurrentDomain.UnhandledException += CurrentDomain_UnhandledException;
         TaskScheduler.UnobservedTaskException += TaskScheduler_UnobservedTaskException;

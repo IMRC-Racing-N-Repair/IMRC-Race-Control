@@ -1294,6 +1294,7 @@
                                 <DataGridTextColumn Header="CLASS" Binding="{Binding Name}" Width="1.15*"/>
                                 <DataGridTextColumn Header="MAIN FORMAT" Binding="{Binding MainRaceFormatDisplay}" Width="110"/>
                                 <DataGridTextColumn Header="QUAL FORMAT" Binding="{Binding RaceFormatDisplay}" Width="110"/>
+                                <DataGridTemplateColumn Header="COLOR" Width="65"><DataGridTemplateColumn.CellTemplate><DataTemplate><Border Background="{Binding PrintColor}" Width="42" Height="18" BorderBrush="#808080" BorderThickness="1"/></DataTemplate></DataGridTemplateColumn.CellTemplate></DataGridTemplateColumn>
                                 <DataGridTextColumn Header="LENGTH" Binding="{Binding RaceLengthDisplay}" Width="88"/>
                                 <DataGridTextColumn Header="MIN LAP" Binding="{Binding MinimumLapSeconds}" Width="75"/>
                                 <DataGridTextColumn Header="RACERS / HEAT" Binding="{Binding MaxRacersPerHeat}" Width="100"/>

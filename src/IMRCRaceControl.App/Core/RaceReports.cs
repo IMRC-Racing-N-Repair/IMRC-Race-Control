@@ -9,7 +9,7 @@ public sealed class RaceReport
     public List<ReportSection> Sections { get; } = [];
     public Dictionary<string, ReportTextStyle> TextStyles { get; } = new(StringComparer.Ordinal);
 }
-public sealed record ReportSection(string Title, string[] Columns, List<string[]> Rows, string Notes = "", string RoundHeading = "");
+public sealed record ReportSection(string Title, string[] Columns, List<string[]> Rows, string Notes = "", string RoundHeading = "", string ClassColor = "#DCE1E6", int RaceNumber = 0);
 public sealed record EventReportScope(SessionType? Type = null, int? Round = null)
 {
     public string Label => Type == SessionType.Qualifying ? $"Qualifying round {Round}" : Type == SessionType.Race ? "Mains" : "All rounds / mains";
@@ -33,7 +33,7 @@ public sealed record EventReportScope(SessionType? Type = null, int? Round = nul
 public static class RaceReports
 {
     private static string Number(decimal n) => n.ToString("0.##");
-    public static RaceReport Lineups(RaceDayEventDefinition ev, string? classId = null, EventReportScope? scope = null, RentalTransponderState? rentals = null)
+    public static RaceReport Lineups(RaceDayEventDefinition ev, string? classId = null, EventReportScope? scope = null, RentalTransponderState? rentals = null, IEnumerable<ClassDefinition>? classes = null)
     {
         scope ??= new EventReportScope();
         RaceSchedule.AssignRaceNumbers(ev.Sessions);
@@ -49,11 +49,11 @@ public static class RaceReports
                 (s.SessionType == SessionType.Race ? $"{s.HeatMainDisplay}-MAIN" : $"HEAT {s.Heat}");
             report.Sections.Add(new ReportSection(raceHeading, ["Car","Driver","Transponder","Seed"],
                 s.Entrants.OrderBy(e=>e.CarNumber).Select(e=>new[] { e.CarNumber.ToString(),e.DisplayName,rentalLabels.Format(e.TransponderId),e.SeedRank.ToString() }).ToList(),
-                RoundHeading: roundHeading));
+                RoundHeading: roundHeading, ClassColor: classes?.FirstOrDefault(c => c.Id == s.ClassId)?.PrintColor ?? ClassPrintColors.Choices[0].Hex, RaceNumber: s.RaceNumber));
         }
         return report;
     }
-    public static RaceReport EventStandings(RaceDayEventDefinition ev, string? classId = null, EventReportScope? scope = null)
+    public static RaceReport EventStandings(RaceDayEventDefinition ev, string? classId = null, EventReportScope? scope = null, IEnumerable<ClassDefinition>? classes = null)
     {
         scope ??= new EventReportScope();
         var report = new RaceReport { Title="Race event completed results", Subtitle=$"{ev.Name} • {ev.EventDate:MM/dd/yyyy} • {scope.Label}",
@@ -61,12 +61,15 @@ public static class RaceReports
         foreach (var group in ev.Sessions.Where(s=>(classId is null || s.ClassId==classId) && scope.Matches(s)).GroupBy(s=>s.ClassId))
         {
             var cls=group.First().ClassName;
+            var color = classes?.FirstOrDefault(c => c.Id == group.Key)?.PrintColor ?? ClassPrintColors.Choices[0].Hex;
+            var sectionStart = report.Sections.Count;
             var q=scope.Type == SessionType.Race ? [] : SeriesScoring.QualifyingOrder(ev,group.Key,scope.Round);
             if (q.Count>0) report.Sections.Add(new ReportSection($"{cls} • {(scope.Round.HasValue ? scope.Label : "Overall qualifying")}",["Position","Driver"],q.Select((d,i)=>new[] {(i+1).ToString(),d.DriverName}).ToList()));
             var m=scope.Type == SessionType.Qualifying ? [] : SeriesScoring.MainOrder(ev,group.Key);
             if (m.Count>0) report.Sections.Add(new ReportSection($"{cls} • Overall mains",["Position","Driver"],m.Select((d,i)=>new[] {(i+1).ToString(),d.DriverName}).ToList(),"Repeated mains use the configured best runs. Incomplete main groups are excluded."));
             foreach (var s in group.Where(s=>s.ProgressStatus==EventSessionStatus.Completed).OrderBy(s=>s.QueueOrder))
                 report.Sections.Add(new ReportSection(s.Name,["Pos","Car","Driver","Laps","Total time","Fast lap"],s.Results.OrderBy(r=>r.Position).Select(r=>new[] {r.Position.ToString(),r.CarNumber.ToString(),r.DriverName,r.Laps.ToString(),r.TotalTime,r.BestLap}).ToList()));
+            for (var i = sectionStart; i < report.Sections.Count; i++) report.Sections[i] = report.Sections[i] with { ClassColor = color };
         }
         return report;
     }
@@ -92,7 +95,7 @@ public static class RaceReports
         }
         return report;
     }
-    public static RaceReport Practice(string driverName, DateTime start, DateTime end, IEnumerable<(PracticeHistoryRow Stint,IReadOnlyList<PracticeHistoryLapRow> Laps)> stints, RentalTransponderState? rentals = null)
+    public static RaceReport Practice(string driverName, DateTime start, DateTime end, IEnumerable<(PracticeHistoryRow Stint,IReadOnlyList<PracticeHistoryLapRow> Laps)> stints, RentalTransponderState? rentals = null, IEnumerable<ClassDefinition>? classes = null)
     {
         var report=new RaceReport { Title=$"Practice — {driverName}",Subtitle=$"{start:MM/dd/yyyy}–{end:MM/dd/yyyy}" };
         var rentalLabels = new RentalPrintFormatting(rentals, report);

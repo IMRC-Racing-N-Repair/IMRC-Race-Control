@@ -105,6 +105,25 @@ public static class RentalTransponderRegistry
         CaptureAssignments(settings);
         return rental;
     }
+    public static void ResetNicknames(AppSettings settings, string? selectedId = null)
+    {
+        var state = settings.RentalTransponders;
+        NormalizeDefaults(state);
+        var reserved = state.Inventory.Where(x => x.LabelNumber > 0).Select(x => x.LabelNumber).ToHashSet();
+        var replacements = state.Inventory.Select(old =>
+        {
+            if (selectedId is not null && old.Id != selectedId) return old;
+            var color = state.NewLabelColor == "Random" ? Colors[Random.Shared.Next(Colors.Length)] : state.NewLabelColor;
+            var number = old.LabelNumber;
+            if (number < 1) { number = 1; while (reserved.Contains(number)) number++; reserved.Add(number); }
+            return new RentalTransponder { Id = old.Id, Number = old.Number, LabelNumber = number,
+                Color = state.NewNicknameStyle == "Transponder" ? "Default" : color,
+                Nickname = GeneratedNickname(state, old.Number, color, number) };
+        }).ToList();
+        var candidate = new RentalTransponderState { Inventory = replacements };
+        ValidateState(candidate);
+        state.Inventory = replacements;
+    }
     public static void Remove(AppSettings settings, string id)
     {
         var state = settings.RentalTransponders;

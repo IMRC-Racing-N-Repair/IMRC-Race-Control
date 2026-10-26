@@ -578,6 +578,8 @@ public partial class MainWindow
 
     private async void EndEvent_Click(object sender, RoutedEventArgs e)
     {
+        if (_activeEvent?.Status == EventStatus.Completed) { ReopenEvent_Click(sender, e); return; }
+
         if (_resultAutoSaveInProgress)
         {
             MessageBox.Show(this, "The last race result is still being saved. End the event after that save finishes.", "End event",
@@ -650,6 +652,7 @@ public partial class MainWindow
                 "Reopen event", MessageBoxButton.YesNo, MessageBoxImage.Warning) != MessageBoxResult.Yes)
             return;
 
+        if (!ApplicationUpdateAllowed) { FooterStatusText.Text = "Finish the active session before reopening an event."; return; }
         _activeEvent.Status = EventStatus.Active;
         _activeEvent.CompletedAt = null;
 
@@ -662,6 +665,8 @@ public partial class MainWindow
         }
 
         RebuildSessionQueueOrder();
+        RefreshPlannedSessions();
+        RefreshEventClassRows();
         EventSelectCombo.Items.Refresh();
         UpdateRaceDashboardAvailability();
         RefreshRaceDayFlow();

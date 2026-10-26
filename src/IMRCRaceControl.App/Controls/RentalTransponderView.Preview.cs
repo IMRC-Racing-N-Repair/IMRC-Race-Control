@@ -74,10 +74,12 @@ public partial class RentalTransponderView
         printSettings.RentalTransponders.PrintInColor = true;
         printSettings.RentalTransponders.PrintFontSize = 15;
         RentalTransponderRegistry.Add(printSettings, "1000001");
-        var report = new RaceReport { Title = "Rental print preview", Subtitle = "Club racing • Rental labels and personal transponders", IsLineup = true };
+        var report = new RaceReport { Title = "Class lineup print preview", Subtitle = "Club racing • Rental labels and personal transponders", IsLineup = true };
         var formatter = new RentalPrintFormatting(printSettings.RentalTransponders, report);
         report.Sections.Add(new ReportSection("RACE #1 - 21.5 STOCK - HEAT 1", ["Car", "Driver", "Transponder", "Seed"],
-            [ ["1", "Alex Rivera", formatter.Format("1000001"), "1"], ["2", "Jordan Lee", formatter.Format("6001201"), "2"] ], RoundHeading: "Qualifying Round 1"));
+            [ ["1", "Alex Rivera", formatter.Format("1000001"), "1"], ["2", "Jordan Lee", formatter.Format("6001201"), "2"], ["3", "Taylor Smith", "6001202", "3"] ], RoundHeading: "Qualifying Round 1", ClassColor: "#BDF1BB", RaceNumber: 1));
+        report.Sections.Add(new ReportSection("RACE #2 - NOVICE - HEAT 1", ["Car", "Driver", "Transponder", "Seed"],
+            [["1", "Sam Miller", formatter.Format("1000001"), "1"], ["2", "Riley Jones", "7654321", "2"]], RoundHeading: "Qualifying Round 1", ClassColor: "#FFF7A8", RaceNumber: 2));
         var document = IMRCRaceControl.Dialogs.LineupPrintDocument.Build(report, 816, 1056);
         var page = document.Pages[0].Child;
         page.Measure(new Size(816, 1056)); page.Arrange(new Rect(0, 0, 816, 1056)); page.UpdateLayout();
@@ -85,6 +87,18 @@ public partial class RentalTransponderView
         printImage.Render(page);
         var printEncoder = new PngBitmapEncoder(); printEncoder.Frames.Add(BitmapFrame.Create(printImage));
         using (var file = File.Create(Path.Combine(output, "Transponder-Print.png"))) printEncoder.Save(file);
+        var owner = new Window { Width = 1000, Height = 720 }; owner.Show();
+        foreach (var dialog in new Window[] { new IMRCRaceControl.Dialogs.EventEditorDialog(), new IMRCRaceControl.Dialogs.ClassEditorDialog(), new RentalAppearanceDialog(printSettings) })
+        {
+            dialog.Owner = owner; dialog.Show();
+            dialog.Dispatcher.Invoke(() => { }, System.Windows.Threading.DispatcherPriority.ApplicationIdle); dialog.UpdateLayout();
+            if (dialog.WindowStyle != WindowStyle.None) throw new InvalidDataException("Dialog title bar is not themed.");
+            var shot = new RenderTargetBitmap((int)Math.Ceiling(dialog.ActualWidth), (int)Math.Ceiling(dialog.ActualHeight), 96, 96, PixelFormats.Pbgra32); shot.Render(dialog);
+            var png = new PngBitmapEncoder(); png.Frames.Add(BitmapFrame.Create(shot));
+            using (var file = File.Create(Path.Combine(output, $"Dialog-{dialog.GetType().Name}.png"))) png.Save(file);
+            dialog.Close();
+        }
+        owner.Close();
         File.WriteAllText(Path.Combine(output, "Transponder-UI-Checks.txt"), "PASS: themed page loads; duplicate input rejected visibly; manual addition; selected label; three actual-use events retained through week five.\n");
     }
 }

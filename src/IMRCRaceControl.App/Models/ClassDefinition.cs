@@ -4,6 +4,8 @@ public sealed class ClassDefinition
 {
     public string Id { get; set; } = Guid.NewGuid().ToString("N");
     public string Name { get; set; } = "New Class";
+    private string _printColor = ClassPrintColors.Choices[0].Hex;
+    public string PrintColor { get => _printColor; set => _printColor = ClassPrintColors.Safe(value); }
 
     public RaceFormat RaceFormat { get; set; } = global::IMRCRaceControl.Models.RaceFormat.Timed;
     // Null preserves the shared format used by older databases.

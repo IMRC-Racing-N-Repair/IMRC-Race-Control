@@ -4,6 +4,13 @@ Keep all release history in this file. Add each new version at the top; do not c
 
 ## 0.16.24
 
+- Reset one or all rental nicknames to the saved naming defaults, preserving assigned label numbers and history.
+- Print rental nicknames without a Rental prefix, using the same typography as personal transponders.
+- Expose Reopen Event for completed race days, preserving completed race results and archives.
+- Size the new-event form to its contents and give application dialogs themed title bars with a close button, excluding the spectator pop-out.
+- Select visible pastel class color swatches that remain legible with black print text.
+- Add Race Control branding at the top left of printouts, left-side race numbers, colored class headings and softly tinted alternating table rows.
+
 - Remove rentals from inventory while preserving event data and usage history; readding the same number reconnects its history.
 - Shorten existing automatic Transponder number*** nicknames to number***, preserving custom nicknames.
 
@@ -12,7 +19,7 @@ Keep all release history in this file. Add each new version at the top; do not c
 - Reject duplicate physical transponder numbers, nicknames and color/number combinations.
 - Keep assignment details in history, captured from event rosters; remove event/class/racer assignment controls and the Assigned to column from the inventory page.
 - Allocate the lowest unused label number starting at 1 across every color, rejecting duplicates.
-- Keep inventory sizing standard; configure rental identification, font, bold and color on lineup and practice printouts, leaving personal transponder numbers unchanged.
+- Keep inventory sizing standard; print rental nicknames alongside unchanged personal transponder numbers.
 - Retain assignment snapshots with racer, class and event date, showing the last three events actually used or all history even after skipped weeks, renames or event deletion.
 - Persist rentals/history in the existing atomic database snapshot and backups, capture event-roster assignments, and validate uniqueness before saving.
 - Add rental regression tests and Windows-rendered theme previews with page interaction checks.

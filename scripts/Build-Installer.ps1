@@ -55,5 +55,7 @@ Remove-Item 'artifacts/releases/assets.win.json' -ErrorAction SilentlyContinue
 Get-ChildItem 'artifacts/releases' -File | Get-FileHash -Algorithm SHA256 | ForEach-Object { "$($_.Hash.ToLower())  $([IO.Path]::GetFileName($_.Path))" } | Set-Content 'artifacts/releases/SHA256SUMS.txt'
 Write-Host "Installer and update files ready in artifacts/releases (version $version)."
 
-# Rental previews also exercise inventory removal and shortened default nicknames.
+# Rental previews exercise inventory removal, nickname resets, class colors and themed dialogs.
 if (-not (Test-Path (Join-Path $branding "Transponder-Print.png"))) { throw "Missing rental print preview" }
+
+foreach ($dialog in @('EventEditorDialog','ClassEditorDialog','RentalAppearanceDialog')) { if (-not (Test-Path (Join-Path $branding "Dialog-$dialog.png"))) { throw "Missing themed dialog preview: $dialog" } }

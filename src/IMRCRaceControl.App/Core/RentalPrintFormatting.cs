@@ -19,14 +19,7 @@ public sealed class RentalPrintFormatting
         return string.Join("; ", RentalTransponderRegistry.Split(value).Select(number =>
         {
             if (!_inventory.TryGetValue(number.TrimStart('0'), out var rental)) return number;
-            var label = _state.PrintFormat switch
-            {
-                "Number" => $"Rental: {rental.Number}",
-                "NicknameAndNumber" => $"Rental: {rental.Nickname} ({rental.Number})",
-                _ => $"Rental: {rental.Nickname}"
-            };
-            var color = _state.PrintInColor ? PrintColor(rental.Color) : "#000000";
-            _report.TextStyles[label] = new ReportTextStyle(_state.PrintFontSize, _state.PrintBold, color);
+            var label = rental.Nickname;
             return label;
         }));
     }

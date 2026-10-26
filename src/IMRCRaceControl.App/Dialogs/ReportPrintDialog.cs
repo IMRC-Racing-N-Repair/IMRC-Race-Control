@@ -26,22 +26,25 @@ public sealed class ReportPrintDialog : Window
     private FlowDocument BuildDocument(double width,double height)
     {
         var doc=new FlowDocument { PageWidth=width, PageHeight=height, ColumnWidth=width, PagePadding=new Thickness(32), FontFamily=new FontFamily("Segoe UI"), FontSize=11, Foreground=Brushes.Black, Background=Brushes.White };
+        doc.Blocks.Add(new BlockUIContainer(PrintBranding.Logo()));
         doc.Blocks.Add(new Paragraph(new Run(_report.Title)) { FontSize=22, FontWeight=FontWeights.Bold });
         doc.Blocks.Add(new Paragraph(new Run(_report.Subtitle+"\nPrinted "+DateTime.Now.ToString("g"))) { FontSize=10 });
         if (_report.Sections.Count==0) doc.Blocks.Add(new Paragraph(new Run(_report.EmptyMessage)));
         foreach (var section in _report.Sections)
         {
-            doc.Blocks.Add(new Paragraph(new Run(section.Title)) { FontSize=15, FontWeight=FontWeights.Bold, KeepWithNext=true, Margin=new Thickness(0,16,0,5) });
+            doc.Blocks.Add(new Paragraph(new Run(section.Title)) { FontSize=15, FontWeight=FontWeights.Bold, KeepWithNext=true, Background=PrintBranding.Color(section.ClassColor), Padding=new Thickness(6), Margin=new Thickness(0,16,0,5) });
             if (section.Notes.Length>0) { var notes = ReportTextStyling.Paragraph(section.Notes,_report); notes.FontSize=10; notes.KeepWithNext=true; doc.Blocks.Add(notes); }
             // Small table batches repeat column headers on long lap/standing reports.
             foreach (var batch in section.Rows.Chunk(18).DefaultIfEmpty([]))
             {
                 var table=new Table { CellSpacing=0, Margin=new Thickness(0,0,0,8) };
                 var group=new TableRowGroup(); table.RowGroups.Add(group);
+                var rowIndex = 0;
                 TableRow Row(string[] values,bool header)
                 {
                     var row=new TableRow();
-                    foreach (var value in values) { var text = ReportTextStyling.Paragraph(value,_report); text.Margin=new Thickness(0); text.KeepTogether=true; row.Cells.Add(new TableCell(text) { Padding=new Thickness(4), BorderBrush=Brushes.LightGray, BorderThickness=new Thickness(0,0,0,0.5), FontWeight=header ? FontWeights.Bold : FontWeights.Normal, Background=header ? Brushes.LightGray : Brushes.White }); }
+                    var fill = header ? PrintBranding.Color(section.ClassColor) : rowIndex++ % 2 == 1 ? PrintBranding.Stripe(section.ClassColor) : Brushes.White;
+                    foreach (var value in values) { var text = ReportTextStyling.Paragraph(value,_report); text.Margin=new Thickness(0); text.KeepTogether=true; row.Cells.Add(new TableCell(text) { Padding=new Thickness(4), BorderBrush=Brushes.LightGray, BorderThickness=new Thickness(0,0,0,0.5), FontWeight=header ? FontWeights.Bold : FontWeights.Normal, Background=fill }); }
                     return row;
                 }
                 group.Rows.Add(Row(section.Columns,true));

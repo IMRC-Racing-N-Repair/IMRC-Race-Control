@@ -25,6 +25,7 @@ public partial class MainWindow
 
             var item = existing ?? new ClassDefinition();
             item.Name = dialog.ClassName;
+            item.PrintColor = dialog.PrintColor;
             item.RaceFormat = dialog.RaceFormat;
             item.MainRaceFormat = dialog.MainRaceFormat;
             item.MainRaceMinutes = dialog.MainRaceMinutes;
