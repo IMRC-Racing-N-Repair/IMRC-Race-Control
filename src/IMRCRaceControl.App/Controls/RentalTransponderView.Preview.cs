@@ -118,10 +118,25 @@ public partial class RentalTransponderView
         var continuationPng=new PngBitmapEncoder();continuationPng.Frames.Add(BitmapFrame.Create(continuation));
         using(var file=File.Create(Path.Combine(output,"Transponder-Print-Continuation.png")))continuationPng.Save(file);
         var lapSession = printEvent.Sessions.First();
-        for (var lap = 1; lap <= 40; lap++)
-            lapSession.Laps.Add(new LapRecord(lap,1,names[0],lap,TimeSpan.FromSeconds(6.033625),TimeSpan.FromSeconds(lap*6.033625),DateTimeOffset.Now,"decoder",lap==40));
+        foreach(var entrant in lapSession.Entrants)
+            for (var lap = 1; lap <= 70-entrant.CarNumber; lap++)
+                lapSession.Laps.Add(new LapRecord(lap*8+entrant.CarNumber,entrant.CarNumber,entrant.DisplayName,lap,TimeSpan.FromSeconds(6+entrant.CarNumber*.13),TimeSpan.FromSeconds(lap*(6+entrant.CarNumber*.13)),DateTimeOffset.Now,"decoder",false));
+        foreach(var count in new[]{8,3,1})
+        {
+            var matrix=RaceReports.CompletedRace(printEvent,lapSession);
+            var section=matrix.Sections[0];
+            matrix.Sections[0]=section with { Columns=section.Columns.Take(count+1).ToArray(),Rows=section.Rows.Select(row=>row.Take(count+1).ToArray()).ToList() };
+            var pages=IMRCRaceControl.Dialogs.LapMatrixPrintDocument.Build(matrix,816,1056);
+            for(var index=0;index<pages.Pages.Count;index++)
+            {
+                var sheet=pages.Pages[index].Child;sheet.Measure(new Size(816,1056));sheet.Arrange(new Rect(0,0,816,1056));sheet.UpdateLayout();
+                var bitmap=new RenderTargetBitmap(816,1056,96,96,PixelFormats.Pbgra32);bitmap.Render(sheet);
+                var encoder=new PngBitmapEncoder();encoder.Frames.Add(BitmapFrame.Create(bitmap));
+                using var file=File.Create(Path.Combine(output,$"Lap-Matrix-{count}-{index+1}.png"));encoder.Save(file);
+            }
+        }
         var owner = new Window { Width = 1000, Height = 720 }; owner.Show();
-        foreach (var dialog in new Window[] { new IMRCRaceControl.Dialogs.EventEditorDialog(), new IMRCRaceControl.Dialogs.ClassEditorDialog(), new RentalAppearanceDialog(printSettings), new IMRCRaceControl.Dialogs.CompletedRaceExportDialog([printEvent],printEvent,lapSession), new IMRCRaceControl.Dialogs.ReportPrintDialog(RaceReports.CompletedRace(printEvent,lapSession,1)) })
+        foreach (var dialog in new Window[] { new IMRCRaceControl.Dialogs.EventEditorDialog(), new IMRCRaceControl.Dialogs.ClassEditorDialog(), new RentalAppearanceDialog(printSettings), new IMRCRaceControl.Dialogs.CompletedRaceExportDialog([printEvent],printEvent,lapSession), new IMRCRaceControl.Dialogs.ReportPrintDialog(RaceReports.CompletedRace(printEvent,lapSession)) })
         {
             dialog.Owner = owner; dialog.Show();
             dialog.Dispatcher.Invoke(() => { }, System.Windows.Threading.DispatcherPriority.ApplicationIdle); dialog.UpdateLayout();

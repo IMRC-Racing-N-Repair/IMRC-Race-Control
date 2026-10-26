@@ -39,7 +39,7 @@ public sealed class CompletedRaceExportDialog : Window
             var races = RaceSchedule.DisplayOrder(ev?.Sessions.Where(s => s.ProgressStatus == EventSessionStatus.Completed) ?? []).Select(s => new RaceChoice(s)).ToList();
             _races.ItemsSource = races;
             _races.SelectedItem = races.FirstOrDefault(r => r.Session.Id == loaded?.Id) ?? races.FirstOrDefault();
-            status.Text = races.Count == 0 ? "No completed races in this event yet." : "Includes lap number, lap time and elapsed time, plus the saved finishing result.";
+            status.Text = races.Count == 0 ? "No completed races in this event yet." : "Drivers across the top, lap numbers down the side, and lap times in each cell. Up to 8 drivers per table.";
             _print.IsEnabled = _export.IsEnabled = races.Count > 0;
         };
         _races.SelectionChanged += (_,_) =>

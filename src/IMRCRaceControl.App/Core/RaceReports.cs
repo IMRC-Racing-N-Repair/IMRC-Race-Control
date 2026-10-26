@@ -6,6 +6,7 @@ public sealed class RaceReport
     public string Subtitle { get; set; } = "";
     public string EmptyMessage { get; set; } = "No results or lineups match this selection.";
     public bool IsLineup { get; set; }
+    public bool IsLapMatrix { get; set; }
     public List<ReportSection> Sections { get; } = [];
     public Dictionary<string, ReportTextStyle> TextStyles { get; } = new(StringComparer.Ordinal);
 }
@@ -36,19 +37,25 @@ public static class RaceReports
     {
         if (session.ProgressStatus != EventSessionStatus.Completed)
             throw new InvalidOperationException("Choose a completed race to export.");
-        var report = new RaceReport { Title = "Completed race — lap times",
+        var report = new RaceReport { Title = "Race lap times", IsLapMatrix=true,
             Subtitle = $"{ev.Name} • {ev.EventDate:MM/dd/yyyy} • {session.RoundLabel} • {session.DashboardDisplay}" };
         var cars = session.Entrants.Select(e => e.CarNumber).Concat(session.Results.Select(r => r.CarNumber))
             .Concat(session.Laps.Select(l => l.CarNumber)).Distinct().Where(c => carNumber is null || c == carNumber).Order().ToList();
-        foreach (var car in cars)
+        string Name(int car)
         {
-            var result = session.Results.FirstOrDefault(r => r.CarNumber == car);
-            var laps = session.Laps.Where(l => l.CarNumber == car).OrderBy(l => l.LapNumber).ThenBy(l => l.Sequence).ToList();
-            var name = session.Entrants.FirstOrDefault(e => e.CarNumber == car)?.DisplayName ?? result?.DriverName ?? laps.FirstOrDefault()?.DriverName ?? "Unknown driver";
-            var notes = result is null ? "No saved finishing result." : $"Position: {result.Position} • Laps: {result.Laps} • Total: {result.TotalTime} • Best lap: {result.BestLap}";
-            if (laps.Count == 0) notes += " No recorded laps.";
-            report.Sections.Add(new ReportSection($"Car {car} — {name}", ["Lap", "Lap time", "Elapsed time"],
-                laps.Select(l => new[] { l.LapNumber.ToString(), l.LapTimeDisplay, l.ElapsedDisplay }).ToList(), notes));
+            var entrant=session.Entrants.FirstOrDefault(e=>e.CarNumber==car);
+            if (!string.IsNullOrWhiteSpace(entrant?.Nickname)) return entrant.Nickname.Trim();
+            var full=entrant?.DriverName ?? session.Results.FirstOrDefault(r=>r.CarNumber==car)?.DriverName ?? session.Laps.FirstOrDefault(l=>l.CarNumber==car)?.DriverName ?? "Driver";
+            return full.Split(' ',StringSplitOptions.RemoveEmptyEntries).LastOrDefault() ?? "Driver";
+        }
+        var names=cars.ToDictionary(c=>c,Name);
+        foreach(var group in cars.Chunk(8))
+        {
+            var columns=new[]{"Lap"}.Concat(group.Select(c=>names.Values.Count(n=>n==names[c])>1 ? $"{names[c]} #{c}" : names[c])).ToArray();
+            var byCar=group.ToDictionary(c=>c,c=>session.Laps.Where(l=>l.CarNumber==c).GroupBy(l=>l.LapNumber).ToDictionary(g=>g.Key,g=>g.OrderByDescending(l=>l.Sequence).First().LapTimeDisplay));
+            var lapNumbers=group.SelectMany(c=>byCar[c].Keys).Distinct().Order();
+            var rows=lapNumbers.Select(n=>new[]{n.ToString()}.Concat(group.Select(c=>byCar[c].GetValueOrDefault(n,"—"))).ToArray()).ToList();
+            report.Sections.Add(new ReportSection("",columns,rows,rows.Count==0 ? "No recorded laps." : ""));
         }
         return report;
     }
@@ -56,11 +63,37 @@ public static class RaceReports
     public static string LapReportCsv(RaceReport report)
     {
         static string Cell(string value) => "\"" + value.Replace("\"", "\"\"") + "\"";
-        var lines = new List<string> { string.Join(",", new[] { "Race", "Driver", "Summary", "Lap", "Lap time", "Elapsed time" }.Select(Cell)) };
+        var lines = new List<string> { Cell(report.Subtitle) };
         foreach (var section in report.Sections)
-            foreach (var row in section.Rows.DefaultIfEmpty(["", "", ""]))
-                lines.Add(string.Join(",", new[] { report.Subtitle, section.Title, section.Notes }.Concat(row).Select(Cell)));
-        return string.Join("\r\n", lines) + "\r\n";
+        {
+            lines.Add(string.Join(",",section.Columns.Select(Cell)));
+            lines.AddRange(section.Rows.Select(row=>string.Join(",",row.Select(Cell))));
+            if(section.Rows.Count==0) lines.Add(Cell(section.Notes));
+            lines.Add("");
+        }
+        return string.Join("\r\n", lines);
+    }
+
+    public static string BestQualifyingResult(RaceDayEventDefinition ev, string classId, string driverId)
+    {
+        if (string.IsNullOrWhiteSpace(driverId) || driverId.StartsWith("unknown:",StringComparison.OrdinalIgnoreCase)) return "—";
+        var runs=new List<(int Laps,double Seconds,string Time,int Round)>();
+        foreach(var session in ev.Sessions.Where(s=>s.ClassId==classId && s.SessionType==SessionType.Qualifying && s.ProgressStatus==EventSessionStatus.Completed))
+        {
+            var entrants=session.Entrants.Where(e=>e.DriverId==driverId).ToList();
+            if(entrants.Count!=1 || session.Entrants.Count(e=>e.CarNumber==entrants[0].CarNumber)!=1)continue;
+            var results=session.Results.Where(r=>r.CarNumber==entrants[0].CarNumber).ToList();
+            if(results.Count!=1 || results[0].Laps<=0)continue;
+            var result=results[0];
+            var parts=result.TotalTime.Split(':');
+            double seconds=0;bool valid=true;
+            foreach(var part in parts) { if(!double.TryParse(part,System.Globalization.NumberStyles.Float,System.Globalization.CultureInfo.InvariantCulture,out var v)||!double.IsFinite(v)||v<0){valid=false;break;}seconds=seconds*60+v; }
+            if(!valid) seconds=session.Laps.Where(l=>l.CarNumber==entrants[0].CarNumber).Select(l=>l.Elapsed.TotalSeconds).DefaultIfEmpty(double.MaxValue).Max();
+            runs.Add((result.Laps,seconds,result.TotalTime,session.Round));
+        }
+        if(runs.Count==0)return "—";
+        var best=runs.OrderByDescending(r=>r.Laps).ThenBy(r=>r.Seconds).ThenBy(r=>r.Round).First();
+        return $"{best.Laps} / {best.Time} ({best.Round})";
     }
 
     private static string Number(decimal n) => n.ToString("0.##");
@@ -82,8 +115,8 @@ public static class RaceReports
                 : s.SessionType == SessionType.Race ? $"Main Round {s.MainLeg}" : $"Practice Round {s.Round}";
             var raceHeading = $"RACE #{s.RaceNumber} - {s.ClassName} - " +
                 (s.SessionType == SessionType.Race ? $"{s.HeatMainDisplay}-MAIN" : $"HEAT {s.Heat}");
-            report.Sections.Add(new ReportSection(raceHeading, ["Car","Driver","Transponder","Last round · laps / time","SOF / SR"],
-                s.Entrants.OrderBy(e=>e.CarNumber).Select(e=>new[] { e.CarNumber.ToString(),e.DisplayName,rentalLabels.Format(e.TransponderId),PreviousRoundResult(ev,s,e.DriverId),RatingFor(s,e) }).ToList(),
+            report.Sections.Add(new ReportSection(raceHeading, ["Car","Driver","Transponder",s.SessionType == SessionType.Qualifying ? "Best qual · laps / time" : "Last round · laps / time","SOF / SR"],
+                s.Entrants.OrderBy(e=>e.CarNumber).Select(e=>new[] { e.CarNumber.ToString(),e.DisplayName,rentalLabels.Format(e.TransponderId),s.SessionType == SessionType.Qualifying ? BestQualifyingResult(ev,s.ClassId,e.DriverId) : PreviousRoundResult(ev,s,e.DriverId),RatingFor(s,e) }).ToList(),
                 RoundHeading: roundHeading, ClassColor: classes?.FirstOrDefault(c => c.Id == s.ClassId)?.PrintColor ?? ClassPrintColors.Choices[0].Hex, RaceNumber: s.RaceNumber));
         }
         return report;

@@ -35,7 +35,7 @@ internal static class LineupPrintDocument
             Grid.SetColumn(titles,1); header.Children.Add(titles); Add(header);
             var subtitle=Text(report.Subtitle,10); subtitle.Margin=new Thickness(0,0,0,9); Add(subtitle);
             Add(new Border { Height=2, Background=Brushes.Black, Margin=new Thickness(0,0,0,3) });
-            var legend=Text("Last round: latest earlier completed run in this class.   SOF/SR: performance / safety.   * Starting ratings.",8);
+            var legend=Text("Best qual: best completed laps/time; (round). Last round: prior run for mains.   SOF/SR: performance / safety.   * Starting ratings.",8);
             FixedPage.SetLeft(legend,28);FixedPage.SetTop(legend,height-43);page.Children.Add(legend);
             var footer=new Grid { Width=contentWidth };
             footer.Children.Add(Text("Printed "+printedAt,8));

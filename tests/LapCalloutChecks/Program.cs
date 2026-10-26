@@ -27,15 +27,15 @@ var exportRace = new EventSessionDefinition { ProgressStatus=EventSessionStatus.
     Laps=[new(2,1,"Alex",2,TimeSpan.FromSeconds(5.432),TimeSpan.FromSeconds(10.555),DateTimeOffset.Now,"decoder",true),new(1,1,"Alex",1,TimeSpan.FromSeconds(5.123),TimeSpan.FromSeconds(5.123),DateTimeOffset.Now,"decoder",false),new(3,2,"Alex",1,TimeSpan.FromSeconds(8),TimeSpan.FromSeconds(8),DateTimeOffset.Now,"decoder",false)] };
 var exportEvent = new RaceDayEventDefinition { Name="Test event",Sessions=[exportRace] };
 var allLapReport = RaceReports.CompletedRace(exportEvent,exportRace);
-Equal(3, allLapReport.Sections.Count, "All race drivers including zero laps");
+Equal(4, allLapReport.Sections[0].Columns.Length, "All race drivers including zero laps share table");
 var oneLapReport = RaceReports.CompletedRace(exportEvent,exportRace,1);
 Equal(1, oneLapReport.Sections.Count, "One-driver export excludes same-name driver");
 Equal(2, oneLapReport.Sections[0].Rows.Count, "One-driver export has all laps");
 Equal("1", oneLapReport.Sections[0].Rows[0][0], "Export laps ordered by number");
 Equal(RaceEngine.FormatLap(TimeSpan.FromSeconds(5.432)), oneLapReport.Sections[0].Rows[1][1], "Export preserves lap precision");
-Equal(RaceEngine.FormatElapsed(TimeSpan.FromSeconds(10.555)), oneLapReport.Sections[0].Rows[1][2], "Export uses recorded elapsed time");
-Equal(true, RaceReports.LapReportCsv(oneLapReport).Contains("Alex, \"\"Ace\"\""), "CSV quotes driver commas and quotes");
-Equal(true, allLapReport.Sections[2].Notes.Contains("No recorded laps"), "Zero-lap driver explained");
+Equal(2, oneLapReport.Sections[0].Columns.Length, "Elapsed column removed");
+
+Equal("—", allLapReport.Sections[0].Rows[0][3], "Zero-lap driver has empty cells");
 exportRace.ProgressStatus=EventSessionStatus.Planned;
 var rejectedIncomplete=false;try { RaceReports.CompletedRace(exportEvent,exportRace); } catch(InvalidOperationException) { rejectedIncomplete=true; }
 Equal(true,rejectedIncomplete,"Incomplete race export rejected");
@@ -88,6 +88,23 @@ Equal(0,clockEdit.Laps.Count,"Start crossing does not become a lap");
 var minOverride=new EventSessionDefinition { MinimumLapSecondsOverride=2.125,StartStyle=StartStyle.LeaderCrossing };
 Equal(2.125,JsonSerializer.Deserialize<EventSessionDefinition>(JsonSerializer.Serialize(minOverride))!.MinimumLapSecondsOverride!.Value,"Minimum lap override persists");
 Equal<double?>(null,JsonSerializer.Deserialize<EventSessionDefinition>("{}")!.MinimumLapSecondsOverride,"Legacy sessions retain class minimum default");
+var bestEvent=new RaceDayEventDefinition();
+foreach(var run in new[]{(1,40,"4:01.000"),(2,42,"4:04.000"),(3,42,"4:06.000")})
+    bestEvent.Sessions.Add(new EventSessionDefinition { ClassId="stock",Round=run.Item1,SessionType=SessionType.Qualifying,ProgressStatus=EventSessionStatus.Completed,Entrants=[new() {DriverId="d",CarNumber=run.Item1}],Results=[new() {CarNumber=run.Item1,Laps=run.Item2,TotalTime=run.Item3}] });
+Equal("42 / 4:04.000 (2)",RaceReports.BestQualifyingResult(bestEvent,"stock","d"),"Best qual uses laps then time, not latest round");
+Equal("—",RaceReports.BestQualifyingResult(bestEvent,"other","d"),"Best qual stays in class");
+Equal("—",RaceReports.BestQualifyingResult(bestEvent,"stock","absent"),"Best qual stays with driver identity");
+bestEvent.Sessions[1].ProgressStatus=EventSessionStatus.Running;
+Equal("42 / 4:06.000 (3)",RaceReports.BestQualifyingResult(bestEvent,"stock","d"),"Best qual excludes unfinished races");
+exportRace.ProgressStatus=EventSessionStatus.Completed;
+exportRace.Entrants[0].Nickname="YOSHI";
+for(var car=4;car<=9;car++)exportRace.Entrants.Add(new SessionEntrant {CarNumber=car,DriverName="Driver "+car});
+var wideReport=RaceReports.CompletedRace(exportEvent,exportRace);
+Equal(2,wideReport.Sections.Count,"More than eight drivers split across tables");
+Equal(9,wideReport.Sections[0].Columns.Length,"Eight driver columns plus lap number");
+Equal("YOSHI",wideReport.Sections[0].Columns[1],"Nickname preferred in matrix header");
+Equal(2,wideReport.Sections[1].Columns.Length,"Remaining driver retained");
+Equal("—",allLapReport.Sections[0].Rows[1][2],"Unequal lap counts align by lap number");
 // Race audio follows elapsed race time; repeats and delayed ticks must not replay cues.
 var audioSettings = new AppSettings { RaceLeadersEnabled = true, RaceLeaderCount = 3,
     RaceLeaderIntervalSeconds = 15, RaceHalfwayToneEnabled = true, RaceCountdownEnabled = true,

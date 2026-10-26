@@ -4,6 +4,9 @@ Keep all release history in this file. Add each new version at the top; do not c
 
 ## 0.16.24
 
+- Print/export lap times as a driver-column matrix: up to eight drivers, nickname/last-name headers, alternating lap rows, column borders and repeated page headers. Remove elapsed time.
+- Qualifying lineup sheets show each driver’s best completed qualifying laps/time with the winning round in parentheses.
+
 - Add minimum lap time and tone/leader/individual clock styles to FMT, including live updates; retain recorded laps and save the minimum-lap override per session/round.
 
 - Allow FMT changes for loaded and running races without resetting laps or clocks; apply to unfinished races in the class/round while preserving completed results and already-finished drivers.

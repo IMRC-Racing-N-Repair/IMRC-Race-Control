@@ -15,9 +15,9 @@ public sealed class ReportPrintDialog : Window
         var toolbar=new StackPanel { Orientation=Orientation.Horizontal, Margin=new Thickness(8) }; DockPanel.SetDock(toolbar,Dock.Top); root.Children.Add(toolbar);
         var print=new Button { Content="PRINT / SAVE AS PDF" }; toolbar.Children.Add(print); print.Click+=Print_Click;
         toolbar.Children.Add(new TextBlock { Text="Choose Microsoft Print to PDF in the printer list to save a PDF.", VerticalAlignment=VerticalAlignment.Center, Margin=new Thickness(10,0,0,0) });
-        if (report.IsLineup && report.Sections.Count > 0)
+        if ((report.IsLineup || report.IsLapMatrix) && report.Sections.Count > 0)
         {
-            var viewer = new DocumentViewer { Document = LineupPrintDocument.Build(report,816,1056), Background = Brushes.Gray };
+            var viewer = new DocumentViewer { Document = report.IsLapMatrix ? LapMatrixPrintDocument.Build(report,816,1056) : LineupPrintDocument.Build(report,816,1056), Background = Brushes.Gray };
             viewer.CommandBindings.Add(new CommandBinding(ApplicationCommands.Print, (_,e) => { e.Handled=true; Print_Click(this,new RoutedEventArgs()); }));
             root.Children.Add(viewer);
         }
@@ -60,7 +60,7 @@ public sealed class ReportPrintDialog : Window
         {
             var dialog=new PrintDialog();
             if (dialog.ShowDialog()!=true) return;
-            IDocumentPaginatorSource doc = _report.IsLineup && _report.Sections.Count > 0
+            IDocumentPaginatorSource doc = _report.IsLapMatrix ? LapMatrixPrintDocument.Build(_report,dialog.PrintableAreaWidth,dialog.PrintableAreaHeight) : _report.IsLineup && _report.Sections.Count > 0
                 ? LineupPrintDocument.Build(_report,dialog.PrintableAreaWidth,dialog.PrintableAreaHeight)
                 : BuildDocument(dialog.PrintableAreaWidth,dialog.PrintableAreaHeight);
             dialog.PrintDocument(doc.DocumentPaginator,_report.Title);
