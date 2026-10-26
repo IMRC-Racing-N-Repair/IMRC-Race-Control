@@ -702,12 +702,14 @@
                 <DataTrigger Binding="{Binding IsCheckedIn}" Value="False">
                     <Setter Property="BorderBrush" Value="{DynamicResource DashboardCheckInGlowBrush}"/>
                 </DataTrigger>
-                <DataTrigger Binding="{Binding IsMinimumLapViolationGlow}" Value="True">
-                    <Setter Property="BorderBrush" Value="{DynamicResource DashboardMinimumLapGlowBrush}"/>
-                </DataTrigger>
                 <DataTrigger Binding="{Binding IsLastPassing}" Value="True">
                     <Setter Property="BorderBrush" Value="{DynamicResource DriverCrossingBrush}"/>
                     <Setter Property="BorderThickness" Value="{DynamicResource DriverCrossingThickness}"/>
+                </DataTrigger>
+                <!-- Breakout has priority over check-in and crossing, including underline mode. -->
+                <DataTrigger Binding="{Binding IsMinimumLapViolationGlow}" Value="True">
+                    <Setter Property="BorderBrush" Value="{DynamicResource DashboardMinimumLapGlowBrush}"/>
+                    <Setter Property="BorderThickness" Value="2"/>
                 </DataTrigger>
             </Style.Triggers>
         </Style>

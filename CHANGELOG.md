@@ -2,6 +2,10 @@
 
 Keep all release history in this file. Add each new version at the top; do not create version-specific changelog files.
 
+## 0.16.25
+
+- Give breakout name highlighting priority over normal line crossings on the dashboard, pop-out and web display, using the configured breakout color and duration. Restore normal crossing highlighting when the breakout expires.
+
 ## 0.16.24
 
 - Emphasize class, qualifying round and heat on every lap-report page. Show breakout attempts marked ** above the valid lap time with a fraction-style divider, retaining the attempted lap number and uncompleted attempts.

@@ -68,3 +68,5 @@ if (-not (Test-Path (Join-Path $branding "Dialog-CompletedRaceExportDialog.png")
 if (-not (Test-Path (Join-Path $branding "Dialog-ReportPrintDialog.png"))) { throw "Missing completed lap report preview" }
 if (-not (Test-Path (Join-Path $branding "Lap-Matrix-8-1.png"))) { throw "Missing eight-driver lap matrix preview" }
 if (-not (Test-Path (Join-Path $branding "Lap-Matrix-8-2.png"))) { throw "Missing continued lap matrix preview" }
+
+if (-not (Test-Path (Join-Path $branding "Breakout-Highlight-Checks.txt"))) { throw "Missing breakout highlight checks" }

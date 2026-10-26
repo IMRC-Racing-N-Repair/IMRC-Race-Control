@@ -13,6 +13,24 @@ public partial class RentalTransponderView
     internal static void ExportPreview(string output)
     {
         Directory.CreateDirectory(output);
+        // Exercise the actual shared dashboard/pop-out style, not a copied precedence rule.
+        var highlightRow=new StandingRow { DriverName="BREAKOUT PRIORITY",IsCheckedIn=false,IsLastPassing=true,IsMinimumLapViolationGlow=true };
+        var highlightBorder=new System.Windows.Controls.Border { DataContext=highlightRow,Style=(Style)Application.Current.FindResource("RaceDriverBorderStyle"),Child=new System.Windows.Controls.TextBlock {Text=highlightRow.DriverName,FontSize=22,Foreground=Brushes.White} };
+        var highlightWindow=new Window {Width=500,Height=160,Background=Brushes.Black,Content=highlightBorder};highlightWindow.Show();
+        foreach(var color in new[]{Colors.Orange,Colors.Magenta})
+        {
+            Application.Current.Resources["DashboardMinimumLapGlowBrush"]=new SolidColorBrush(color);
+            Application.Current.Resources["DriverCrossingBrush"]=Brushes.Lime;
+            Application.Current.Resources["DriverCrossingThickness"]=new Thickness(0,0,0,3);
+            highlightWindow.Dispatcher.Invoke(()=>{},System.Windows.Threading.DispatcherPriority.ApplicationIdle);highlightWindow.UpdateLayout();
+            if((highlightBorder.BorderBrush as SolidColorBrush)?.Color!=color || highlightBorder.BorderThickness!=new Thickness(2))throw new InvalidDataException("Breakout did not override crossing highlight.");
+        }
+        highlightRow.IsMinimumLapViolationGlow=false;
+        highlightWindow.Dispatcher.Invoke(()=>{},System.Windows.Threading.DispatcherPriority.ApplicationIdle);
+        if((highlightBorder.BorderBrush as SolidColorBrush)?.Color!=Colors.Lime || highlightBorder.BorderThickness!=new Thickness(0,0,0,3))throw new InvalidDataException("Crossing highlight did not resume after breakout.");
+        highlightWindow.Close();
+        File.WriteAllText(Path.Combine(output,"Breakout-Highlight-Checks.txt"),"PASS: breakout overrides simultaneous crossing/check-in; configured colors update; underline crossing resumes after breakout expires.");
+
         foreach (var theme in Enum.GetValues<AppTheme>())
         {
             ThemeService.Apply(theme);
