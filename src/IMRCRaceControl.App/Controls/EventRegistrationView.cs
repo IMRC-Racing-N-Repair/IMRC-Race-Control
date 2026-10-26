@@ -7,7 +7,7 @@ public sealed class EventRegistrationView : UserControl
 {
     private readonly ListBox _drivers = new() { DisplayMemberPath="Label" };
     private readonly TextBox _search = new();
-    private readonly StackPanel _classes = new();
+    private readonly WrapPanel _classes = new() { ItemWidth=260, Orientation=Orientation.Horizontal };
     private readonly TextBlock _selected = new() { FontSize=17,FontWeight=FontWeights.SemiBold };
     private readonly TextBlock _status = new() { TextWrapping=TextWrapping.Wrap,Margin=new Thickness(0,6,0,0) };
     private readonly Button _newDriver = new() { Content="+ NEW DRIVER" }, _newClass=new() { Content="+ CLASS" };
@@ -24,10 +24,14 @@ public sealed class EventRegistrationView : UserControl
         top.Children.Add(_search);_search.ToolTip="Search drivers by name or nickname";top.Children.Add(_newDriver);
         DockPanel.SetDock(top,Dock.Top);left.Children.Add(top);left.Children.Add(_drivers);root.Children.Add(left);
         var right=new DockPanel { Margin=new Thickness(7) };Grid.SetColumn(right,2);root.Children.Add(right);
-        var header=new StackPanel();header.Children.Add(_selected);
-        header.Children.Add(new TextBlock { Text="Select classes and enter a transponder for each. Changes save automatically.",TextWrapping=TextWrapping.Wrap,Margin=new Thickness(0,4,0,6) });header.Children.Add(_newClass);
+        var header=new StackPanel();
+        var heading=new DockPanel();_newClass.HorizontalAlignment=HorizontalAlignment.Right;_newClass.MinWidth=90;
+        DockPanel.SetDock(_newClass,Dock.Right);heading.Children.Add(_newClass);_selected.TextWrapping=TextWrapping.Wrap;heading.Children.Add(_selected);header.Children.Add(heading);
+        header.Children.Add(new TextBlock { Text="Select classes and enter a transponder for each. Changes save automatically.",TextWrapping=TextWrapping.Wrap,Margin=new Thickness(0,4,0,6) });
         DockPanel.SetDock(header,Dock.Top);right.Children.Add(header);DockPanel.SetDock(_status,Dock.Bottom);right.Children.Add(_status);
-        right.Children.Add(new ScrollViewer { Content=_classes,VerticalScrollBarVisibility=ScrollBarVisibility.Auto });
+        var classScroll=new ScrollViewer { Content=_classes,VerticalScrollBarVisibility=ScrollBarVisibility.Auto,HorizontalScrollBarVisibility=ScrollBarVisibility.Disabled };
+        classScroll.SizeChanged+=(_,e)=>_classes.ItemWidth=Math.Min(260,Math.Max(150,e.NewSize.Width-18));
+        right.Children.Add(classScroll);
         left.SetResourceReference(Panel.BackgroundProperty,"PanelBrush");right.SetResourceReference(Panel.BackgroundProperty,"PanelBrush");Content=root;
         _search.TextChanged+=(_,_)=>RefreshDrivers();_drivers.SelectionChanged+=(_,_)=> { if(!_refreshing)RefreshClasses(); };
     }
@@ -66,12 +70,15 @@ public sealed class EventRegistrationView : UserControl
         {
             var assignment=_event.DriverAssignments.FirstOrDefault(a=>a.DriverId==driver.Id && a.ClassId==cls.Id);
             var defaults=_defaults.Where(a=>a.DriverId==driver.Id && a.ClassId==cls.Id).Select(a=>a.TransponderId).Where(t=>!string.IsNullOrWhiteSpace(t)).Distinct();
-            var row=new Grid { Margin=new Thickness(0,5,0,5) };row.ColumnDefinitions.Add(new ColumnDefinition());row.ColumnDefinitions.Add(new ColumnDefinition { Width=new GridLength(180) });
-            var check=new CheckBox { Content=cls.Name,IsChecked=assignment is not null,VerticalAlignment=VerticalAlignment.Center,Margin=new Thickness(6) };
-            var number=new TextBox { Text=assignment?.TransponderId ?? string.Join(";",defaults),IsEnabled=assignment is not null,ToolTip="Transponder number for this driver and class (optional)",Margin=new Thickness(6) };
-            var field=new StackPanel();field.Children.Add(new TextBlock { Text="Transponder",Margin=new Thickness(6,0,0,0),FontSize=10 });field.Children.Add(number);
-            Grid.SetColumn(field,1);row.Children.Add(check);row.Children.Add(field);row.IsEnabled=_event.Status==EventStatus.Active;
-            var border=new Border { Child=row,BorderBrush=new SolidColorBrush((Color)ColorConverter.ConvertFromString(cls.PrintColor)),BorderThickness=new Thickness(4,0,0,0),Margin=new Thickness(0,4,0,4) };_classes.Children.Add(border);
+            var row=new Grid { Margin=new Thickness(10,7,10,7),MinHeight=65 };
+            row.RowDefinitions.Add(new RowDefinition { Height=GridLength.Auto });row.RowDefinitions.Add(new RowDefinition { Height=GridLength.Auto });
+            var check=new CheckBox { Content=new TextBlock { Text=cls.Name,TextWrapping=TextWrapping.Wrap,FontWeight=FontWeights.SemiBold },IsChecked=assignment is not null,VerticalAlignment=VerticalAlignment.Center,Margin=new Thickness(0,0,0,6) };
+            var number=new TextBox { Text=assignment?.TransponderId ?? string.Join(";",defaults),IsEnabled=assignment is not null,ToolTip="Transponder number for this driver and class (optional)",Margin=new Thickness(0) };
+            var field=new DockPanel();var label=new TextBlock { Text="TX #",Width=34,VerticalAlignment=VerticalAlignment.Center,FontSize=10 };DockPanel.SetDock(label,Dock.Left);field.Children.Add(label);field.Children.Add(number);
+            Grid.SetRow(field,1);row.Children.Add(check);row.Children.Add(field);row.IsEnabled=_event.Status==EventStatus.Active;
+            var color=new SolidColorBrush((Color)ColorConverter.ConvertFromString(cls.PrintColor));
+            var border=new Border { Child=row,BorderBrush=color,BorderThickness=assignment is not null ? new Thickness(4,1,1,1) : new Thickness(1),CornerRadius=new CornerRadius(4),Margin=new Thickness(0,3,8,5) };
+            border.SetResourceReference(Border.BackgroundProperty,assignment is not null ? "PanelHoverBrush" : "InputBrush");_classes.Children.Add(border);
             check.Click+=async(_,_)=>await Save(eventId,driver.Id,cls.Id,check.IsChecked==true,number.Text);
             number.LostKeyboardFocus+=async(_,_)=>
             {
@@ -94,7 +101,7 @@ public sealed class EventRegistrationView : UserControl
     {
         var driver=new DriverProfile { FirstName="Alex",LastName="Rivera" };
         var second=new DriverProfile { FirstName="Jordan",LastName="Lee" };
-        var classes=new[] { new ClassDefinition { Id="stock",Name="21.5 Stock",PrintColor="#009FE3" },new ClassDefinition { Id="mod",Name="Modified Touring",PrintColor="#EF5350" },new ClassDefinition { Id="novice",Name="Novice",PrintColor="#24BD60" } };
+        var classes=new[] { new ClassDefinition { Id="stock",Name="21.5 Stock",PrintColor="#009FE3" },new ClassDefinition { Id="mod",Name="Modified Touring",PrintColor="#EF5350" },new ClassDefinition { Id="novice",Name="Novice",PrintColor="#24BD60" },new ClassDefinition { Id="truck",Name="25.5 Foam Tire Truck",PrintColor="#ED54A4" },new ClassDefinition { Id="open",Name="Open",PrintColor="#F2D000" },new ClassDefinition { Id="nascar",Name="Losi NASCAR",PrintColor="#F58A1F" } };
         var ev=new RaceDayEventDefinition { Name="Club Racing",ClassIds=["stock","mod"],DriverAssignments=[new() { DriverId=driver.Id,ClassId="stock",TransponderId="1000001" },new() { DriverId=driver.Id,ClassId="mod",TransponderId="6001201" }] };
         var view=new EventRegistrationView();
         view.Configure(ev,[driver,second],classes,[],(eventId,d,c,i,t)=> { IMRCRaceControl.Core.EventRegistration.Set(ev,d,c,i,t);return Task.CompletedTask; },()=>{},()=>{});

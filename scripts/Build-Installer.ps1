@@ -62,4 +62,4 @@ foreach ($dialog in @('EventEditorDialog','ClassEditorDialog','RentalAppearanceD
 
 if (-not (Test-Path (Join-Path $branding "Transponder-Print-Continuation.png"))) { throw "Missing long-lineup pagination preview" }
 
-if (-not (Test-Path (Join-Path $branding "Event-Driver-Registration.png"))) { throw "Missing driver-first event registration preview" }
+if (-not (Test-Path (Join-Path $branding "Event-Driver-Registration.png"))) { throw "Missing compact class-card event registration preview" }

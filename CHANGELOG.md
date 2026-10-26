@@ -4,6 +4,9 @@ Keep all release history in this file. Add each new version at the top; do not c
 
 ## 0.16.24
 
+- Give event driver/class registration most of the available height and reduce the bottom rounds area; add a draggable divider to resize both areas live.
+- Display class choices as compact wrapping cards with class colors, selection state and transponder fields; move Add Class into the heading.
+
 - Default Events to driver-first registration: select a driver, then choose classes and separate event transponder numbers.
 - Add Settings > Application > Use class-first registration to restore the previous view without changing event data.
 - Preserve built rounds and race results on roster additions/removals; warn to update race placement in Open Rounds / Mains and reprint the lineup.

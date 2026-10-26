@@ -810,8 +810,9 @@
                     <Grid Margin="2">
                         <Grid.RowDefinitions>
                             <RowDefinition Height="Auto"/>
-                            <RowDefinition Height="275"/>
-                            <RowDefinition Height="*"/>
+                            <RowDefinition Height="3*" MinHeight="240"/>
+                            <RowDefinition Height="10"/>
+                            <RowDefinition Height="*" MinHeight="150"/>
                         </Grid.RowDefinitions>
 
                         <!-- Event lifecycle -->
@@ -1041,8 +1042,25 @@
                             </Border>
                         </Grid>
 
+                        <GridSplitter Grid.Row="2" Height="10" HorizontalAlignment="Stretch"
+                                      VerticalAlignment="Stretch" ResizeDirection="Rows"
+                                      ResizeBehavior="PreviousAndNext" ShowsPreview="False"
+                                      Background="{DynamicResource BorderBrush}" Cursor="SizeNS"
+                                      ToolTip="Drag up or down to resize registration and rounds"
+                                      AutomationProperties.Name="Resize registration and rounds">
+                            <GridSplitter.Template>
+                                <ControlTemplate TargetType="GridSplitter">
+                                    <Border Background="{TemplateBinding Background}">
+                                        <Border Width="48" Height="3" CornerRadius="1.5"
+                                                Background="{DynamicResource MutedBrush}"
+                                                VerticalAlignment="Center" HorizontalAlignment="Center"/>
+                                    </Border>
+                                </ControlTemplate>
+                            </GridSplitter.Template>
+                        </GridSplitter>
+
                         <!-- Sessions / builder -->
-                        <Border Grid.Row="2"
+                        <Border Grid.Row="3"
                                 Background="{DynamicResource PanelBrush}" BorderBrush="{DynamicResource BorderBrush}"
                                 BorderThickness="0,0,0,1" CornerRadius="0" Padding="7" Margin="0,6,0,0">
                             <Grid>
