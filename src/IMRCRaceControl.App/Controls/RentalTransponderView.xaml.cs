@@ -98,6 +98,11 @@ public partial class RentalTransponderView : UserControl
         if (dialog.ShowDialog() != true) return;
         await Change(() => dialog.Apply(_settings));
     }
+    private async void RemoveClicked(object sender, RoutedEventArgs e)
+    {
+        if (_settings is null || SelectedId is not { } id) return;
+        await Change(() => RentalTransponderRegistry.Remove(_settings, id));
+    }
     private async void EditNicknameClicked(object sender, RoutedEventArgs e)
     {
         if (_settings is null || SelectedId is not string id) { StatusText.Text = "Select a rental to edit its nickname."; return; }

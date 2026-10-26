@@ -39,9 +39,9 @@ static class RentalTransponderChecks
         Check(formatter.Format("91") == "Rental: Red #1 (91)", "nickname and physical number print format");
         var settings = new AppSettings();
         var a = RentalTransponderRegistry.Add(settings, " 000123 ");
-        Check(a.Number == "123" && a.Nickname == "Transponder 123***", "canonical number and default nickname");
+        Check(a.Number == "123" && a.Nickname == "123***", "canonical number and default nickname");
         Reject(() => RentalTransponderRegistry.Add(settings, "00123"), "leading-zero duplicate ID");
-        Reject(() => RentalTransponderRegistry.Add(settings, "124", "  transponder   123*** "), "case/whitespace duplicate nickname");
+        Reject(() => RentalTransponderRegistry.Add(settings, "124", "  123*** "), "case/whitespace duplicate nickname");
         foreach (var invalid in new[] { "", "0", "0000", "12a3", "12 34", "-8", "1;2" }) Reject(() => RentalTransponderRegistry.Add(settings, invalid), "invalid ID " + invalid);
         var b = RentalTransponderRegistry.Add(settings, "124");
         RentalTransponderRegistry.SetLabel(settings, a.Id, "Red", 1);
@@ -108,6 +108,16 @@ static class RentalTransponderChecks
         var direct = Event(6); direct.DriverAssignments[0].TransponderId = "124"; settings.Events.Add(direct);
         RentalTransponderRegistry.CaptureAssignments(settings);
         Check(RentalTransponderRegistry.History(settings, b.Id).Any(x => x.EventId == direct.Id), "assignments made outside rental page are captured");
+        var savedUses = settings.RentalTransponders.History.Count;
+        var oldId = b.Id;
+        RentalTransponderRegistry.Remove(settings, oldId);
+        Check(!settings.RentalTransponders.Inventory.Any(x => x.Id == oldId), "remove rental from inventory");
+        Check(settings.RentalTransponders.History.Count == savedUses && direct.DriverAssignments[0].TransponderId == "124", "removal preserves history and event roster");
+        var readded = RentalTransponderRegistry.Add(settings, "124");
+        Check(readded.Id == oldId && RentalTransponderRegistry.History(settings, oldId).Any(x => x.EventId == direct.Id), "readding rental reconnects preserved history");
+        var legacy = new RentalTransponderState { Inventory = [new() { Number = "999", Nickname = "Transponder 999***" }] };
+        RentalTransponderRegistry.ValidateState(legacy);
+        Check(legacy.Inventory[0].Nickname == "999***", "existing default nicknames shortened");
         var restored = JsonSerializer.Deserialize<AppSettings>(JsonSerializer.Serialize(settings))!;
         Check(restored.RentalTransponders.Inventory.Count == 1107 && RentalTransponderRegistry.History(restored, a.Id, 3).Select(x => x.EventId).Distinct().Count() == 3, "backup serialization retains inventory and usage-based history");
         if (isolated)

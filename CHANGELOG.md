@@ -4,8 +4,11 @@ Keep all release history in this file. Add each new version at the top; do not c
 
 ## 0.16.24
 
+- Remove rentals from inventory while preserving event data and usage history; readding the same number reconnects its history.
+- Shorten existing automatic Transponder number*** nicknames to number***, preserving custom nicknames.
+
 - Add the Transponder navigation tab with an unlimited rental inventory, manual entry, and drag/drop from the live decoder feed.
-- Default rental nicknames to Transponder number***; support Red #1 / Black #5 style labels, persistent defaults for every addition, a Random color option, and reusable custom nickname patterns.
+- Default rental nicknames to number***; support Red #1 / Black #5 style labels, persistent defaults for every addition, a Random color option, and reusable custom nickname patterns.
 - Reject duplicate physical transponder numbers, nicknames and color/number combinations.
 - Keep assignment details in history, captured from event rosters; remove event/class/racer assignment controls and the Assigned to column from the inventory page.
 - Allocate the lowest unused label number starting at 1 across every color, rejecting duplicates.

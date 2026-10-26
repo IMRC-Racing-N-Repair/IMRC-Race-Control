@@ -49,6 +49,11 @@ public partial class RentalTransponderView
                 throw new InvalidDataException("Rental duplicate validation did not surface in the page.");
             view.NumberInput.Text = "1000004"; view.AddClicked(view, new RoutedEventArgs());
             if (settings.RentalTransponders.Inventory.Count != 4) throw new InvalidDataException("Rental manual addition failed.");
+            var addedId = settings.RentalTransponders.Inventory.Single(x => x.Number == "1000004").Id;
+            view.Refresh(addedId); view.RemoveClicked(view, new RoutedEventArgs());
+            if (settings.RentalTransponders.Inventory.Any(x => x.Id == addedId)) throw new InvalidDataException("Rental removal failed.");
+            view.NumberInput.Text = "1000004"; view.AddClicked(view, new RoutedEventArgs());
+            if (settings.RentalTransponders.Inventory.Single(x => x.Number == "1000004").Nickname != "1000004***") throw new InvalidDataException("Short rental default nickname failed.");
             view.Refresh(first.Id);
             if (view.HistoryGrid.Items.Count != 3 || !view.SelectedLabel.Text.Contains("Red #1")) throw new InvalidDataException("Rental used-event history did not render.");
             view.StatusText.Text = "Sample data • Week 5: this rental still shows its uses in weeks 1, 2 and 3.";

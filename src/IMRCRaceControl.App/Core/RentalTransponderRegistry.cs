@@ -22,6 +22,8 @@ public static class RentalTransponderRegistry
     public static void NormalizeDefaults(RentalTransponderState state)
     {
         state.Inventory ??= []; state.History ??= [];
+        foreach (var rental in state.Inventory)
+            if (rental.Nickname == $"Transponder {rental.Number}***") rental.Nickname = DefaultNickname(rental.Number);
         if (state.NewNicknameStyle is not ("Transponder" or "ColorNumber" or "Custom")) state.NewNicknameStyle = "Transponder";
         if (state.NewLabelColor != "Random" && !Colors.Contains(state.NewLabelColor)) state.NewLabelColor = "Random";
         if (string.IsNullOrWhiteSpace(state.CustomNicknamePattern)) state.CustomNicknamePattern = "Rental #{n}";
@@ -54,7 +56,7 @@ public static class RentalTransponderRegistry
         return Nickname(pattern.Replace("{n}", labelNumber.ToString()).Replace("{number}", number).Replace("{color}", color));
     }
     public static string Nickname(string value) => string.Join(" ", value.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries));
-    public static string DefaultNickname(string number) => $"Transponder {number}***";
+    public static string DefaultNickname(string number) => $"{number}***";
     public static IEnumerable<string> Split(string? value) => (value ?? "").Split([';', ',', ' ', '\r', '\n', '\t'], StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);
     private static bool Matches(string a, string b) => a.TrimStart('0').Equals(b.TrimStart('0'), StringComparison.OrdinalIgnoreCase);
 
@@ -96,10 +98,21 @@ public static class RentalTransponderRegistry
         var color = state.NewLabelColor == "Random" ? Colors[Random.Shared.Next(Colors.Length)] : state.NewLabelColor;
         var rental = new RentalTransponder { Number = Number(number), Color = state.NewNicknameStyle == "Transponder" ? "Default" : color, LabelNumber = NextLabelNumber(state) };
         rental.Nickname = string.IsNullOrWhiteSpace(nickname) ? GeneratedNickname(state, rental.Number, color, rental.LabelNumber) : Nickname(nickname);
+        var previous = state.History.FirstOrDefault(h => h.TransponderNumber.TrimStart('0') == rental.Number);
+        if (previous is not null && !state.Inventory.Any(r => r.Id == previous.RentalId)) rental.Id = previous.RentalId;
         Validate(settings.RentalTransponders, rental);
         settings.RentalTransponders.Inventory.Add(rental);
         CaptureAssignments(settings);
         return rental;
+    }
+    public static void Remove(AppSettings settings, string id)
+    {
+        var state = settings.RentalTransponders;
+        var rental = state.Inventory.Single(x => x.Id == id);
+        CaptureAssignments(settings);
+        state.Inventory.Remove(rental);
+        foreach (var use in state.History.Where(x => x.RentalId == id && x.ReturnedAt is null))
+            use.ReturnedAt = DateTimeOffset.Now;
     }
     public static void SetLabel(AppSettings settings, string id, string color, int number, string customNickname = "")
     {

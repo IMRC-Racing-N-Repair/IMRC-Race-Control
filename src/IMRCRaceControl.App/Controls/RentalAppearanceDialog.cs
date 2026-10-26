@@ -22,7 +22,7 @@ internal sealed class RentalAppearanceDialog : Window
         panel.Children.Add(new TextBlock { Text = "New rental defaults", FontSize = 24, FontWeight = FontWeights.SemiBold });
         panel.Children.Add(new TextBlock { Text = "These choices apply every time you add a transponder. Existing nicknames are edited separately.", TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0,8,0,10) });
         void Field(string text, UIElement control) { panel.Children.Add(new TextBlock { Text = text, Margin = new Thickness(0,8,0,4) }); panel.Children.Add(control); }
-        _style.ItemsSource = new[] { "Transponder number***", "Color + next number", "My custom nickname pattern" };
+        _style.ItemsSource = new[] { "Number***", "Color + next number", "My custom nickname pattern" };
         _style.SelectedIndex = Math.Max(0, Array.IndexOf(Styles, state.NewNicknameStyle));
         _color.ItemsSource = new[] { "Random" }.Concat(RentalTransponderRegistry.Colors).ToList(); _color.SelectedItem = state.NewLabelColor;
         _pattern.Text = state.CustomNicknamePattern;

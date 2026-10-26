@@ -1,7 +1,7 @@
 ## Transponder rentals — 0.16.24
 
 - Local Windows-targeted application build: zero errors or warnings.
-- 920 regression checks pass, including canonical/duplicate IDs, duplicate aliases and color/number labels, unique random labels, more than 1,000 rentals, assignment/return, immutable completed lineups, skipped-week history, renamed/deleted entity snapshots and SQLite round trips.
+- 924 regression checks pass, including canonical/duplicate IDs, duplicate aliases and color/number labels, unique random labels, more than 1,000 rentals, assignment/return, immutable completed lineups, skipped-week history, renamed/deleted entity snapshots and SQLite round trips.
 - Windows packaging runs the real Transponder control with sample data in every theme. It checks visible duplicate errors, manual addition, selection and the three actual-use event history, and exports PNG previews plus a rental/personal lineup print sample.
 - Added checks for persistent defaults, globally unique lowest-available numbering, random colors, reusable custom patterns and rental-only print formatting.
 - Existing installer checks cover fresh install, repair, upgrade from the retained public 0.16.23 and active-session protection.
