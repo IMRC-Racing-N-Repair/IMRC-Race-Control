@@ -52,6 +52,10 @@ public sealed class SettingsService
 
     public static void Normalize(AppSettings settings)
     {
+        settings.RentalTransponders ??= new();
+        IMRCRaceControl.Core.RentalTransponderRegistry.ValidateState(settings.RentalTransponders);
+        settings.RentalTransponders.LabelFontSize = Math.Clamp(settings.RentalTransponders.LabelFontSize, 12, 30);
+        settings.RentalTransponders.RowHeight = Math.Clamp(settings.RentalTransponders.RowHeight, 32, 76);
         if (settings.DriverCrossingStyle is not ("Box" or "Underline")) settings.DriverCrossingStyle = "Box";
         if (settings.FinishedDriverStyle is not ("Row" or "Text" or "None")) settings.FinishedDriverStyle = "Row";
         if (!ThemeService.IsValidColor(settings.DriverCrossingColor)) settings.DriverCrossingColor = "#35C76F";

@@ -19,6 +19,7 @@ public partial class MainWindow
             // Reader history is diagnostic only; never remove a scoring record.
             if (DetectedTransponders.Count > 1000) DetectedTransponders.RemoveAt(DetectedTransponders.Count - 1);
         }
+        if (DetectedTransponders.IndexOf(row) > 0) DetectedTransponders.Move(DetectedTransponders.IndexOf(row), 0);
         var assignment = _driverAssignments.FirstOrDefault(a =>
             SplitTransponders(a.TransponderId).Contains(passing.TransponderId, StringComparer.OrdinalIgnoreCase));
         var driver = assignment is null ? null : Drivers.FirstOrDefault(d => d.Id == assignment.DriverId);

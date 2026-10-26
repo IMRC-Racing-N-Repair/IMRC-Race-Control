@@ -19,6 +19,11 @@ internal static class Program
             Services.BrandAssetExporter.Export(args[1]);
             return;
         }
+        if (args.Length == 2 && args[0] == "--export-rentals")
+        {
+            Controls.RentalTransponderView.ExportPreview(args[1]);
+            return;
+        }
         app.Run();
     }
 }

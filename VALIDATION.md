@@ -1,3 +1,11 @@
+## Transponder rentals — 0.16.24
+
+- Local Windows-targeted application build: zero errors or warnings.
+- 913 regression checks pass, including canonical/duplicate IDs, duplicate aliases and color/number labels, unique random labels, more than 1,000 rentals, assignment/return, immutable completed lineups, skipped-week history, renamed/deleted entity snapshots and SQLite round trips.
+- Windows packaging runs the real Transponder control with sample data in every theme. It checks visible duplicate errors, manual addition, selection and the three actual-use event history, and exports PNG previews.
+- Existing installer checks cover fresh install, repair, upgrade from the retained public 0.16.23 and active-session protection.
+- The live panel uses the existing decoder observation collection; no new polling or scoring path is introduced. Physical decoder hardware is not available in the build environment.
+
 # Validation for 0.16.20
 
 - Local Windows-targeted WPF build: passed with zero warnings and errors.

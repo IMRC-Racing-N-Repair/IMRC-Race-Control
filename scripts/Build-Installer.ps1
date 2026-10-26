@@ -16,6 +16,8 @@ Checked @('publish',$project,'-c','Release','-r','win-x64','--self-contained','t
 $branding = Join-Path (Get-Location) 'artifacts/branding'
 $renderer = Start-Process -FilePath (Join-Path (Get-Location) 'artifacts/publish/IMRCRaceControl.exe') -ArgumentList @('--export-brand',"`"$branding`"") -Wait -PassThru
 if ($renderer.ExitCode -ne 0) { throw "Brand asset rendering failed (exit $($renderer.ExitCode))" }
+$rentalPreview = Start-Process -FilePath (Join-Path (Get-Location) 'artifacts/publish/IMRCRaceControl.exe') -ArgumentList @('--export-rentals',"`"$branding`"") -Wait -PassThru
+if ($rentalPreview.ExitCode -ne 0) { throw 'Transponder page UI checks failed' }
 $icon = Join-Path $branding 'IMRC-Race-Control.ico'
 # The renderer validates animation frame dimensions and 80ms timing before packaging.
 $splash = Join-Path $branding 'Installer-Splash.gif'

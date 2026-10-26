@@ -93,7 +93,9 @@ public partial class MainWindow
         if (e.Source != MainTabs || !IsLoaded)
             return;
 
-        if (MainTabs.SelectedItem == RaceTab)
+        if (MainTabs.SelectedItem == RentalTab)
+            RefreshRentalContext();
+        else if (MainTabs.SelectedItem == RaceTab)
             EnsureCurrentSessionLoadedForDashboard();
         else if (MainTabs.SelectedItem == PracticeTab && PracticeViewTabs.SelectedIndex == 1)
             await RefreshPracticeHistoryAsync();

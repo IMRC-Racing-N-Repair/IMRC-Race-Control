@@ -367,4 +367,5 @@ checks += await V143Checks.Run(args.Contains("--isolated-database"));
 checks += await V142Checks.Run(args.Contains("--isolated-database"));
 checks += await OnlineChecks.Run();
 checks += await DataProtectionChecks.Run();
+checks += await RentalTransponderChecks.Run(args.Contains("--isolated-database"));
 Console.WriteLine($"PASS: {checks} speech, race-engine, round editing, Series, report, decoder and persistence checks.");

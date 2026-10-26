@@ -111,6 +111,7 @@ public partial class MainWindow : Window
         ApplyDashboardPreferences();
         ApplyPracticeLayoutPreferences();
         LoadSettingsIntoCollections();
+        RefreshRentalContext();
         LoadSeriesFromSettings();
         LoadTrackInfo();
         InitializeOnlinePublishing();

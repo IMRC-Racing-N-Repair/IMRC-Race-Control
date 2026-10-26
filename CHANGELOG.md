@@ -2,6 +2,16 @@
 
 Keep all release history in this file. Add each new version at the top; do not create version-specific changelog files.
 
+## 0.16.24
+
+- Add the Transponder navigation tab with an unlimited rental inventory, manual entry, and drag/drop from the live decoder feed.
+- Default rental nicknames to Transponder number***; support Red #1 / Black #5 style labels, unused random labels, custom nicknames and display appearance settings.
+- Reject duplicate physical transponder numbers, nicknames and color/number combinations.
+- Assign and return rentals for registered racers and event classes, update uncompleted lineups, and protect active race/practice timing.
+- Retain assignment snapshots with racer, class and event date, showing the last three events actually used or all history even after skipped weeks, renames or event deletion.
+- Persist rentals/history in the existing atomic database snapshot and backups, capture event-roster assignments, and validate uniqueness before saving.
+- Add rental regression tests and Windows-rendered theme previews with page interaction checks.
+
 ## 0.16.23
 
 - Replace the stock already-installed confirmation with a fully themed Race Control installer, including Install, Update, Repair, completion and error screens.

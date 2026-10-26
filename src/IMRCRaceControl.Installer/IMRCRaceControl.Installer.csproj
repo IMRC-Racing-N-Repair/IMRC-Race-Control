@@ -8,7 +8,7 @@
     <AssemblyName>RaceControl-Installer</AssemblyName>
     <RootNamespace>IMRCRaceControl.Installer</RootNamespace>
     <StartupObject>IMRCRaceControl.Installer.Program</StartupObject>
-    <Version>0.16.23</Version>
+    <Version>0.16.24</Version>
     <ApplicationIcon>../IMRCRaceControl.App/Assets/RC.ico</ApplicationIcon>
     <ApplicationManifest>../IMRCRaceControl.App/app.manifest</ApplicationManifest>
   </PropertyGroup>

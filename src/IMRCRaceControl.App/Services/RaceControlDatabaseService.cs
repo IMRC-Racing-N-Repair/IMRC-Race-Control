@@ -358,6 +358,9 @@ public sealed class RaceControlDatabaseService
 
     public async Task SaveApplicationStateAsync(AppSettings settings)
     {
+        settings.RentalTransponders ??= new();
+        IMRCRaceControl.Core.RentalTransponderRegistry.ValidateState(settings.RentalTransponders);
+        IMRCRaceControl.Core.RentalTransponderRegistry.CaptureAssignments(settings);
         await InitializeAsync();
 
         await using var connection = new SqliteConnection(ConnectionString);
