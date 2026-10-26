@@ -4,6 +4,8 @@ Keep all release history in this file. Add each new version at the top; do not c
 
 ## 0.16.24
 
+- Allow FMT changes for loaded and running races without resetting laps or clocks; apply to unfinished races in the class/round while preserving completed results and already-finished drivers.
+
 - Keep dashboard side buttons fully visible with a correctly sized tab rail.
 - Add EXPORT on the race dashboard: choose a completed race and all drivers or one driver; print/PDF or export CSV with each lap time and elapsed time.
 

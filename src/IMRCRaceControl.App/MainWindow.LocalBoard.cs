@@ -83,8 +83,9 @@ public partial class MainWindow
         if (current is null || _activeEvent is null) { MessageBox.Show(this,"Load a race first."); return; }
         var sessions = _activeEvent.Sessions.Where(s => s.ClassId == current.ClassId && s.SessionType == current.SessionType &&
             (s.SessionType == SessionType.Race ? s.MainLeg == current.MainLeg : s.Round == current.Round)).ToList();
-        if (sessions.Any(s => s.ProgressStatus != EventSessionStatus.Planned))
-        { MessageBox.Show(this,"Change the format before this class's round starts. A running or completed round keeps its scoring rules."); return; }
+        if (current.ProgressStatus == EventSessionStatus.Completed)
+        { MessageBox.Show(this,"This race is completed. Load an unfinished race to adjust its format."); return; }
+        var raceEvent = _activeEvent;
         var cls = Classes.First(c => c.Id == current.ClassId);
         var dialog = new Window { Owner=this, Title=$"{cls.Name} • {current.RoundLabel} format override", Width=420, SizeToContent=SizeToContent.Height, WindowStartupLocation=WindowStartupLocation.CenterOwner, ResizeMode=ResizeMode.NoResize };
         var panel = new StackPanel { Margin=new Thickness(18) };
@@ -93,7 +94,7 @@ public partial class MainWindow
         var value = new TextBox();
         void UpdateInput() { caption.Text=format.SelectedIndex==0?"Minutes":"Target laps"; value.Text=format.SelectedIndex==0?(current.RaceMinutesOverride??cls.MinutesFor(current.SessionType)).ToString("0.###"):current.TargetLaps.ToString(); }
         format.SelectionChanged += (_,_)=>UpdateInput(); UpdateInput();
-        panel.Children.Add(new TextBlock { Text="This class and round only. Class defaults stay unchanged.", TextWrapping=TextWrapping.Wrap });
+        panel.Children.Add(new TextBlock { Text="Applies to this race and unstarted races in this class/round. Live laps and clocks are retained. Already-finished drivers and completed races stay finished. A shorter target takes effect at each unfinished driver’s next crossing.", TextWrapping=TextWrapping.Wrap });
         panel.Children.Add(format); panel.Children.Add(caption); panel.Children.Add(value);
         var apply = new Button { Content="APPLY TO THIS ROUND", Margin=new Thickness(0,12,0,0) };
         double minutes=0; int laps=0;
@@ -104,8 +105,24 @@ public partial class MainWindow
         };
         panel.Children.Add(apply); dialog.Content=panel;
         if(dialog.ShowDialog()!=true) return;
-        foreach(var s in sessions) { s.RaceFormat=format.SelectedIndex==0?RaceFormat.Timed:RaceFormat.Laps; if(format.SelectedIndex==0)s.RaceMinutesOverride=minutes;else s.TargetLaps=laps; }
-        LoadSessionIntoRaceControl(current,saveSettings:false);
+        // Timing continues while this dialog is open; recheck before changing anything.
+        if (_loadedSession != current || _activeEvent != raceEvent || current.ProgressStatus == EventSessionStatus.Completed)
+        { MessageBox.Show(this,"The race changed or finished while the format window was open. No changes were applied."); return; }
+        var live = _raceEngine.State is RaceState.Armed or RaceState.Running or RaceState.TimeExpired;
+        var selectedFormat = format.SelectedIndex == 0 ? RaceFormat.Timed : RaceFormat.Laps;
+        if (live)
+            _raceEngine.UpdateLiveFormat(selectedFormat,
+                selectedFormat == RaceFormat.Timed ? TimeSpan.FromMinutes(minutes) : _raceEngine.Duration,
+                selectedFormat == RaceFormat.Laps ? laps : _raceEngine.TargetLaps, DateTimeOffset.Now);
+        foreach(var s in sessions.Where(s => s == current || s.ProgressStatus is EventSessionStatus.Planned or EventSessionStatus.Loaded))
+        { s.RaceFormat=selectedFormat; if(selectedFormat==RaceFormat.Timed)s.RaceMinutesOverride=minutes;else s.TargetLaps=laps; }
+        if (!live) LoadSessionIntoRaceControl(current,saveSettings:false);
+        else
+        {
+            RaceMinutesText.Text = (_loadedSession.RaceMinutesOverride ?? cls.MinutesFor(current.SessionType)).ToString("0.###");
+            RefreshRaceUi(DateTimeOffset.Now);
+            RefreshRaceDayFlow();
+        }
         await CaptureAndSaveSettingsAsync();
         FooterStatusText.Text=$"Format override applied to {cls.Name} {current.RoundLabel}. Class defaults unchanged.";
     }

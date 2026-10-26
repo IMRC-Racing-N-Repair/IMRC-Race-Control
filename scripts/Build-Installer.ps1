@@ -64,5 +64,5 @@ if (-not (Test-Path (Join-Path $branding "Transponder-Print-Continuation.png")))
 
 if (-not (Test-Path (Join-Path $branding "Event-Driver-Registration.png"))) { throw "Missing compact class-card event registration preview" }
 
-if (-not (Test-Path (Join-Path $branding "Dialog-CompletedRaceExportDialog.png"))) { throw "Missing completed race export preview" }
+if (-not (Test-Path (Join-Path $branding "Dialog-CompletedRaceExportDialog.png"))) { throw "Missing completed race export preview (live-format build)" }
 if (-not (Test-Path (Join-Path $branding "Dialog-ReportPrintDialog.png"))) { throw "Missing completed lap report preview" }

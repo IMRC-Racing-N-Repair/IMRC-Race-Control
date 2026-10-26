@@ -117,6 +117,20 @@ public sealed class RaceEngine
         }
     }
 
+    public void UpdateLiveFormat(RaceFormat format, TimeSpan duration, int targetLaps, DateTimeOffset now)
+    {
+        if (PracticeMode || State is not (RaceState.Armed or RaceState.Running or RaceState.TimeExpired))
+            throw new InvalidOperationException("Only an active race can change its live format.");
+        if (!Enum.IsDefined(format) || duration <= TimeSpan.Zero || targetLaps < 1)
+            throw new ArgumentException("Choose a valid race format, duration and lap target.");
+        RaceFormat = format;
+        Duration = duration;
+        TargetLaps = targetLaps;
+        // Apply prospectively: retain every recorded lap, start clock and finished driver.
+        // Unfinished drivers are evaluated against the new target on their next crossing.
+        Tick(now);
+    }
+
     public PassingResult RegisterPassing(int carNumber, string source, DateTimeOffset timestamp)
     {
         if (State is RaceState.Ready or RaceState.FalseStart or RaceState.Complete)

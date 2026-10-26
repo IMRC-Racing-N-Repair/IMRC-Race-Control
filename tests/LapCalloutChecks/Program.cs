@@ -39,6 +39,34 @@ Equal(true, allLapReport.Sections[2].Notes.Contains("No recorded laps"), "Zero-l
 exportRace.ProgressStatus=EventSessionStatus.Planned;
 var rejectedIncomplete=false;try { RaceReports.CompletedRace(exportEvent,exportRace); } catch(InvalidOperationException) { rejectedIncomplete=true; }
 Equal(true,rejectedIncomplete,"Incomplete race export rejected");
+// Live format edits retain history and starts; targets are enforced on subsequent crossings.
+var liveEdit = new RaceEngine();
+var liveStart = DateTimeOffset.Parse("2026-10-26T12:00:00Z");
+var liveCars = new[] { new RacerEntry { CarNumber=1,DriverName="One",Enabled=true }, new RacerEntry { CarNumber=2,DriverName="Two",Enabled=true } };
+liveEdit.Start(liveCars,TimeSpan.FromSeconds(10),5,RaceFormat.Timed,TimeSpan.Zero,SessionType.Race,StartStyle.Tone,liveStart);
+liveEdit.RegisterPassing(1,"test",liveStart.AddSeconds(5));
+liveEdit.RegisterPassing(2,"test",liveStart.AddSeconds(6));
+var liveBefore=JsonSerializer.Serialize(liveEdit.Laps);
+liveEdit.Tick(liveStart.AddSeconds(11));
+Equal(RaceState.TimeExpired,liveEdit.State,"Live edit fixture expired");
+liveEdit.UpdateLiveFormat(RaceFormat.Timed,TimeSpan.FromSeconds(20),5,liveStart.AddSeconds(11));
+Equal(RaceState.Running,liveEdit.State,"Extending live time clears time-expired state");
+Equal(liveBefore,JsonSerializer.Serialize(liveEdit.Laps),"Live time edit preserves exact laps");
+Equal(liveStart,liveEdit.MasterStartedAt!.Value,"Live edit preserves master clock");
+liveEdit.UpdateLiveFormat(RaceFormat.Laps,TimeSpan.FromSeconds(20),2,liveStart.AddSeconds(12));
+Equal(true,liveEdit.RegisterPassing(1,"test",liveStart.AddSeconds(13)).Lap!.Finished,"New lap target finishes leader at crossing");
+liveEdit.UpdateLiveFormat(RaceFormat.Timed,TimeSpan.FromSeconds(30),2,liveStart.AddSeconds(14));
+Equal(PassingResultCode.AlreadyFinished,liveEdit.RegisterPassing(1,"test",liveStart.AddSeconds(15)).Code,"Live edit preserves finished driver");
+liveEdit.UpdateLiveFormat(RaceFormat.Timed,TimeSpan.FromSeconds(8),2,liveStart.AddSeconds(16));
+Equal(RaceState.TimeExpired,liveEdit.State,"Shorter live duration expires clock");
+Equal(true,liveEdit.RegisterPassing(2,"test",liveStart.AddSeconds(17)).Lap!.Finished,"Shorter time waits for next crossing");
+Equal(RaceState.Complete,liveEdit.State,"All finish after format edit");
+var rejectedFinishedEdit=false;try { liveEdit.UpdateLiveFormat(RaceFormat.Laps,TimeSpan.FromSeconds(10),10,liveStart.AddSeconds(18)); } catch(InvalidOperationException) { rejectedFinishedEdit=true; }
+Equal(true,rejectedFinishedEdit,"Completed live race cannot be edited");
+liveEdit.Start(liveCars,TimeSpan.FromSeconds(10),5,RaceFormat.Timed,TimeSpan.Zero,SessionType.Race,StartStyle.IndividualCrossing,liveStart);
+liveEdit.UpdateLiveFormat(RaceFormat.Laps,TimeSpan.FromSeconds(10),3,liveStart.AddSeconds(1));
+Equal(RaceState.Armed,liveEdit.State,"Armed edit retains individual start behavior");
+Equal(0,liveEdit.Laps.Count,"Armed edit does not invent laps");
 // Race audio follows elapsed race time; repeats and delayed ticks must not replay cues.
 var audioSettings = new AppSettings { RaceLeadersEnabled = true, RaceLeaderCount = 3,
     RaceLeaderIntervalSeconds = 15, RaceHalfwayToneEnabled = true, RaceCountdownEnabled = true,
