@@ -19,11 +19,11 @@ public partial class RentalTransponderView
         var highlightWindow=new Window {Width=500,Height=160,Background=Brushes.Black,Content=highlightBorder};highlightWindow.Show();
         foreach(var color in new[]{Colors.Orange,Colors.Magenta})
         {
-            Application.Current.Resources["DashboardMinimumLapGlowBrush"]=new SolidColorBrush(color);
-            Application.Current.Resources["DriverCrossingBrush"]=Brushes.Lime;
-            Application.Current.Resources["DriverCrossingThickness"]=new Thickness(0,0,0,3);
+            highlightWindow.Resources["DashboardMinimumLapGlowBrush"]=new SolidColorBrush(color);
+            highlightWindow.Resources["DriverCrossingBrush"]=Brushes.Lime;
+            highlightWindow.Resources["DriverCrossingThickness"]=new Thickness(0,0,0,3);
             highlightWindow.Dispatcher.Invoke(()=>{},System.Windows.Threading.DispatcherPriority.ApplicationIdle);highlightWindow.UpdateLayout();
-            if((highlightBorder.BorderBrush as SolidColorBrush)?.Color!=color || highlightBorder.BorderThickness!=new Thickness(2))throw new InvalidDataException("Breakout did not override crossing highlight.");
+            if((highlightBorder.BorderBrush as SolidColorBrush)?.Color!=color || highlightBorder.BorderThickness!=new Thickness(2))throw new InvalidDataException($"Breakout did not override crossing highlight: expected {color}, actual {highlightBorder.BorderBrush}, thickness {highlightBorder.BorderThickness}.");
         }
         highlightRow.IsMinimumLapViolationGlow=false;
         highlightWindow.Dispatcher.Invoke(()=>{},System.Windows.Threading.DispatcherPriority.ApplicationIdle);
