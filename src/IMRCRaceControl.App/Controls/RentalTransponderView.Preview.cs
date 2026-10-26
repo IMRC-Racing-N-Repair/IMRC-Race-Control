@@ -42,6 +42,7 @@ public partial class RentalTransponderView
             view.Configure(settings, decoded, settings.Events, (change, _) => { change(); return Task.CompletedTask; }, settings.Events.Last().Id);
             var window = new Window { Title = "Transponder", Width = 1280, Height = 780, Content = view, WindowStartupLocation = WindowStartupLocation.CenterScreen };
             window.Show(); window.UpdateLayout();
+            window.Dispatcher.Invoke(() => { }, System.Windows.Threading.DispatcherPriority.ApplicationIdle);
             // Exercise the same add/error handlers used by typing and decoder drops.
             view.NumberInput.Text = "001000001"; view.AddClicked(view, new RoutedEventArgs());
             if (!view.StatusText.Text.Contains("already", StringComparison.OrdinalIgnoreCase) || settings.RentalTransponders.Inventory.Count != 3)
@@ -52,6 +53,10 @@ public partial class RentalTransponderView
             if (view.HistoryGrid.Items.Count != 3 || !view.SelectedLabel.Text.Contains("Red #1")) throw new InvalidDataException("Rental used-event history did not render.");
             view.StatusText.Text = "Sample data • Week 5: this rental still shows its uses in weeks 1, 2 and 3.";
             window.UpdateLayout();
+            window.Dispatcher.Invoke(() => { }, System.Windows.Threading.DispatcherPriority.ApplicationIdle);
+            window.UpdateLayout();
+            if (view.InventoryGrid.Columns[1].ActualWidth < 140 || view.HistoryGrid.Columns[1].ActualWidth < 90 || view.DecoderGrid.Columns[0].ActualWidth < 90)
+                throw new InvalidDataException("Transponder columns are too narrow to read.");
             var image = new RenderTargetBitmap((int)Math.Ceiling(view.ActualWidth), (int)Math.Ceiling(view.ActualHeight), 96, 96, PixelFormats.Pbgra32);
             image.Render(view);
             var encoder = new PngBitmapEncoder(); encoder.Frames.Add(BitmapFrame.Create(image));

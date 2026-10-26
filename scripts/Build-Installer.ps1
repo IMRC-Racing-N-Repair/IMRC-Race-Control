@@ -22,7 +22,10 @@ if ($rentalPreview.ExitCode -ne 0) {
     if (Test-Path $details) { Get-Content $details | Write-Host }
     throw 'Transponder page UI checks failed'
 }
-$icon = Join-Path $branding 'IMRC-Race-Control.ico'
+foreach ($theme in @('Light','Dark','Blue')) {
+    if (-not (Test-Path (Join-Path $branding "Transponder-$theme.png"))) { throw "Missing Transponder preview for $theme" }
+}
+$icon = Join-Path $branding 'IMRC-Race-Control.ico' 
 # The renderer validates animation frame dimensions and 80ms timing before packaging.
 $splash = Join-Path $branding 'Installer-Splash.gif'
 if (-not (Test-Path $splash)) { throw 'Branded installer animation was not rendered' }

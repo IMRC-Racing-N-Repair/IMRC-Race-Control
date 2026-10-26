@@ -13,7 +13,7 @@
    <DataGrid x:Name="InventoryGrid" Grid.Row="2" AutoGenerateColumns="False" IsReadOnly="True" CanUserAddRows="False" SelectionMode="Single" SelectionChanged="RentalSelected" AllowDrop="True" DragOver="NumberDragOver" Drop="NumberDropped" EnableRowVirtualization="True" EnableColumnVirtualization="True">
     <DataGrid.Columns>
      <DataGridTextColumn Header="Number" Binding="{Binding Number}" Width="125"/>
-     <DataGridTemplateColumn Header="Nickname" Width="*"><DataGridTemplateColumn.CellTemplate><DataTemplate><StackPanel Orientation="Horizontal" VerticalAlignment="Center"><Border Background="{Binding LabelHex}" BorderBrush="#9AA4B1" BorderThickness="1" Width="7" Margin="2,2,8,2"/><TextBlock Text="{Binding Nickname}" Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=DataGridCell}}" VerticalAlignment="Center" FontWeight="SemiBold"/></StackPanel></DataTemplate></DataGridTemplateColumn.CellTemplate></DataGridTemplateColumn>
+     <DataGridTemplateColumn Header="Nickname" Width="*" MinWidth="140"><DataGridTemplateColumn.CellTemplate><DataTemplate><StackPanel Orientation="Horizontal" VerticalAlignment="Center"><Border Background="{Binding LabelHex}" BorderBrush="#9AA4B1" BorderThickness="1" Width="7" Margin="2,2,8,2"/><TextBlock Text="{Binding Nickname}" Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=DataGridCell}}" VerticalAlignment="Center" FontWeight="SemiBold"/></StackPanel></DataTemplate></DataGridTemplateColumn.CellTemplate></DataGridTemplateColumn>
      <DataGridTextColumn Header="Assigned to" Binding="{Binding AssignedTo}" Width="180"/>
     </DataGrid.Columns>
    </DataGrid>
@@ -28,7 +28,7 @@
    </StackPanel>
    <DockPanel Grid.Row="4" Margin="0,0,0,6"><CheckBox x:Name="LastThree" Content="Last 3 used events" DockPanel.Dock="Right" Checked="HistoryFilterChanged" Unchecked="HistoryFilterChanged" IsChecked="True" VerticalAlignment="Center"/><TextBlock Text="Assignment history" FontSize="19" FontWeight="SemiBold"/></DockPanel>
    <DataGrid x:Name="HistoryGrid" Grid.Row="5" IsReadOnly="True" AutoGenerateColumns="False" CanUserAddRows="False" EnableRowVirtualization="True">
-    <DataGrid.Columns><DataGridTextColumn Header="Event date" Binding="{Binding EventDate, StringFormat=MM/dd/yyyy}" Width="100"/><DataGridTextColumn Header="Event" Binding="{Binding EventName}" Width="*"/><DataGridTextColumn Header="Racer" Binding="{Binding DriverName}" Width="*"/><DataGridTextColumn Header="Class" Binding="{Binding ClassName}" Width="*"/><DataGridTextColumn Header="Status" Binding="{Binding Status}" Width="130"/></DataGrid.Columns>
+    <DataGrid.Columns><DataGridTextColumn Header="Event date" Binding="{Binding EventDate, StringFormat=MM/dd/yyyy}" Width="100"/><DataGridTextColumn Header="Event" Binding="{Binding EventName}" Width="*" MinWidth="90"/><DataGridTextColumn Header="Racer" Binding="{Binding DriverName}" Width="*" MinWidth="90"/><DataGridTextColumn Header="Class" Binding="{Binding ClassName}" Width="*" MinWidth="80"/><DataGridTextColumn Header="Status" Binding="{Binding Status}" Width="130"/></DataGrid.Columns>
    </DataGrid>
    <TextBlock x:Name="StatusText" Grid.Row="6" Text="Drag a decoder number into the rental box, or type it above. All assignment history is retained." TextWrapping="Wrap" Margin="0,8,0,0" Foreground="{DynamicResource MutedBrush}"/>
   </Grid>
@@ -37,7 +37,7 @@
     <TextBlock Text="Decoder" FontSize="25" FontWeight="SemiBold"/>
     <TextBlock Grid.Row="1" Text="Live crossings • drag a number to rentals, or double-click it to fill the number box." TextWrapping="Wrap" Foreground="{DynamicResource MutedBrush}" Margin="0,8,0,12"/>
     <DataGrid x:Name="DecoderGrid" Grid.Row="2" AutoGenerateColumns="False" IsReadOnly="True" CanUserAddRows="False" SelectionMode="Single" PreviewMouseLeftButtonDown="DecoderMouseDown" PreviewMouseMove="DecoderMouseMove" MouseDoubleClick="DecoderDoubleClick" EnableRowVirtualization="True">
-     <DataGrid.Columns><DataGridTextColumn Header="Transponder" Binding="{Binding TransponderId}" Width="*"/><DataGridTextColumn Header="Last seen" Binding="{Binding LastSeenDisplay}" Width="108"/><DataGridTextColumn Header="Hits" Binding="{Binding Crossings}" Width="45"/></DataGrid.Columns>
+     <DataGrid.Columns><DataGridTextColumn Header="Transponder" Binding="{Binding TransponderId}" Width="*" MinWidth="100"/><DataGridTextColumn Header="Last seen" Binding="{Binding LastSeenDisplay}" Width="108"/><DataGridTextColumn Header="Hits" Binding="{Binding Crossings}" Width="45"/></DataGrid.Columns>
     </DataGrid>
     <TextBlock Grid.Row="3" Text="Shows the most recent 1,000 distinct decoder numbers. Rental inventory has no fixed limit." TextWrapping="Wrap" Foreground="{DynamicResource MutedBrush}" Margin="0,10,0,0"/>
    </Grid>
