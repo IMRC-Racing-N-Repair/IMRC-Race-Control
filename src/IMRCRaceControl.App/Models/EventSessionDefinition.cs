@@ -10,6 +10,7 @@ public sealed class EventSessionDefinition
     public StartStyle StartStyle { get; set; } = StartStyle.IndividualCrossing;
     public RaceFormat RaceFormat { get; set; } = global::IMRCRaceControl.Models.RaceFormat.Timed;
     public double? RaceMinutesOverride { get; set; }
+    public double? MinimumLapSecondsOverride { get; set; }
     public int TargetLaps { get; set; } = 50;
     public QualificationOrder QualificationOrder { get; set; } = QualificationOrder.Random;
     public int Round { get; set; } = 1;

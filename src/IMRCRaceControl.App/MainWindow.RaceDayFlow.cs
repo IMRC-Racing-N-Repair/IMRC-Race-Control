@@ -515,7 +515,7 @@ public partial class MainWindow
         if (cls is not null)
         {
             RaceMinutesText.Text = (_loadedSession?.RaceMinutesOverride ?? cls.MinutesFor(_loadedSession?.SessionType ?? SessionType.Qualifying)).ToString("0.###");
-            MinimumLapText.Text = cls.MinimumLapSeconds.ToString("0.###");
+            MinimumLapText.Text = (session.MinimumLapSecondsOverride ?? cls.MinimumLapSeconds).ToString("0.###");
         }
 
         StartStyleText.Text = session.StartStyle.ToDisplay();

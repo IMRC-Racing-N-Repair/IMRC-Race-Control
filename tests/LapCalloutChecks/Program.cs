@@ -67,6 +67,27 @@ liveEdit.Start(liveCars,TimeSpan.FromSeconds(10),5,RaceFormat.Timed,TimeSpan.Zer
 liveEdit.UpdateLiveFormat(RaceFormat.Laps,TimeSpan.FromSeconds(10),3,liveStart.AddSeconds(1));
 Equal(RaceState.Armed,liveEdit.State,"Armed edit retains individual start behavior");
 Equal(0,liveEdit.Laps.Count,"Armed edit does not invent laps");
+// Minimum-lap and clock-style edits are prospective and persisted with the session.
+var clockEdit=new RaceEngine();
+clockEdit.Start(liveCars,TimeSpan.FromSeconds(60),20,RaceFormat.Timed,TimeSpan.FromSeconds(1),SessionType.Race,StartStyle.IndividualCrossing,liveStart);
+clockEdit.RegisterPassing(1,"test",liveStart.AddSeconds(2));
+clockEdit.RegisterPassing(1,"test",liveStart.AddSeconds(7));
+var clockHistory=JsonSerializer.Serialize(clockEdit.Laps);
+clockEdit.UpdateLiveFormat(RaceFormat.Timed,TimeSpan.FromSeconds(60),20,liveStart.AddSeconds(8),TimeSpan.FromSeconds(4),StartStyle.Tone);
+Equal(clockHistory,JsonSerializer.Serialize(clockEdit.Laps),"Clock style edit retains recorded laps");
+Equal(liveStart,clockEdit.StartedAt!.Value,"Tone edit uses original signal");
+Equal(PassingResultCode.MinimumLapRejected,clockEdit.RegisterPassing(1,"test",liveStart.AddSeconds(9)).Code,"Raised minimum rejects next short lap");
+Equal(true,clockEdit.RegisterPassing(1,"test",liveStart.AddSeconds(12)).Accepted,"New minimum accepts valid lap");
+clockEdit.UpdateLiveFormat(RaceFormat.Timed,TimeSpan.FromSeconds(60),20,liveStart.AddSeconds(13),TimeSpan.Zero,StartStyle.LeaderCrossing);
+Equal(liveStart.AddSeconds(2),clockEdit.StartedAt!.Value,"Leader edit uses recorded leader crossing");
+Equal(true,clockEdit.RegisterPassing(2,"test",liveStart.AddSeconds(14)).Accepted,"Leader edit gives waiting driver a common clock");
+clockEdit.Start(liveCars,TimeSpan.FromSeconds(60),20,RaceFormat.Timed,TimeSpan.Zero,SessionType.Race,StartStyle.LeaderCrossing,liveStart);
+clockEdit.UpdateLiveFormat(RaceFormat.Timed,TimeSpan.FromSeconds(60),20,liveStart.AddSeconds(1),TimeSpan.Zero,StartStyle.IndividualCrossing);
+Equal(PassingResultCode.StartCrossing,clockEdit.RegisterPassing(2,"test",liveStart.AddSeconds(3)).Code,"Individual edit starts waiting driver on first crossing");
+Equal(0,clockEdit.Laps.Count,"Start crossing does not become a lap");
+var minOverride=new EventSessionDefinition { MinimumLapSecondsOverride=2.125,StartStyle=StartStyle.LeaderCrossing };
+Equal(2.125,JsonSerializer.Deserialize<EventSessionDefinition>(JsonSerializer.Serialize(minOverride))!.MinimumLapSecondsOverride!.Value,"Minimum lap override persists");
+Equal<double?>(null,JsonSerializer.Deserialize<EventSessionDefinition>("{}")!.MinimumLapSecondsOverride,"Legacy sessions retain class minimum default");
 // Race audio follows elapsed race time; repeats and delayed ticks must not replay cues.
 var audioSettings = new AppSettings { RaceLeadersEnabled = true, RaceLeaderCount = 3,
     RaceLeaderIntervalSeconds = 15, RaceHalfwayToneEnabled = true, RaceCountdownEnabled = true,

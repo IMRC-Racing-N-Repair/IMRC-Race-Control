@@ -117,12 +117,36 @@ public sealed class RaceEngine
         }
     }
 
-    public void UpdateLiveFormat(RaceFormat format, TimeSpan duration, int targetLaps, DateTimeOffset now)
+    public void UpdateLiveFormat(RaceFormat format, TimeSpan duration, int targetLaps, DateTimeOffset now, TimeSpan? minimumLapTime = null, StartStyle? startStyle = null)
     {
         if (PracticeMode || State is not (RaceState.Armed or RaceState.Running or RaceState.TimeExpired))
             throw new InvalidOperationException("Only an active race can change its live format.");
         if (!Enum.IsDefined(format) || duration <= TimeSpan.Zero || targetLaps < 1)
             throw new ArgumentException("Choose a valid race format, duration and lap target.");
+        if (minimumLapTime < TimeSpan.Zero || (startStyle.HasValue && !Enum.IsDefined(startStyle.Value)))
+            throw new ArgumentException("Choose a valid minimum lap time and start style.");
+        if (minimumLapTime.HasValue) MinimumLapTime = minimumLapTime.Value;
+        if (startStyle.HasValue && startStyle.Value != StartStyle)
+        {
+            var style = startStyle.Value;
+            if (style == StartStyle.Tone)
+            {
+                StartedAt = _armedAt;
+                foreach (var racer in _racers.Values.Where(r => !r.Finished)) racer.PersonalStartedAt = _armedAt;
+            }
+            else if (style == StartStyle.LeaderCrossing)
+            {
+                // Use the recorded leader crossing when available. Never discard existing starts
+                // or freeze a race already underway if the designated leader has not crossed.
+                var leaderStart = _acceptedPassings.FirstOrDefault(p => p.CarNumber == LeaderCarNumber)?.Timestamp ?? StartedAt;
+                StartedAt = leaderStart;
+                foreach (var racer in _racers.Values.Where(r => !r.Finished)) racer.PersonalStartedAt = leaderStart;
+            }
+            // Individual mode retains existing personal starts; drivers without a start
+            // begin their own clock on their next crossing. No laps are replayed or removed.
+            StartStyle = style;
+            State = StartedAt.HasValue ? RaceState.Running : RaceState.Armed;
+        }
         RaceFormat = format;
         Duration = duration;
         TargetLaps = targetLaps;

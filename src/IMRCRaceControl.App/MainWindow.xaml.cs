@@ -1721,7 +1721,7 @@ public partial class MainWindow : Window
         RaceEventText.Text = _activeEvent.Name;
         RaceSessionText.Text = session.Name;
         RaceMinutesText.Text = (_loadedSession?.RaceMinutesOverride ?? cls.MinutesFor(_loadedSession?.SessionType ?? GetSelectedSessionType())).ToString("0.###");
-        MinimumLapText.Text = cls.MinimumLapSeconds.ToString("0.###");
+        MinimumLapText.Text = (_loadedSession?.MinimumLapSecondsOverride ?? cls.MinimumLapSeconds).ToString("0.###");
         StartStyleText.Text = session.StartStyle.ToDisplay();
         UpdateSessionRosterText();
         ShowLoadedRosterStandings(cls);
@@ -1801,9 +1801,9 @@ public partial class MainWindow : Window
         if (updateTiming)
         {
             RaceMinutesText.Text = (_loadedSession?.RaceMinutesOverride ?? cls.MinutesFor(_loadedSession?.SessionType ?? GetSelectedSessionType())).ToString("0.###");
-            MinimumLapText.Text = cls.MinimumLapSeconds.ToString("0.###");
+            MinimumLapText.Text = (_loadedSession?.MinimumLapSecondsOverride ?? cls.MinimumLapSeconds).ToString("0.###");
         }
-        StartStyleText.Text = GetConfiguredStartStyle(cls, type).ToDisplay();
+        StartStyleText.Text = (_loadedSession?.StartStyle ?? GetConfiguredStartStyle(cls, type)).ToDisplay();
         if (string.IsNullOrWhiteSpace(RaceSessionText.Text) || RaceSessionText.Text == "Ad Hoc Race")
             RaceSessionText.Text = $"{cls.Name} {type}";
     }

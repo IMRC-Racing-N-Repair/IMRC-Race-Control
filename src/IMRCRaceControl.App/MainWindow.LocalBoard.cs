@@ -87,20 +87,30 @@ public partial class MainWindow
         { MessageBox.Show(this,"This race is completed. Load an unfinished race to adjust its format."); return; }
         var raceEvent = _activeEvent;
         var cls = Classes.First(c => c.Id == current.ClassId);
-        var dialog = new Window { Owner=this, Title=$"{cls.Name} • {current.RoundLabel} format override", Width=420, SizeToContent=SizeToContent.Height, WindowStartupLocation=WindowStartupLocation.CenterOwner, ResizeMode=ResizeMode.NoResize };
+        var dialog = new Window { Owner=this, Title=$"{cls.Name} • {current.RoundLabel} format override", Width=540, SizeToContent=SizeToContent.Height, WindowStartupLocation=WindowStartupLocation.CenterOwner, ResizeMode=ResizeMode.NoResize };
         var panel = new StackPanel { Margin=new Thickness(18) };
         var format = new ComboBox { ItemsSource=new[]{"Timed race","Lapped race"}, SelectedIndex=current.RaceFormat==RaceFormat.Laps?1:0 };
         var caption = new TextBlock();
         var value = new TextBox();
         void UpdateInput() { caption.Text=format.SelectedIndex==0?"Minutes":"Target laps"; value.Text=format.SelectedIndex==0?(current.RaceMinutesOverride??cls.MinutesFor(current.SessionType)).ToString("0.###"):current.TargetLaps.ToString(); }
         format.SelectionChanged += (_,_)=>UpdateInput(); UpdateInput();
-        panel.Children.Add(new TextBlock { Text="Applies to this race and unstarted races in this class/round. Live laps and clocks are retained. Already-finished drivers and completed races stay finished. A shorter target takes effect at each unfinished driver’s next crossing.", TextWrapping=TextWrapping.Wrap });
+        panel.Children.Add(new TextBlock { Text="Applies to this race and unstarted races in this class/round. Recorded laps are retained. Already-finished drivers and completed races stay finished. A shorter target takes effect at each unfinished driver’s next crossing.", TextWrapping=TextWrapping.Wrap });
         panel.Children.Add(format); panel.Children.Add(caption); panel.Children.Add(value);
+        var minimum = new TextBox { Text=(current.MinimumLapSecondsOverride ?? cls.MinimumLapSeconds).ToString("0.###") };
+        var styles = Enum.GetValues<StartStyle>();
+        var clockStyle = new ComboBox { ItemsSource=styles.Select(s => s.ToDisplay()).ToList(), SelectedIndex=Array.IndexOf(styles,current.StartStyle) };
+        panel.Children.Add(new TextBlock { Text="Minimum lap time (seconds)", Margin=new Thickness(0,10,0,0) });
+        panel.Children.Add(minimum);
+        panel.Children.Add(new TextBlock { Text="Clock / start style", Margin=new Thickness(0,10,0,0) });
+        panel.Children.Add(clockStyle);
+        panel.Children.Add(new TextBlock { Text="Minimum lap changes apply to future crossings. Tone uses the original start signal; leader uses its recorded crossing (or the existing race start). Individual keeps clocks already started and starts waiting drivers at their next crossing. Recorded laps stay unchanged.", TextWrapping=TextWrapping.Wrap, Margin=new Thickness(0,8,0,0) });
         var apply = new Button { Content="APPLY TO THIS ROUND", Margin=new Thickness(0,12,0,0) };
-        double minutes=0; int laps=0;
+        double minutes=0, minimumSeconds=0; int laps=0;
         apply.Click += (_,_) => {
             bool valid = format.SelectedIndex==0 ? double.TryParse(value.Text,out minutes)&&double.IsFinite(minutes)&&minutes>0&&minutes<=1440 : int.TryParse(value.Text,out laps)&&laps>=1&&laps<=10000;
             if (!valid) { MessageBox.Show(dialog,"Enter minutes from above 0 to 1440, or 1–10000 laps."); return; }
+            if (!double.TryParse(minimum.Text,out minimumSeconds) || !double.IsFinite(minimumSeconds) || minimumSeconds<0 || minimumSeconds>86400 || clockStyle.SelectedIndex<0)
+            { MessageBox.Show(dialog,"Enter a minimum lap time from 0 to 86400 seconds and select a clock style."); return; }
             dialog.DialogResult=true;
         };
         panel.Children.Add(apply); dialog.Content=panel;
@@ -113,13 +123,16 @@ public partial class MainWindow
         if (live)
             _raceEngine.UpdateLiveFormat(selectedFormat,
                 selectedFormat == RaceFormat.Timed ? TimeSpan.FromMinutes(minutes) : _raceEngine.Duration,
-                selectedFormat == RaceFormat.Laps ? laps : _raceEngine.TargetLaps, DateTimeOffset.Now);
+                selectedFormat == RaceFormat.Laps ? laps : _raceEngine.TargetLaps, DateTimeOffset.Now,
+                TimeSpan.FromSeconds(minimumSeconds), styles[clockStyle.SelectedIndex]);
         foreach(var s in sessions.Where(s => s == current || s.ProgressStatus is EventSessionStatus.Planned or EventSessionStatus.Loaded))
-        { s.RaceFormat=selectedFormat; if(selectedFormat==RaceFormat.Timed)s.RaceMinutesOverride=minutes;else s.TargetLaps=laps; }
+        { s.MinimumLapSecondsOverride=minimumSeconds; s.StartStyle=styles[clockStyle.SelectedIndex]; s.RaceFormat=selectedFormat; if(selectedFormat==RaceFormat.Timed)s.RaceMinutesOverride=minutes;else s.TargetLaps=laps; }
         if (!live) LoadSessionIntoRaceControl(current,saveSettings:false);
         else
         {
             RaceMinutesText.Text = (_loadedSession.RaceMinutesOverride ?? cls.MinutesFor(current.SessionType)).ToString("0.###");
+            MinimumLapText.Text = minimumSeconds.ToString("0.###");
+            StartStyleText.Text = current.StartStyle.ToDisplay();
             RefreshRaceUi(DateTimeOffset.Now);
             RefreshRaceDayFlow();
         }
