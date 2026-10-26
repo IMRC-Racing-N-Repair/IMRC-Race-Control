@@ -21,7 +21,15 @@ internal static class Program
         }
         if (args.Length == 2 && args[0] == "--export-rentals")
         {
-            Controls.RentalTransponderView.ExportPreview(args[1]);
+            // Closing a preview window must not shut down WPF before the next theme.
+            app.ShutdownMode = System.Windows.ShutdownMode.OnExplicitShutdown;
+            try { Controls.RentalTransponderView.ExportPreview(args[1]); }
+            catch (Exception ex)
+            {
+                System.IO.Directory.CreateDirectory(args[1]);
+                System.IO.File.WriteAllText(System.IO.Path.Combine(args[1], "Transponder-UI-Error.txt"), ex.ToString());
+                Environment.ExitCode = 1;
+            }
             return;
         }
         app.Run();
