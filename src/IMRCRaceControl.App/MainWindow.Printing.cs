@@ -31,7 +31,8 @@ public partial class MainWindow
                 report=RaceReports.Practice(driver.DisplayName,options.From,options.Through,stints,_settings.RentalTransponders);
             }
             else if (options.ReportType==1) report=RaceReports.EventStandings(options.RaceEvent!,options.ClassId,options.Scope,Classes);
-            else if (options.ReportType==2) report=RaceReports.Lineups(options.RaceEvent!,options.ClassId,options.Scope,_settings.RentalTransponders,Classes);
+            else if (options.ReportType==2) report=RaceReports.Lineups(options.RaceEvent!,options.ClassId,options.Scope,_settings.RentalTransponders,Classes,
+                DriverRatingCalculator.Calculate(Events,Drivers,_settings.DriverRatingSettings,_settings.DriverRatingReviews).Standings);
             else report=RaceReports.Series(options.Series!,Events,options.ClassId,Drivers,Classes);
             new ReportPrintDialog(report) { Owner=this }.ShowDialog();
         }

@@ -74,12 +74,26 @@ public partial class RentalTransponderView
         printSettings.RentalTransponders.PrintInColor = true;
         printSettings.RentalTransponders.PrintFontSize = 15;
         RentalTransponderRegistry.Add(printSettings, "1000001");
-        var report = new RaceReport { Title = "Class lineup print preview", Subtitle = "Club racing • Rental labels and personal transponders", IsLineup = true };
-        var formatter = new RentalPrintFormatting(printSettings.RentalTransponders, report);
-        report.Sections.Add(new ReportSection("RACE #1 - 21.5 STOCK - HEAT 1", ["Car", "Driver", "Transponder", "Seed"],
-            [ ["1", "Alex Rivera", formatter.Format("1000001"), "1"], ["2", "Jordan Lee", formatter.Format("6001201"), "2"], ["3", "Taylor Smith", "6001202", "3"] ], RoundHeading: "Qualifying Round 1", ClassColor: "#BDF1BB", RaceNumber: 1));
-        report.Sections.Add(new ReportSection("RACE #2 - NOVICE - HEAT 1", ["Car", "Driver", "Transponder", "Seed"],
-            [["1", "Sam Miller", formatter.Format("1000001"), "1"], ["2", "Riley Jones", "7654321", "2"]], RoundHeading: "Qualifying Round 1", ClassColor: "#FFF7A8", RaceNumber: 2));
+        var classes = new[] { new ClassDefinition { Id="stock",Name="21.5 STOCK",PrintColor="#009FE3" }, new ClassDefinition { Id="modified",Name="MODIFIED TOURING",PrintColor="#EF5350" }, new ClassDefinition { Id="novice",Name="NOVICE",PrintColor="#24BD60" } };
+        var printEvent = new RaceDayEventDefinition { Name="IMRC Club Racing",EventDate=DateTime.Today };
+        var ratings = new List<DriverRatingRow>();
+        string[] names = ["Alex Rivera","Jordan Lee","Taylor Smith","Sam Miller","Riley Jones","Casey Wilson","Morgan Davis","Jamie Parker"];
+        foreach (var cls in classes)
+        {
+            var count=cls.Id=="stock" ? 8 : cls.Id=="modified" ? 7 : 6;
+            var prior=new EventSessionDefinition { ClassId=cls.Id,ClassName=cls.Name,Round=1,ProgressStatus=EventSessionStatus.Completed };
+            var next=new EventSessionDefinition { ClassId=cls.Id,ClassName=cls.Name,Round=2 };
+            for(var i=0;i<count;i++)
+            {
+                var id=cls.Id+i;
+                prior.Entrants.Add(new SessionEntrant { DriverId=id,DriverName=names[i],CarNumber=i+1 });
+                prior.Results.Add(new StandingRow { CarNumber=i+1,Laps=40-i,TotalTime=$"4:{i+1:00}.345",Position=i+1 });
+                next.Entrants.Add(new SessionEntrant { DriverId=id,DriverName=names[i],CarNumber=i+1,TransponderId=i==0 ? "1000001" : (6001200+i).ToString() });
+                ratings.Add(new DriverRatingRow { ClassId=cls.Id,DriverId=id,Rating=1740-i*52,Safety=4.6-i*.14 });
+            }
+            printEvent.Sessions.Add(prior);printEvent.Sessions.Add(next);
+        }
+        var report=RaceReports.Lineups(printEvent,scope:new EventReportScope(SessionType.Qualifying,2),rentals:printSettings.RentalTransponders,classes:classes,ratings:ratings);
         var document = IMRCRaceControl.Dialogs.LineupPrintDocument.Build(report, 816, 1056);
         var page = document.Pages[0].Child;
         page.Measure(new Size(816, 1056)); page.Arrange(new Rect(0, 0, 816, 1056)); page.UpdateLayout();
@@ -87,6 +101,22 @@ public partial class RentalTransponderView
         printImage.Render(page);
         var printEncoder = new PngBitmapEncoder(); printEncoder.Frames.Add(BitmapFrame.Create(printImage));
         using (var file = File.Create(Path.Combine(output, "Transponder-Print.png"))) printEncoder.Save(file);
+        var longReport=RaceReports.Lineups(printEvent,scope:new EventReportScope(SessionType.Qualifying,2),rentals:printSettings.RentalTransponders,classes:classes,ratings:ratings);
+        var longSection=longReport.Sections[0];
+        longSection.Rows.Clear();
+        for(var i=1;i<=100;i++) longSection.Rows.Add([i.ToString(), i==35 ? "A driver with a deliberately long name that must wrap inside the driver column" : $"Racer {i}","Red #1","Q1 · 42 / 4:02.345","1620 / 4.20"]);
+        var longDocument=IMRCRaceControl.Dialogs.LineupPrintDocument.Build(longReport,816,1056);
+        if(longDocument.Pages.Count<3)throw new InvalidDataException("Long lineup pagination did not split into pages.");
+        foreach(var sheet in longDocument.Pages)
+        {
+            sheet.Child.Measure(new Size(816,1056));sheet.Child.Arrange(new Rect(0,0,816,1056));sheet.Child.UpdateLayout();
+            foreach(var child in sheet.Child.Children.OfType<System.Windows.Controls.StackPanel>())
+                if(System.Windows.Documents.FixedPage.GetTop(child)+child.ActualHeight>1013)throw new InvalidDataException("Lineup contents overlap the footer.");
+        }
+        var continued=longDocument.Pages[1].Child;
+        var continuation=new RenderTargetBitmap(816,1056,96,96,PixelFormats.Pbgra32);continuation.Render(continued);
+        var continuationPng=new PngBitmapEncoder();continuationPng.Frames.Add(BitmapFrame.Create(continuation));
+        using(var file=File.Create(Path.Combine(output,"Transponder-Print-Continuation.png")))continuationPng.Save(file);
         var owner = new Window { Width = 1000, Height = 720 }; owner.Show();
         foreach (var dialog in new Window[] { new IMRCRaceControl.Dialogs.EventEditorDialog(), new IMRCRaceControl.Dialogs.ClassEditorDialog(), new RentalAppearanceDialog(printSettings) })
         {

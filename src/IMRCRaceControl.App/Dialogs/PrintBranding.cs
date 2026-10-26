@@ -15,9 +15,5 @@ internal static class PrintBranding
         panel.Children.Add(name); return panel;
     }
     public static Brush Color(string hex) => new SolidColorBrush((Color)ColorConverter.ConvertFromString(IMRCRaceControl.Models.ClassPrintColors.Safe(hex)));
-    public static Brush Stripe(string hex)
-    {
-        var color = (Color)ColorConverter.ConvertFromString(IMRCRaceControl.Models.ClassPrintColors.Safe(hex));
-        return new SolidColorBrush(System.Windows.Media.Color.FromRgb((byte)((color.R+510)/3), (byte)((color.G+510)/3), (byte)((color.B+510)/3)));
-    }
+    public static Brush Stripe(string hex) => new SolidColorBrush(System.Windows.Media.Color.FromRgb(226,229,233));
 }

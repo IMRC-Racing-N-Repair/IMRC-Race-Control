@@ -32,7 +32,7 @@ public sealed class ReportPrintDialog : Window
         if (_report.Sections.Count==0) doc.Blocks.Add(new Paragraph(new Run(_report.EmptyMessage)));
         foreach (var section in _report.Sections)
         {
-            doc.Blocks.Add(new Paragraph(new Run(section.Title)) { FontSize=15, FontWeight=FontWeights.Bold, KeepWithNext=true, Background=PrintBranding.Color(section.ClassColor), Padding=new Thickness(6), Margin=new Thickness(0,16,0,5) });
+            doc.Blocks.Add(new Paragraph(new Run(section.Title)) { FontSize=15, FontWeight=FontWeights.Bold, KeepWithNext=true, BorderBrush=PrintBranding.Color(section.ClassColor), BorderThickness=new Thickness(5,0,0,0), Padding=new Thickness(6), Margin=new Thickness(0,16,0,5) });
             if (section.Notes.Length>0) { var notes = ReportTextStyling.Paragraph(section.Notes,_report); notes.FontSize=10; notes.KeepWithNext=true; doc.Blocks.Add(notes); }
             // Small table batches repeat column headers on long lap/standing reports.
             foreach (var batch in section.Rows.Chunk(18).DefaultIfEmpty([]))
@@ -43,7 +43,7 @@ public sealed class ReportPrintDialog : Window
                 TableRow Row(string[] values,bool header)
                 {
                     var row=new TableRow();
-                    var fill = header ? PrintBranding.Color(section.ClassColor) : rowIndex++ % 2 == 1 ? PrintBranding.Stripe(section.ClassColor) : Brushes.White;
+                    var fill = header ? Brushes.WhiteSmoke : rowIndex++ % 2 == 1 ? PrintBranding.Stripe(section.ClassColor) : Brushes.White;
                     foreach (var value in values) { var text = ReportTextStyling.Paragraph(value,_report); text.Margin=new Thickness(0); text.KeepTogether=true; row.Cells.Add(new TableCell(text) { Padding=new Thickness(4), BorderBrush=Brushes.LightGray, BorderThickness=new Thickness(0,0,0,0.5), FontWeight=header ? FontWeights.Bold : FontWeights.Normal, Background=fill }); }
                     return row;
                 }

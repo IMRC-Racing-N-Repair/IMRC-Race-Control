@@ -59,7 +59,7 @@ public static class EligibilityPrintChecks
         Eq(2,RaceReports.Lineups(ev,scope:new(SessionType.Qualifying,1)).Sections.Count,"Q1 includes both classes");
         Eq(1,RaceReports.Lineups(ev,"c1",new(SessionType.Qualifying,1)).Sections.Count,"Round and class filters combine");
         var q2Report=RaceReports.Lineups(ev,"c1",new(SessionType.Qualifying,2));
-        Eq(1,q2Report.Sections.Count,"Q2 only");Eq("3358118",q2Report.Sections[0].Rows[0][2],"Lineup prints transponder");Eq("3",q2Report.Sections[0].Rows[0][3],"Lineup prints seed");
+        Eq(1,q2Report.Sections.Count,"Q2 only");Eq("3358118",q2Report.Sections[0].Rows[0][2],"Lineup prints transponder");Eq("—",q2Report.Sections[0].Rows[0][3],"No completed prior round prints a dash");
         Eq(true,q2Report.Subtitle.Contains("Qualifying round 2"),"Report labels selected round");
         Eq(1,RaceReports.Lineups(ev,scope:new(SessionType.Race)).Sections.Count,"Mains-only lineup");
         Eq(0,RaceReports.EventStandings(ev,scope:new(SessionType.Qualifying,1)).Sections.Count,"Results exclude uncompleted heats");
@@ -116,6 +116,33 @@ public static class EligibilityPrintChecks
         Eq(true,auxiliary.Select(c=>c.ReportType).SequenceEqual(new[]{0,3}),"Practice and series remain accessible in merged selector");
         Eq(1,RaceReports.Lineups(ev,"c1",Choices("c1").First(c=>c.Scope==firstRound && c.ReportType==2).Scope).Sections.Count,"Merged lineup choice dispatches selected round");
         Eq(true,RaceReports.EventStandings(ev,"c1",Choices("c1").First(c=>c.Scope==firstRound && c.ReportType==1).Scope).Sections.Any(s=>s.Title==planned.Name),"Merged results choice dispatches selected round");
+        var prior = new EventSessionDefinition { ClassId="print",Round=1,ProgressStatus=EventSessionStatus.Completed,
+            Entrants=[new() { DriverId="stable",CarNumber=7 }], Results=[new() { CarNumber=7,Laps=42,TotalTime="4:02.345" }] };
+        var next = new EventSessionDefinition { ClassId="print",Round=2,Entrants=[new() { DriverId="stable",CarNumber=1,DriverName="Renamed driver",TransponderId="123" }] };
+        var future = new EventSessionDefinition { ClassId="print",Round=3,ProgressStatus=EventSessionStatus.Completed,
+            Entrants=[new() { DriverId="stable",CarNumber=7 }], Results=[new() { CarNumber=7,Laps=99,TotalTime="9:00.000" }] };
+        var printEvent = new RaceDayEventDefinition { Sessions=[prior,next,future] };
+        Eq("Q1 · 42 / 4:02.345",RaceReports.PreviousRoundResult(printEvent,next,"stable"),"Prior round survives car/name changes and ignores future rounds");
+        Eq("—",RaceReports.PreviousRoundResult(printEvent,prior,"stable"),"First round has no invented prior result");
+        Eq("—",RaceReports.PreviousRoundResult(printEvent,next,"new"),"New driver has no invented result");
+        var rated = RaceReports.Lineups(printEvent,scope:new(SessionType.Qualifying,2),ratings:[new() { ClassId="other",DriverId="stable",Rating=999,Safety=1 },new() { ClassId="print",DriverId="stable",Rating=1674,Safety=4.21 }]);
+        Eq("1674 / 4.21",rated.Sections[0].Rows[0][4],"SOF/SR uses individual class rating and safety");
+        Eq(false,rated.Sections[0].Columns.Contains("Seed"),"Seed replaced by ratings");
+        Eq("1500 / 3.00*",RaceReports.Lineups(printEvent,scope:new(SessionType.Qualifying,2)).Sections[0].Rows[0][4],"Unrated driver starting values marked provisional");
+        var m1 = new EventSessionDefinition { ClassId="print",SessionType=SessionType.Race,MainLeg=1,Entrants=[new() { DriverId="stable",CarNumber=2 }] };
+        printEvent.Sessions.Add(m1);
+        Eq("Q3 · 99 / 9:00.000",RaceReports.PreviousRoundResult(printEvent,m1,"stable"),"First main uses latest completed qualifying round");
+        m1.ProgressStatus=EventSessionStatus.Completed;m1.Results=[new() { CarNumber=2,Laps=48,TotalTime="5:01.010" }];
+        var m2 = new EventSessionDefinition { ClassId="print",SessionType=SessionType.Race,MainLeg=2 };
+        Eq("M1 · 48 / 5:01.010",RaceReports.PreviousRoundResult(printEvent,m2,"stable"),"Repeated main uses prior completed main");
+        Eq(ClassPrintColors.Choices[1].Hex,ClassPrintColors.Safe("#BDF1BB"),"Existing pastel choice migrates to same vivid color");
+        foreach (var color in ClassPrintColors.Choices)
+        {
+            double Linear(int n) { var v=n/255d;return v<=.04045 ? v/12.92 : Math.Pow((v+.055)/1.055,2.4); }
+            var red=Convert.ToInt32(color.Hex.Substring(1,2),16);var green=Convert.ToInt32(color.Hex.Substring(3,2),16);var blue=Convert.ToInt32(color.Hex.Substring(5,2),16);
+            var luminance=.2126*Linear(red)+.7152*Linear(green)+.0722*Linear(blue);
+            Eq(true,(luminance+.05)/.05>=4.5,"Black text readable on "+color.Name);
+        }
         return checks;
     }
 }

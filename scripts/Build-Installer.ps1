@@ -59,3 +59,5 @@ Write-Host "Installer and update files ready in artifacts/releases (version $ver
 if (-not (Test-Path (Join-Path $branding "Transponder-Print.png"))) { throw "Missing rental print preview" }
 
 foreach ($dialog in @('EventEditorDialog','ClassEditorDialog','RentalAppearanceDialog')) { if (-not (Test-Path (Join-Path $branding "Dialog-$dialog.png"))) { throw "Missing themed dialog preview: $dialog" } }
+
+if (-not (Test-Path (Join-Path $branding "Transponder-Print-Continuation.png"))) { throw "Missing long-lineup pagination preview" }

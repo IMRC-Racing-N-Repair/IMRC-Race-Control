@@ -4,6 +4,11 @@ Keep all release history in this file. Add each new version at the top; do not c
 
 ## 0.16.24
 
+- Redesign lineup sheets with a compact logo/round header, vivid race-number badges, neutral tables and stronger alternating gray rows.
+- Replace Seed with class-specific SOF/SR performance/safety ratings and mark unrated starting values.
+- Show each driver's latest earlier completed round, laps and total time using driver identity across car-number changes.
+- Upgrade saved pastel class selections to corresponding vivid colors while retaining readable black text.
+
 - Reset one or all rental nicknames to the saved naming defaults, preserving assigned label numbers and history.
 - Print rental nicknames without a Rental prefix, using the same typography as personal transponders.
 - Expose Reopen Event for completed race days, preserving completed race results and archives.

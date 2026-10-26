@@ -33,7 +33,7 @@ public sealed record EventReportScope(SessionType? Type = null, int? Round = nul
 public static class RaceReports
 {
     private static string Number(decimal n) => n.ToString("0.##");
-    public static RaceReport Lineups(RaceDayEventDefinition ev, string? classId = null, EventReportScope? scope = null, RentalTransponderState? rentals = null, IEnumerable<ClassDefinition>? classes = null)
+    public static RaceReport Lineups(RaceDayEventDefinition ev, string? classId = null, EventReportScope? scope = null, RentalTransponderState? rentals = null, IEnumerable<ClassDefinition>? classes = null, IEnumerable<DriverRatingRow>? ratings = null)
     {
         scope ??= new EventReportScope();
         RaceSchedule.AssignRaceNumbers(ev.Sessions);
@@ -41,17 +41,41 @@ public static class RaceReports
             Subtitle = $"{ev.Name} • {ev.EventDate:MM/dd/yyyy} • {scope.Label}",
             EmptyMessage = "No saved lineups match this event, round and class. Save the round in Rounds / Mains first; races do not need to be completed." };
         var rentalLabels = new RentalPrintFormatting(rentals, report);
+        var ratingRows = (ratings ?? []).GroupBy(r => (r.ClassId, r.DriverId)).ToDictionary(g => g.Key, g => g.First());
+        string RatingFor(EventSessionDefinition session, SessionEntrant entrant) =>
+            ratingRows.TryGetValue((session.ClassId, entrant.DriverId), out var rating)
+                ? $"{rating.RatingDisplay} / {rating.SafetyDisplay}" : "1500 / 3.00*";
         foreach (var s in RaceSchedule.DisplayOrder(ev.Sessions.Where(s=>(classId is null || s.ClassId==classId) && scope.Matches(s))))
         {
             var roundHeading = s.SessionType == SessionType.Qualifying ? $"Qualifying Round {s.Round}"
                 : s.SessionType == SessionType.Race ? $"Main Round {s.MainLeg}" : $"Practice Round {s.Round}";
             var raceHeading = $"RACE #{s.RaceNumber} - {s.ClassName} - " +
                 (s.SessionType == SessionType.Race ? $"{s.HeatMainDisplay}-MAIN" : $"HEAT {s.Heat}");
-            report.Sections.Add(new ReportSection(raceHeading, ["Car","Driver","Transponder","Seed"],
-                s.Entrants.OrderBy(e=>e.CarNumber).Select(e=>new[] { e.CarNumber.ToString(),e.DisplayName,rentalLabels.Format(e.TransponderId),e.SeedRank.ToString() }).ToList(),
+            report.Sections.Add(new ReportSection(raceHeading, ["Car","Driver","Transponder","Last round · laps / time","SOF / SR"],
+                s.Entrants.OrderBy(e=>e.CarNumber).Select(e=>new[] { e.CarNumber.ToString(),e.DisplayName,rentalLabels.Format(e.TransponderId),PreviousRoundResult(ev,s,e.DriverId),RatingFor(s,e) }).ToList(),
                 RoundHeading: roundHeading, ClassColor: classes?.FirstOrDefault(c => c.Id == s.ClassId)?.PrintColor ?? ClassPrintColors.Choices[0].Hex, RaceNumber: s.RaceNumber));
         }
         return report;
+    }
+    public static string PreviousRoundResult(RaceDayEventDefinition ev, EventSessionDefinition current, string driverId)
+    {
+        if (string.IsNullOrWhiteSpace(driverId) || driverId.StartsWith("unknown:", StringComparison.OrdinalIgnoreCase)) return "—";
+        // Join by retained driver identity, not name, car number, or transponder.
+        var previous = ev.Sessions.Where(s => s.Id != current.Id && s.ClassId == current.ClassId && s.ProgressStatus == EventSessionStatus.Completed &&
+            (current.SessionType == SessionType.Race
+                ? s.SessionType == SessionType.Qualifying || (s.SessionType == SessionType.Race && s.MainLeg < current.MainLeg)
+                : s.SessionType == current.SessionType && s.Round < current.Round))
+            .OrderByDescending(s => s.SessionType == SessionType.Race ? 1 : 0)
+            .ThenByDescending(s => s.SessionType == SessionType.Race ? s.MainLeg : s.Round)
+            .ThenByDescending(s => s.CompletedAt).ThenByDescending(s => s.QueueOrder);
+        foreach (var session in previous)
+        {
+            var entrants = session.Entrants.Where(e => e.DriverId == driverId).ToList();
+            if (entrants.Count != 1 || session.Entrants.Count(e => e.CarNumber == entrants[0].CarNumber) != 1) continue;
+            var results = session.Results.Where(r => r.CarNumber == entrants[0].CarNumber).ToList();
+            if (results.Count == 1) return $"{session.RoundLabel} · {results[0].Laps} / {results[0].TotalTime}";
+        }
+        return "—";
     }
     public static RaceReport EventStandings(RaceDayEventDefinition ev, string? classId = null, EventReportScope? scope = null, IEnumerable<ClassDefinition>? classes = null)
     {
