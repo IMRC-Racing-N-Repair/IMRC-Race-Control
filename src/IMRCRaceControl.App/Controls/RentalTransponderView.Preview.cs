@@ -63,6 +63,23 @@ public partial class RentalTransponderView
             using (var file = File.Create(Path.Combine(output, $"Transponder-{theme}.png"))) encoder.Save(file);
             window.Close();
         }
+        var printSettings = new AppSettings();
+        printSettings.RentalTransponders.NewNicknameStyle = "ColorNumber";
+        printSettings.RentalTransponders.NewLabelColor = "Red";
+        printSettings.RentalTransponders.PrintInColor = true;
+        printSettings.RentalTransponders.PrintFontSize = 15;
+        RentalTransponderRegistry.Add(printSettings, "1000001");
+        var report = new RaceReport { Title = "Rental print preview", Subtitle = "Club racing • Rental labels and personal transponders", IsLineup = true };
+        var formatter = new RentalPrintFormatting(printSettings.RentalTransponders, report);
+        report.Sections.Add(new ReportSection("RACE #1 - 21.5 STOCK - HEAT 1", ["Car", "Driver", "Transponder", "Seed"],
+            [ ["1", "Alex Rivera", formatter.Format("1000001"), "1"], ["2", "Jordan Lee", formatter.Format("6001201"), "2"] ], RoundHeading: "Qualifying Round 1"));
+        var document = IMRCRaceControl.Dialogs.LineupPrintDocument.Build(report, 816, 1056);
+        var page = document.Pages[0].Child;
+        page.Measure(new Size(816, 1056)); page.Arrange(new Rect(0, 0, 816, 1056)); page.UpdateLayout();
+        var printImage = new RenderTargetBitmap(816, 1056, 96, 96, PixelFormats.Pbgra32);
+        printImage.Render(page);
+        var printEncoder = new PngBitmapEncoder(); printEncoder.Frames.Add(BitmapFrame.Create(printImage));
+        using (var file = File.Create(Path.Combine(output, "Transponder-Print.png"))) printEncoder.Save(file);
         File.WriteAllText(Path.Combine(output, "Transponder-UI-Checks.txt"), "PASS: themed page loads; duplicate input rejected visibly; manual addition; selected label; three actual-use events retained through week five.\n");
     }
 }

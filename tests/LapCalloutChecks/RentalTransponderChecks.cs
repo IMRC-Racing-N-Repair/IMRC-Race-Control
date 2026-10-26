@@ -14,6 +14,29 @@ static class RentalTransponderChecks
             try { action(); } catch (Exception ex) when (ex is InvalidOperationException or InvalidDataException) { count++; return; }
             throw new Exception("Rental validation did not reject: " + message);
         }
+        var defaults = new AppSettings();
+        defaults.RentalTransponders.NewNicknameStyle = "ColorNumber";
+        defaults.RentalTransponders.NewLabelColor = "Red";
+        var d1 = RentalTransponderRegistry.Add(defaults, "91");
+        var d2 = RentalTransponderRegistry.Add(defaults, "92");
+        Check(d1.Nickname == "Red #1" && d2.Nickname == "Red #2", "saved defaults apply to every addition");
+        defaults.RentalTransponders.NewLabelColor = "Random";
+        var d3 = RentalTransponderRegistry.Add(defaults, "93");
+        Check(d3.LabelNumber == 3 && RentalTransponderRegistry.Colors.Contains(d3.Color), "random color keeps globally sequential numbering");
+        Reject(() => RentalTransponderRegistry.SetLabel(defaults, d3.Id, "Black", 1), "number duplicate across colors");
+        defaults.RentalTransponders.Inventory.Remove(d2);
+        defaults.RentalTransponders.NewNicknameStyle = "Custom";
+        defaults.RentalTransponders.CustomNicknamePattern = "Club rental";
+        var d4 = RentalTransponderRegistry.Add(defaults, "94");
+        Check(d4.LabelNumber == 2 && d4.Nickname == "Club rental #2", "lowest unused number and reusable custom prefix");
+        var report = new RaceReport();
+        defaults.RentalTransponders.PrintInColor = true;
+        defaults.RentalTransponders.PrintFontSize = 15;
+        var formatter = new RentalPrintFormatting(defaults.RentalTransponders, report);
+        Check(formatter.Format("00091;777") == "Rental: Red #1; 777", "rental marked on printouts while personal number remains intact");
+        Check(report.TextStyles["Rental: Red #1"] == new ReportTextStyle(15, true, RentalPrintFormatting.PrintColor("Red")), "print styling applies only to rental labels");
+        defaults.RentalTransponders.PrintFormat = "NicknameAndNumber";
+        Check(formatter.Format("91") == "Rental: Red #1 (91)", "nickname and physical number print format");
         var settings = new AppSettings();
         var a = RentalTransponderRegistry.Add(settings, " 000123 ");
         Check(a.Number == "123" && a.Nickname == "Transponder 123***", "canonical number and default nickname");
@@ -26,7 +49,7 @@ static class RentalTransponderChecks
         Check(settings.RentalTransponders.Inventory[0].Nickname == "Red #1" && settings.RentalTransponders.Inventory[1].Nickname == "Black #5", "preset labels");
         Reject(() => RentalTransponderRegistry.SetLabel(settings, b.Id, "Red", 1, "Custom alias"), "same color/number with different nickname");
         Reject(() => RentalTransponderRegistry.SetLabel(settings, b.Id, "Black", 6, " red   #1 "), "custom duplicate nickname");
-        Reject(() => RentalTransponderRegistry.SetLabel(settings, b.Id, "Blue", 0), "invalid label number");
+        Reject(() => RentalTransponderRegistry.SetLabel(settings, b.Id, "Blue", -1), "invalid label number");
         Check(settings.RentalTransponders.Inventory[1].Nickname == "Black #5", "failed edits leave existing record intact");
         RentalTransponderRegistry.SetLabel(settings, b.Id, "Black", 5, "Spare rocket");
         Check(settings.RentalTransponders.Inventory[1].Nickname == "Spare rocket", "custom nickname");

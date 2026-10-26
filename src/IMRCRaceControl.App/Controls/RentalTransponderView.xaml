@@ -3,34 +3,25 @@
   <Grid.ColumnDefinitions><ColumnDefinition Width="*" MinWidth="440"/><ColumnDefinition Width="12"/><ColumnDefinition Width="310" MinWidth="250"/></Grid.ColumnDefinitions>
   <Grid>
    <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="2*" MinHeight="100"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="2*" MinHeight="110"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
-   <DockPanel Margin="0,0,0,12"><Button DockPanel.Dock="Right" Content="Settings" Click="SettingsClicked" ToolTip="Rental label appearance and selected transponder nickname" HorizontalAlignment="Right"/><TextBlock Text="Rental transponders" FontSize="25" FontWeight="SemiBold" VerticalAlignment="Center"/></DockPanel>
+   <DockPanel Margin="0,0,0,12"><Button DockPanel.Dock="Right" Content="Settings" Click="SettingsClicked" ToolTip="Defaults for new rentals and rental appearance on printouts" HorizontalAlignment="Right"/><TextBlock Text="Rental transponders" FontSize="25" FontWeight="SemiBold" VerticalAlignment="Center"/></DockPanel>
    <Grid Grid.Row="1" Margin="0,0,0,10" AllowDrop="True" DragOver="NumberDragOver" Drop="NumberDropped">
     <Grid.ColumnDefinitions><ColumnDefinition Width="170"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
     <StackPanel Margin="0,0,8,0"><TextBlock Text="Transponder number" Foreground="{DynamicResource MutedBrush}" Margin="0,0,0,4"/><TextBox x:Name="NumberInput" ToolTip="Type a number or drag it here from Decoder"/></StackPanel>
-    <StackPanel Grid.Column="1" Margin="0,0,8,0"><TextBlock Text="Nickname (optional)" Foreground="{DynamicResource MutedBrush}" Margin="0,0,0,4"/><TextBox x:Name="NicknameInput" ToolTip="Leave blank for Transponder number***"/></StackPanel>
+    <StackPanel Grid.Column="1" Margin="0,0,8,0"><TextBlock Text="Custom nickname override (optional)" Foreground="{DynamicResource MutedBrush}" Margin="0,0,0,4"/><TextBox x:Name="NicknameInput" ToolTip="Leave blank to use your saved rental naming preferences"/></StackPanel>
     <Button Grid.Column="2" Content="Add rental" Click="AddClicked" VerticalAlignment="Bottom"/>
    </Grid>
-   <DataGrid x:Name="InventoryGrid" Grid.Row="2" AutoGenerateColumns="False" IsReadOnly="True" CanUserAddRows="False" SelectionMode="Single" SelectionChanged="RentalSelected" AllowDrop="True" DragOver="NumberDragOver" Drop="NumberDropped" EnableRowVirtualization="True" EnableColumnVirtualization="True">
+   <DataGrid x:Name="InventoryGrid" Grid.Row="2" AutoGenerateColumns="False" IsReadOnly="True" CanUserAddRows="False" SelectionMode="Single" MouseDoubleClick="EditNicknameClicked" SelectionChanged="RentalSelected" AllowDrop="True" DragOver="NumberDragOver" Drop="NumberDropped" EnableRowVirtualization="True" EnableColumnVirtualization="True">
     <DataGrid.Columns>
      <DataGridTextColumn Header="Number" Binding="{Binding Number}" Width="125"/>
      <DataGridTemplateColumn Header="Nickname" Width="*" MinWidth="140"><DataGridTemplateColumn.CellTemplate><DataTemplate><StackPanel Orientation="Horizontal" VerticalAlignment="Center"><Border Background="{Binding LabelHex}" BorderBrush="#9AA4B1" BorderThickness="1" Width="7" Margin="2,2,8,2"/><TextBlock Text="{Binding Nickname}" Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=DataGridCell}}" VerticalAlignment="Center" FontWeight="SemiBold"/></StackPanel></DataTemplate></DataGridTemplateColumn.CellTemplate></DataGridTemplateColumn>
-     <DataGridTextColumn Header="Assigned to" Binding="{Binding AssignedTo}" Width="180"/>
     </DataGrid.Columns>
    </DataGrid>
-   <StackPanel Grid.Row="3" Margin="0,12,0,10">
-    <TextBlock x:Name="SelectedLabel" Text="Select a rental to assign it or view its history" FontSize="17" FontWeight="SemiBold" Margin="0,0,0,8"/>
-    <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
-     <StackPanel Margin="0,0,8,0"><TextBlock Text="Event" Foreground="{DynamicResource MutedBrush}"/><ComboBox x:Name="EventPicker" DisplayMemberPath="DisplayName" SelectionChanged="AssignmentContextChanged"/></StackPanel>
-     <StackPanel Grid.Column="1" Margin="0,0,8,0"><TextBlock Text="Class" Foreground="{DynamicResource MutedBrush}"/><ComboBox x:Name="ClassPicker" DisplayMemberPath="Name" SelectionChanged="ClassChanged"/></StackPanel>
-     <StackPanel Grid.Column="2"><TextBlock Text="Registered racer" Foreground="{DynamicResource MutedBrush}"/><ComboBox x:Name="DriverPicker" DisplayMemberPath="DisplayName"/></StackPanel>
-    </Grid>
-    <StackPanel Orientation="Horizontal" Margin="0,8,0,0"><Button Content="Assign rental" Click="AssignClicked" Margin="0,0,8,0"/><Button Content="Return rental" Click="ReturnClicked"/></StackPanel>
-   </StackPanel>
+   <DockPanel Grid.Row="3" Margin="0,12,0,10"><Button DockPanel.Dock="Right" Content="Edit nickname" Click="EditNicknameClicked" HorizontalAlignment="Right"/><TextBlock x:Name="SelectedLabel" Text="Select a rental to view its history" FontSize="17" FontWeight="SemiBold" VerticalAlignment="Center"/></DockPanel>
    <DockPanel Grid.Row="4" Margin="0,0,0,6"><CheckBox x:Name="LastThree" Content="Last 3 used events" DockPanel.Dock="Right" Checked="HistoryFilterChanged" Unchecked="HistoryFilterChanged" IsChecked="True" VerticalAlignment="Center"/><TextBlock Text="Assignment history" FontSize="19" FontWeight="SemiBold"/></DockPanel>
    <DataGrid x:Name="HistoryGrid" Grid.Row="5" IsReadOnly="True" AutoGenerateColumns="False" CanUserAddRows="False" EnableRowVirtualization="True">
     <DataGrid.Columns><DataGridTextColumn Header="Event date" Binding="{Binding EventDate, StringFormat=MM/dd/yyyy}" Width="100"/><DataGridTextColumn Header="Event" Binding="{Binding EventName}" Width="*" MinWidth="90"/><DataGridTextColumn Header="Racer" Binding="{Binding DriverName}" Width="*" MinWidth="90"/><DataGridTextColumn Header="Class" Binding="{Binding ClassName}" Width="*" MinWidth="80"/><DataGridTextColumn Header="Status" Binding="{Binding Status}" Width="130"/></DataGrid.Columns>
    </DataGrid>
-   <TextBlock x:Name="StatusText" Grid.Row="6" Text="Drag a decoder number into the rental box, or type it above. All assignment history is retained." TextWrapping="Wrap" Margin="0,8,0,0" Foreground="{DynamicResource MutedBrush}"/>
+   <TextBlock x:Name="StatusText" Grid.Row="6" Text="Drag a decoder number into the rental box, or type it above. Assignments are tracked automatically from each event roster; all history is retained." TextWrapping="Wrap" Margin="0,8,0,0" Foreground="{DynamicResource MutedBrush}"/>
   </Grid>
   <Border Grid.Column="2" Background="{DynamicResource PanelBrush}" Padding="12">
    <Grid><Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>

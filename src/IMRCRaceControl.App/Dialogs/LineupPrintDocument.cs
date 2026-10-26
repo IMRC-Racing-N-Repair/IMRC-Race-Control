@@ -23,10 +23,8 @@ internal static class LineupPrintDocument
         double used = 0;
         string currentRound = "";
 
-        TextBlock Text(string value, double size, bool bold = false, bool centered = false) => new() {
-            Style=null, Text=value, FontFamily=new FontFamily("Segoe UI"), FontSize=size,
-            FontWeight=bold ? FontWeights.Bold : FontWeights.Normal, Foreground=Brushes.Black,
-            TextWrapping=TextWrapping.Wrap, TextAlignment=centered ? TextAlignment.Center : TextAlignment.Left };
+        TextBlock Text(string value, double size, bool bold = false, bool centered = false) =>
+            ReportTextStyling.Block(value, report, size, bold, centered);
         double Measure(FrameworkElement element)
         {
             element.Measure(new Size(contentWidth,double.PositiveInfinity));

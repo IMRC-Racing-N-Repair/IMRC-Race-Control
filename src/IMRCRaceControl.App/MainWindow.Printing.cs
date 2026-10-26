@@ -28,10 +28,10 @@ public partial class MainWindow
                 foreach (var row in rows.Where(r=>r.StartedAt.LocalDateTime.Date>=options.From && r.StartedAt.LocalDateTime.Date<=options.Through))
                     stints.Add((row,await _practiceHistoryService.LoadLapsAsync(row.StintId)));
                 stints.AddRange(activeSnapshots.Where(a=>!stints.Any(s=>s.Stint.StintId==a.Stint.StintId)));
-                report=RaceReports.Practice(driver.DisplayName,options.From,options.Through,stints);
+                report=RaceReports.Practice(driver.DisplayName,options.From,options.Through,stints,_settings.RentalTransponders);
             }
             else if (options.ReportType==1) report=RaceReports.EventStandings(options.RaceEvent!,options.ClassId,options.Scope);
-            else if (options.ReportType==2) report=RaceReports.Lineups(options.RaceEvent!,options.ClassId,options.Scope);
+            else if (options.ReportType==2) report=RaceReports.Lineups(options.RaceEvent!,options.ClassId,options.Scope,_settings.RentalTransponders);
             else report=RaceReports.Series(options.Series!,Events,options.ClassId,Drivers,Classes);
             new ReportPrintDialog(report) { Owner=this }.ShowDialog();
         }

@@ -14,6 +14,45 @@ public static class RentalTransponderRegistry
         if (normalized.Length == 0) throw new InvalidOperationException("A transponder number must be greater than zero.");
         return normalized;
     }
+    public static int NextLabelNumber(RentalTransponderState state, string? excludingId = null)
+    {
+        var used = state.Inventory.Where(x => x.Id != excludingId && x.LabelNumber > 0).Select(x => x.LabelNumber).ToHashSet();
+        for (var n = 1; ; n++) if (!used.Contains(n)) return n;
+    }
+    public static void NormalizeDefaults(RentalTransponderState state)
+    {
+        state.Inventory ??= []; state.History ??= [];
+        if (state.NewNicknameStyle is not ("Transponder" or "ColorNumber" or "Custom")) state.NewNicknameStyle = "Transponder";
+        if (state.NewLabelColor != "Random" && !Colors.Contains(state.NewLabelColor)) state.NewLabelColor = "Random";
+        if (string.IsNullOrWhiteSpace(state.CustomNicknamePattern)) state.CustomNicknamePattern = "Rental #{n}";
+        if (state.PrintFormat is not ("Nickname" or "NicknameAndNumber" or "Number")) state.PrintFormat = "Nickname";
+        state.PrintFontSize = double.IsFinite(state.PrintFontSize) ? Math.Clamp(state.PrintFontSize, 8, 18) : 12;
+        // Older drafts allowed the same ordinal in different colors. Preserve the
+        // first, renumber later automatic labels, and leave historical snapshots intact.
+        var pairs = new HashSet<(string, int)>();
+        foreach (var rental in state.Inventory.Where(x => x.Color != "Default" && x.LabelNumber > 0))
+            if (!pairs.Add((rental.Color, rental.LabelNumber))) throw new InvalidDataException("Duplicate rental color/number label. Existing data has been preserved.");
+        var reserved = state.Inventory.Where(x => x.LabelNumber > 0).Select(x => x.LabelNumber).ToHashSet();
+        var seen = new HashSet<int>();
+        var names = state.Inventory.Select(x => Nickname(x.Nickname)).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        foreach (var rental in state.Inventory.Where(x => x.LabelNumber > 0))
+        {
+            if (seen.Add(rental.LabelNumber)) continue;
+            var automatic = rental.Color != "Default" && rental.Nickname == $"{rental.Color} #{rental.LabelNumber}";
+            var next = 1;
+            while (reserved.Contains(next) || (automatic && names.Contains($"{rental.Color} #{next}"))) next++;
+            if (automatic) { names.Remove(rental.Nickname); rental.Nickname = $"{rental.Color} #{next}"; names.Add(rental.Nickname); }
+            rental.LabelNumber = next; reserved.Add(next); seen.Add(next);
+        }
+    }
+    public static string GeneratedNickname(RentalTransponderState state, string number, string color, int labelNumber)
+    {
+        if (state.NewNicknameStyle == "ColorNumber") return $"{color} #{labelNumber}";
+        if (state.NewNicknameStyle != "Custom") return DefaultNickname(number);
+        var pattern = state.CustomNicknamePattern;
+        if (!pattern.Contains("{n}", StringComparison.Ordinal) && !pattern.Contains("{number}", StringComparison.Ordinal)) pattern += " #{n}";
+        return Nickname(pattern.Replace("{n}", labelNumber.ToString()).Replace("{number}", number).Replace("{color}", color));
+    }
     public static string Nickname(string value) => string.Join(" ", value.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries));
     public static string DefaultNickname(string number) => $"Transponder {number}***";
     public static IEnumerable<string> Split(string? value) => (value ?? "").Split([';', ',', ' ', '\r', '\n', '\t'], StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);
@@ -28,12 +67,13 @@ public static class RentalTransponderRegistry
             throw new InvalidOperationException($"The nickname '{candidate.Nickname}' is already in use. Choose a unique nickname.");
         if (candidate.Color != "Default" && (!Colors.Contains(candidate.Color) || candidate.LabelNumber < 1))
             throw new InvalidOperationException("Select a label color and a number greater than zero.");
-        if (candidate.Color != "Default" && state.Inventory.Any(x => x.Id != candidate.Id && x.Color == candidate.Color && x.LabelNumber == candidate.LabelNumber))
-            throw new InvalidOperationException($"{candidate.Color} #{candidate.LabelNumber} is already in use. Choose another color/number combination.");
+        if (candidate.LabelNumber > 0 && state.Inventory.Any(x => x.Id != candidate.Id && x.LabelNumber == candidate.LabelNumber))
+            throw new InvalidOperationException($"Rental label number {candidate.LabelNumber} is already in use. Each number is unique across all colors.");
     }
     public static void ValidateState(RentalTransponderState state)
     {
-        state.Inventory ??= []; state.History ??= [];
+        NormalizeDefaults(state);
+        var ordinals = new HashSet<int>();
         var ids = new HashSet<string>(StringComparer.Ordinal);
         var numbers = new HashSet<string>(StringComparer.Ordinal);
         var nicknames = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
@@ -43,6 +83,7 @@ public static class RentalTransponderRegistry
             if (string.IsNullOrWhiteSpace(rental.Id) || !ids.Add(rental.Id)) throw new InvalidDataException("Duplicate rental record identity. Rental data has not been discarded.");
             if (!numbers.Add(Number(rental.Number))) throw new InvalidDataException($"Duplicate rental transponder number: {rental.Number}.");
             if (string.IsNullOrWhiteSpace(rental.Nickname) || !nicknames.Add(Nickname(rental.Nickname))) throw new InvalidDataException($"Empty or duplicate rental nickname: {rental.Nickname}.");
+            if (rental.LabelNumber > 0 && !ordinals.Add(rental.LabelNumber)) throw new InvalidDataException("Duplicate rental label number.");
             if (rental.Color != "Default" && (!Colors.Contains(rental.Color) || rental.LabelNumber < 1 || !labels.Add((rental.Color, rental.LabelNumber))))
                 throw new InvalidDataException($"Invalid or duplicate rental label: {rental.Color} #{rental.LabelNumber}.");
         }
@@ -50,8 +91,11 @@ public static class RentalTransponderRegistry
 
     public static RentalTransponder Add(AppSettings settings, string number, string nickname = "")
     {
-        var rental = new RentalTransponder { Number = Number(number) };
-        rental.Nickname = string.IsNullOrWhiteSpace(nickname) ? DefaultNickname(rental.Number) : Nickname(nickname);
+        var state = settings.RentalTransponders;
+        NormalizeDefaults(state);
+        var color = state.NewLabelColor == "Random" ? Colors[Random.Shared.Next(Colors.Length)] : state.NewLabelColor;
+        var rental = new RentalTransponder { Number = Number(number), Color = state.NewNicknameStyle == "Transponder" ? "Default" : color, LabelNumber = NextLabelNumber(state) };
+        rental.Nickname = string.IsNullOrWhiteSpace(nickname) ? GeneratedNickname(state, rental.Number, color, rental.LabelNumber) : Nickname(nickname);
         Validate(settings.RentalTransponders, rental);
         settings.RentalTransponders.Inventory.Add(rental);
         CaptureAssignments(settings);
@@ -59,27 +103,16 @@ public static class RentalTransponderRegistry
     }
     public static void SetLabel(AppSettings settings, string id, string color, int number, string customNickname = "")
     {
+        if (number < 0) throw new InvalidOperationException("Label numbers must be positive.");
         var old = settings.RentalTransponders.Inventory.Single(x => x.Id == id);
-        var updated = new RentalTransponder { Id = old.Id, Number = old.Number, Color = color, LabelNumber = color == "Default" ? 0 : number };
+        var updated = new RentalTransponder { Id = old.Id, Number = old.Number, Color = color, LabelNumber = number > 0 ? number : NextLabelNumber(settings.RentalTransponders, id) };
         updated.Nickname = !string.IsNullOrWhiteSpace(customNickname) ? Nickname(customNickname) :
-            color == "Default" ? DefaultNickname(old.Number) : $"{color} #{number}";
+            color == "Default" ? DefaultNickname(old.Number) : $"{color} #{updated.LabelNumber}";
         Validate(settings.RentalTransponders, updated);
         settings.RentalTransponders.Inventory[settings.RentalTransponders.Inventory.IndexOf(old)] = updated;
     }
-    public static (string Color, int Number) RandomLabel(AppSettings settings, string id)
-    {
-        var state = settings.RentalTransponders;
-        bool Available(string color, int n) => !state.Inventory.Any(x =>
-            (x.Color == color && x.LabelNumber == n) || Nickname(x.Nickname).Equals($"{color} #{n}", StringComparison.OrdinalIgnoreCase));
-        for (var i = 0; i < 64; i++)
-        {
-            var color = Colors[Random.Shared.Next(Colors.Length)];
-            var n = Random.Shared.Next(1, Math.Max(101, state.Inventory.Count + 2));
-            if (Available(color, n)) return (color, n);
-        }
-        // There is always a free label among count+1 candidates; no finite label pool.
-        for (var n = 1; ; n++) foreach (var color in Colors) if (Available(color, n)) return (color, n);
-    }
+    public static (string Color, int Number) RandomLabel(AppSettings settings, string id) =>
+        (Colors[Random.Shared.Next(Colors.Length)], NextLabelNumber(settings.RentalTransponders, id));
     public static IReadOnlyList<RentalTransponderUse> History(AppSettings settings, string id, int? lastEvents = null)
     {
         var rows = settings.RentalTransponders.History.Where(x => x.RentalId == id)
@@ -101,6 +134,7 @@ public static class RentalTransponderRegistry
         var state = settings.RentalTransponders;
         var inventory = state.Inventory.ToDictionary(x => Number(x.Number), StringComparer.Ordinal);
         var known = state.History.GroupBy(h => (h.RentalId, h.EventId, h.DriverId, h.ClassId)).ToDictionary(g => g.Key, g => g.ToList());
+        var currentKeys = new HashSet<(string, string, string, string)>();
         foreach (var ev in settings.Events)
         {
             void Capture(string driverId, string classId, string numbers, string? name = null, bool completed = false)
@@ -109,21 +143,26 @@ public static class RentalTransponderRegistry
                 {
                     if (!inventory.TryGetValue(token, out var rental)) continue;
                     var key = (rental.Id, ev.Id, driverId, classId);
+                    var isCurrent = !completed && ev.Status == EventStatus.Active;
+                    if (isCurrent) currentKeys.Add(key);
                     if (known.TryGetValue(key, out var previous))
                     {
                         if (ev.Status == EventStatus.Completed) foreach (var row in previous.Where(x => x.ReturnedAt is null)) row.ReturnedAt = ev.CompletedAt ?? DateTimeOffset.Now;
-                        continue;
+                        if (!isCurrent || previous.Any(x => x.ReturnedAt is null)) continue;
                     }
                     var use = Snapshot(settings, rental, ev, driverId, classId, name);
                     if (completed) use.ReturnedAt ??= DateTimeOffset.Now;
                     state.History.Add(use);
-                    known[key] = [use];
+                    if (!known.TryGetValue(key, out var uses)) known[key] = uses = [];
+                    uses.Add(use);
                 }
             }
             foreach (var assignment in ev.DriverAssignments) Capture(assignment.DriverId, assignment.ClassId, assignment.TransponderId);
             foreach (var session in ev.Sessions.Where(s => s.ProgressStatus == EventSessionStatus.Completed))
                 foreach (var entrant in session.Entrants) Capture(entrant.DriverId, session.ClassId, entrant.TransponderId, entrant.DisplayName, true);
         }
+        foreach (var use in state.History.Where(h => h.ReturnedAt is null && !currentKeys.Contains((h.RentalId, h.EventId, h.DriverId, h.ClassId))))
+            use.ReturnedAt = DateTimeOffset.Now;
     }
     public static void Assign(AppSettings settings, string rentalId, string eventId, string driverId, string classId)
     {

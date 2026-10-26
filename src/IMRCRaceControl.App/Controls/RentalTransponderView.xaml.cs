@@ -17,17 +17,14 @@ public partial class RentalTransponderView : UserControl
     private string? _dragNumber;
     private bool _refreshing;
     private const string DragFormat = "IMRC.RentalTransponderNumber";
-    private sealed record RentalRow(string Id, string Number, string Nickname, string LabelHex, string AssignedTo);
+    private sealed record RentalRow(string Id, string Number, string Nickname, string LabelHex);
     public RentalTransponderView() { InitializeComponent(); }
     public void Configure(AppSettings settings, ObservableCollection<DetectedTransponder> decoded, IEnumerable<RaceDayEventDefinition> events,
         Func<Action, bool, Task> commit, string? activeEventId)
     {
         _settings = settings; _commit = commit;
         DecoderGrid.ItemsSource = decoded;
-        var chosen = (EventPicker.SelectedItem as RaceDayEventDefinition)?.Id ?? activeEventId;
-        EventPicker.ItemsSource = events;
-        EventPicker.SelectedItem = events.FirstOrDefault(x => x.Id == chosen) ?? events.FirstOrDefault(x => x.Status == EventStatus.Active);
-        Refresh(); RefreshClasses();
+        Refresh();
     }
     private string? SelectedId => (InventoryGrid.SelectedItem as RentalRow)?.Id;
     private void Refresh(string? selectedId = null)
@@ -37,11 +34,8 @@ public partial class RentalTransponderView : UserControl
         _refreshing = true;
         try
         {
-            InventoryGrid.ItemsSource = _settings.RentalTransponders.Inventory.Select(r => new RentalRow(r.Id, r.Number, r.Nickname, r.LabelHex,
-                string.Join(", ", _settings.RentalTransponders.History.Where(h => h.RentalId == r.Id && h.ReturnedAt is null).Select(h => h.DriverName).Distinct()))).ToList();
+            InventoryGrid.ItemsSource = _settings.RentalTransponders.Inventory.Select(r => new RentalRow(r.Id, r.Number, r.Nickname, r.LabelHex)).ToList();
             InventoryGrid.SelectedItem = ((IEnumerable<RentalRow>)InventoryGrid.ItemsSource).FirstOrDefault(x => x.Id == selectedId);
-            InventoryGrid.FontSize = _settings.RentalTransponders.LabelFontSize;
-            InventoryGrid.RowHeight = _settings.RentalTransponders.RowHeight;
         }
         finally { _refreshing = false; }
         RefreshHistory();
@@ -51,7 +45,7 @@ public partial class RentalTransponderView : UserControl
         if (_settings is null || HistoryGrid is null) return;
         var id = SelectedId;
         var rental = _settings.RentalTransponders.Inventory.FirstOrDefault(x => x.Id == id);
-        SelectedLabel.Text = rental is null ? "Select a rental to assign it or view its history" : $"{rental.Nickname} • {rental.Number}";
+        SelectedLabel.Text = rental is null ? "Select a rental to view its history" : $"{rental.Nickname} • {rental.Number}";
         HistoryGrid.ItemsSource = id is null ? null : RentalTransponderRegistry.History(_settings, id, LastThree.IsChecked == true ? 3 : null);
     }
     private void RentalSelected(object sender, SelectionChangedEventArgs e) { if (!_refreshing) RefreshHistory(); }
@@ -70,41 +64,6 @@ public partial class RentalTransponderView : UserControl
         string? added = null;
         await Change(() => { added = RentalTransponderRegistry.Add(_settings, NumberInput.Text, NicknameInput.Text).Id; });
         if (added is not null && _settings.RentalTransponders.Inventory.Any(x => x.Id == added)) { Refresh(added); NumberInput.Clear(); NicknameInput.Clear(); }
-    }
-    private void AssignmentContextChanged(object sender, SelectionChangedEventArgs e) => RefreshClasses();
-    private void RefreshClasses()
-    {
-        if (_settings is null || ClassPicker is null) return;
-        var selected = (ClassPicker.SelectedItem as ClassDefinition)?.Id;
-        var ev = EventPicker.SelectedItem as RaceDayEventDefinition;
-        var classes = _settings.Classes.Where(x => ev?.ClassIds.Contains(x.Id) == true).ToList();
-        ClassPicker.ItemsSource = classes;
-        ClassPicker.SelectedItem = classes.FirstOrDefault(x => x.Id == selected) ?? classes.FirstOrDefault();
-        RefreshDrivers();
-    }
-    private void ClassChanged(object sender, SelectionChangedEventArgs e) => RefreshDrivers();
-    private void RefreshDrivers()
-    {
-        if (_settings is null || DriverPicker is null) return;
-        var selected = (DriverPicker.SelectedItem as DriverProfile)?.Id;
-        var ev = EventPicker.SelectedItem as RaceDayEventDefinition;
-        var cls = ClassPicker.SelectedItem as ClassDefinition;
-        var ids = ev?.DriverAssignments.Where(a => a.ClassId == cls?.Id).Select(a => a.DriverId).ToHashSet() ?? [];
-        var drivers = _settings.Drivers.Where(d => ids.Contains(d.Id)).OrderBy(d => d.DisplayName).ToList();
-        DriverPicker.ItemsSource = drivers;
-        DriverPicker.SelectedItem = drivers.FirstOrDefault(x => x.Id == selected) ?? drivers.FirstOrDefault();
-    }
-    private async void AssignClicked(object sender, RoutedEventArgs e)
-    {
-        if (_settings is null || SelectedId is not string id || EventPicker.SelectedItem is not RaceDayEventDefinition ev ||
-            ClassPicker.SelectedItem is not ClassDefinition cls || DriverPicker.SelectedItem is not DriverProfile driver)
-        { StatusText.Text = "Select a rental, event, class and registered racer. Add racers to the event roster first if needed."; return; }
-        await Change(() => RentalTransponderRegistry.Assign(_settings, id, ev.Id, driver.Id, cls.Id), true, id);
-    }
-    private async void ReturnClicked(object sender, RoutedEventArgs e)
-    {
-        if (_settings is null || SelectedId is not string id) { StatusText.Text = "Select the rental being returned."; return; }
-        await Change(() => RentalTransponderRegistry.Return(_settings, id), true, id);
     }
     private void DecoderMouseDown(object sender, MouseButtonEventArgs e)
     {
@@ -135,15 +94,16 @@ public partial class RentalTransponderView : UserControl
     private async void SettingsClicked(object sender, RoutedEventArgs e)
     {
         if (_settings is null) return;
-        var id = SelectedId;
-        var item = _settings.RentalTransponders.Inventory.FirstOrDefault(x => x.Id == id);
-        var dialog = new RentalAppearanceDialog(_settings, item) { Owner = Window.GetWindow(this) };
+        var dialog = new RentalAppearanceDialog(_settings) { Owner = Window.GetWindow(this) };
         if (dialog.ShowDialog() != true) return;
-        await Change(() =>
-        {
-            if (item is not null) RentalTransponderRegistry.SetLabel(_settings, item.Id, dialog.Color, dialog.Number, dialog.CustomNickname);
-            _settings.RentalTransponders.LabelFontSize = dialog.LabelSize;
-            _settings.RentalTransponders.RowHeight = Math.Max(dialog.RowSize, dialog.LabelSize + 12);
-        }, false, id);
+        await Change(() => dialog.Apply(_settings));
+    }
+    private async void EditNicknameClicked(object sender, RoutedEventArgs e)
+    {
+        if (_settings is null || SelectedId is not string id) { StatusText.Text = "Select a rental to edit its nickname."; return; }
+        var rental = _settings.RentalTransponders.Inventory.Single(x => x.Id == id);
+        var dialog = new RentalNicknameDialog(_settings, rental) { Owner = Window.GetWindow(this) };
+        if (dialog.ShowDialog() != true) return;
+        await Change(() => RentalTransponderRegistry.SetLabel(_settings, id, dialog.LabelColor, dialog.LabelNumber, dialog.CustomNickname), false, id);
     }
 }

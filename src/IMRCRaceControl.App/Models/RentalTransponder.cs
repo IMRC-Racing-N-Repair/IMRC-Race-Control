@@ -4,8 +4,13 @@ public sealed class RentalTransponderState
 {
     public List<RentalTransponder> Inventory { get; set; } = [];
     public List<RentalTransponderUse> History { get; set; } = [];
-    public double LabelFontSize { get; set; } = 18;
-    public double RowHeight { get; set; } = 42;
+    public string NewNicknameStyle { get; set; } = "Transponder";
+    public string NewLabelColor { get; set; } = "Random";
+    public string CustomNicknamePattern { get; set; } = "Rental #{n}";
+    public string PrintFormat { get; set; } = "Nickname";
+    public double PrintFontSize { get; set; } = 12;
+    public bool PrintBold { get; set; } = true;
+    public bool PrintInColor { get; set; }
 }
 
 public sealed class RentalTransponder

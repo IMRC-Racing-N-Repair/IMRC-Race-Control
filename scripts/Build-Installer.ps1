@@ -54,3 +54,5 @@ Remove-Item 'artifacts/releases/assets.win.json' -ErrorAction SilentlyContinue
 
 Get-ChildItem 'artifacts/releases' -File | Get-FileHash -Algorithm SHA256 | ForEach-Object { "$($_.Hash.ToLower())  $([IO.Path]::GetFileName($_.Path))" } | Set-Content 'artifacts/releases/SHA256SUMS.txt'
 Write-Host "Installer and update files ready in artifacts/releases (version $version)."
+
+if (-not (Test-Path (Join-Path $branding "Transponder-Print.png"))) { throw "Missing rental print preview" }

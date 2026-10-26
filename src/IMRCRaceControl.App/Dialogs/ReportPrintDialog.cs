@@ -32,7 +32,7 @@ public sealed class ReportPrintDialog : Window
         foreach (var section in _report.Sections)
         {
             doc.Blocks.Add(new Paragraph(new Run(section.Title)) { FontSize=15, FontWeight=FontWeights.Bold, KeepWithNext=true, Margin=new Thickness(0,16,0,5) });
-            if (section.Notes.Length>0) doc.Blocks.Add(new Paragraph(new Run(section.Notes)) { FontSize=10, KeepWithNext=true });
+            if (section.Notes.Length>0) { var notes = ReportTextStyling.Paragraph(section.Notes,_report); notes.FontSize=10; notes.KeepWithNext=true; doc.Blocks.Add(notes); }
             // Small table batches repeat column headers on long lap/standing reports.
             foreach (var batch in section.Rows.Chunk(18).DefaultIfEmpty([]))
             {
@@ -41,7 +41,7 @@ public sealed class ReportPrintDialog : Window
                 TableRow Row(string[] values,bool header)
                 {
                     var row=new TableRow();
-                    foreach (var value in values) row.Cells.Add(new TableCell(new Paragraph(new Run(value)) { Margin=new Thickness(0), KeepTogether=true }) { Padding=new Thickness(4), BorderBrush=Brushes.LightGray, BorderThickness=new Thickness(0,0,0,0.5), FontWeight=header ? FontWeights.Bold : FontWeights.Normal, Background=header ? Brushes.LightGray : Brushes.White });
+                    foreach (var value in values) { var text = ReportTextStyling.Paragraph(value,_report); text.Margin=new Thickness(0); text.KeepTogether=true; row.Cells.Add(new TableCell(text) { Padding=new Thickness(4), BorderBrush=Brushes.LightGray, BorderThickness=new Thickness(0,0,0,0.5), FontWeight=header ? FontWeights.Bold : FontWeights.Normal, Background=header ? Brushes.LightGray : Brushes.White }); }
                     return row;
                 }
                 group.Rows.Add(Row(section.Columns,true));

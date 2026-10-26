@@ -7,6 +7,7 @@ public sealed class RaceReport
     public string EmptyMessage { get; set; } = "No results or lineups match this selection.";
     public bool IsLineup { get; set; }
     public List<ReportSection> Sections { get; } = [];
+    public Dictionary<string, ReportTextStyle> TextStyles { get; } = new(StringComparer.Ordinal);
 }
 public sealed record ReportSection(string Title, string[] Columns, List<string[]> Rows, string Notes = "", string RoundHeading = "");
 public sealed record EventReportScope(SessionType? Type = null, int? Round = null)
@@ -32,13 +33,14 @@ public sealed record EventReportScope(SessionType? Type = null, int? Round = nul
 public static class RaceReports
 {
     private static string Number(decimal n) => n.ToString("0.##");
-    public static RaceReport Lineups(RaceDayEventDefinition ev, string? classId = null, EventReportScope? scope = null)
+    public static RaceReport Lineups(RaceDayEventDefinition ev, string? classId = null, EventReportScope? scope = null, RentalTransponderState? rentals = null)
     {
         scope ??= new EventReportScope();
         RaceSchedule.AssignRaceNumbers(ev.Sessions);
         var report = new RaceReport { Title = "Race event lineups", IsLineup = true,
             Subtitle = $"{ev.Name} • {ev.EventDate:MM/dd/yyyy} • {scope.Label}",
             EmptyMessage = "No saved lineups match this event, round and class. Save the round in Rounds / Mains first; races do not need to be completed." };
+        var rentalLabels = new RentalPrintFormatting(rentals, report);
         foreach (var s in RaceSchedule.DisplayOrder(ev.Sessions.Where(s=>(classId is null || s.ClassId==classId) && scope.Matches(s))))
         {
             var roundHeading = s.SessionType == SessionType.Qualifying ? $"Qualifying Round {s.Round}"
@@ -46,7 +48,7 @@ public static class RaceReports
             var raceHeading = $"RACE #{s.RaceNumber} - {s.ClassName} - " +
                 (s.SessionType == SessionType.Race ? $"{s.HeatMainDisplay}-MAIN" : $"HEAT {s.Heat}");
             report.Sections.Add(new ReportSection(raceHeading, ["Car","Driver","Transponder","Seed"],
-                s.Entrants.OrderBy(e=>e.CarNumber).Select(e=>new[] { e.CarNumber.ToString(),e.DisplayName,e.TransponderId,e.SeedRank.ToString() }).ToList(),
+                s.Entrants.OrderBy(e=>e.CarNumber).Select(e=>new[] { e.CarNumber.ToString(),e.DisplayName,rentalLabels.Format(e.TransponderId),e.SeedRank.ToString() }).ToList(),
                 RoundHeading: roundHeading));
         }
         return report;
@@ -90,11 +92,12 @@ public static class RaceReports
         }
         return report;
     }
-    public static RaceReport Practice(string driverName, DateTime start, DateTime end, IEnumerable<(PracticeHistoryRow Stint,IReadOnlyList<PracticeHistoryLapRow> Laps)> stints)
+    public static RaceReport Practice(string driverName, DateTime start, DateTime end, IEnumerable<(PracticeHistoryRow Stint,IReadOnlyList<PracticeHistoryLapRow> Laps)> stints, RentalTransponderState? rentals = null)
     {
         var report=new RaceReport { Title=$"Practice — {driverName}",Subtitle=$"{start:MM/dd/yyyy}–{end:MM/dd/yyyy}" };
+        var rentalLabels = new RentalPrintFormatting(rentals, report);
         foreach (var (stint,laps) in stints.OrderBy(s=>s.Stint.StartedAt))
-            report.Sections.Add(new ReportSection($"{stint.DateDisplay} • {stint.TimeDisplay}",["Lap","Lap time (s)","Crossing time"],laps.Select(l=>new[] {l.LapNumber.ToString(),l.LapTimeDisplay,l.TimeDisplay}).ToList(),$"{stint.LapCount} laps • Best {stint.BestLapDisplay} • Average {stint.AverageLapDisplay} • Transponder {stint.TransponderId}"));
+            report.Sections.Add(new ReportSection($"{stint.DateDisplay} • {stint.TimeDisplay}",["Lap","Lap time (s)","Crossing time"],laps.Select(l=>new[] {l.LapNumber.ToString(),l.LapTimeDisplay,l.TimeDisplay}).ToList(),$"{stint.LapCount} laps • Best {stint.BestLapDisplay} • Average {stint.AverageLapDisplay} • Transponder {rentalLabels.Format(stint.TransponderId)}"));
         return report;
     }
 }

@@ -5,9 +5,11 @@ Keep all release history in this file. Add each new version at the top; do not c
 ## 0.16.24
 
 - Add the Transponder navigation tab with an unlimited rental inventory, manual entry, and drag/drop from the live decoder feed.
-- Default rental nicknames to Transponder number***; support Red #1 / Black #5 style labels, unused random labels, custom nicknames and display appearance settings.
+- Default rental nicknames to Transponder number***; support Red #1 / Black #5 style labels, persistent defaults for every addition, a Random color option, and reusable custom nickname patterns.
 - Reject duplicate physical transponder numbers, nicknames and color/number combinations.
-- Assign and return rentals for registered racers and event classes, update uncompleted lineups, and protect active race/practice timing.
+- Keep assignment details in history, captured from event rosters; remove event/class/racer assignment controls and the Assigned to column from the inventory page.
+- Allocate the lowest unused label number starting at 1 across every color, rejecting duplicates.
+- Keep inventory sizing standard; configure rental identification, font, bold and color on lineup and practice printouts, leaving personal transponder numbers unchanged.
 - Retain assignment snapshots with racer, class and event date, showing the last three events actually used or all history even after skipped weeks, renames or event deletion.
 - Persist rentals/history in the existing atomic database snapshot and backups, capture event-roster assignments, and validate uniqueness before saving.
 - Add rental regression tests and Windows-rendered theme previews with page interaction checks.
