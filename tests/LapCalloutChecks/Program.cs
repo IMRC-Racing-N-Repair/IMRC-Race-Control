@@ -21,6 +21,24 @@ void Equal<T>(T expected, T actual, string label)
         throw new Exception($"{label}: expected {expected}, got {actual}");
     checks++;
 }
+// Completed race exports must stay scoped to saved race cars, including zero-lap drivers.
+var exportRace = new EventSessionDefinition { ProgressStatus=EventSessionStatus.Completed, ClassName="Stock", RaceNumber=2,
+    Entrants=[new() { CarNumber=1,DriverName="Alex, \"Ace\"" },new() { CarNumber=2,DriverName="Alex, \"Ace\"" },new() { CarNumber=3,DriverName="No laps" }],
+    Laps=[new(2,1,"Alex",2,TimeSpan.FromSeconds(5.432),TimeSpan.FromSeconds(10.555),DateTimeOffset.Now,"decoder",true),new(1,1,"Alex",1,TimeSpan.FromSeconds(5.123),TimeSpan.FromSeconds(5.123),DateTimeOffset.Now,"decoder",false),new(3,2,"Alex",1,TimeSpan.FromSeconds(8),TimeSpan.FromSeconds(8),DateTimeOffset.Now,"decoder",false)] };
+var exportEvent = new RaceDayEventDefinition { Name="Test event",Sessions=[exportRace] };
+var allLapReport = RaceReports.CompletedRace(exportEvent,exportRace);
+Equal(3, allLapReport.Sections.Count, "All race drivers including zero laps");
+var oneLapReport = RaceReports.CompletedRace(exportEvent,exportRace,1);
+Equal(1, oneLapReport.Sections.Count, "One-driver export excludes same-name driver");
+Equal(2, oneLapReport.Sections[0].Rows.Count, "One-driver export has all laps");
+Equal("1", oneLapReport.Sections[0].Rows[0][0], "Export laps ordered by number");
+Equal(RaceEngine.FormatLap(TimeSpan.FromSeconds(5.432)), oneLapReport.Sections[0].Rows[1][1], "Export preserves lap precision");
+Equal(RaceEngine.FormatElapsed(TimeSpan.FromSeconds(10.555)), oneLapReport.Sections[0].Rows[1][2], "Export uses recorded elapsed time");
+Equal(true, RaceReports.LapReportCsv(oneLapReport).Contains("Alex, \"\"Ace\"\""), "CSV quotes driver commas and quotes");
+Equal(true, allLapReport.Sections[2].Notes.Contains("No recorded laps"), "Zero-lap driver explained");
+exportRace.ProgressStatus=EventSessionStatus.Planned;
+var rejectedIncomplete=false;try { RaceReports.CompletedRace(exportEvent,exportRace); } catch(InvalidOperationException) { rejectedIncomplete=true; }
+Equal(true,rejectedIncomplete,"Incomplete race export rejected");
 // Race audio follows elapsed race time; repeats and delayed ticks must not replay cues.
 var audioSettings = new AppSettings { RaceLeadersEnabled = true, RaceLeaderCount = 3,
     RaceLeaderIntervalSeconds = 15, RaceHalfwayToneEnabled = true, RaceCountdownEnabled = true,

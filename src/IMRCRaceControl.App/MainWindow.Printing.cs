@@ -5,6 +5,11 @@ using IMRCRaceControl.Models;
 namespace IMRCRaceControl;
 public partial class MainWindow
 {
+    private void ExportCompletedRace_Click(object sender, RoutedEventArgs e)
+    {
+        new CompletedRaceExportDialog(Events.ToList(), _activeEvent, _loadedSession) { Owner = this }.ShowDialog();
+    }
+
     private async void PrintReports_Click(object sender,RoutedEventArgs e)
     {
         if (MainTabs.SelectedItem==SeriesTab && _activeSeries is not null && !TryReadSeriesEditor(_activeSeries,true)) return;

@@ -4,6 +4,9 @@ Keep all release history in this file. Add each new version at the top; do not c
 
 ## 0.16.24
 
+- Keep dashboard side buttons fully visible with a correctly sized tab rail.
+- Add EXPORT on the race dashboard: choose a completed race and all drivers or one driver; print/PDF or export CSV with each lap time and elapsed time.
+
 - Give event driver/class registration most of the available height and reduce the bottom rounds area; add a draggable divider to resize both areas live.
 - Display class choices as compact wrapping cards with class colors, selection state and transponder fields; move Add Class into the heading.
 

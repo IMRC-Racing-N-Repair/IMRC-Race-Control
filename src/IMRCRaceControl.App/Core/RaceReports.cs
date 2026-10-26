@@ -32,6 +32,37 @@ public sealed record EventReportScope(SessionType? Type = null, int? Round = nul
 }
 public static class RaceReports
 {
+    public static RaceReport CompletedRace(RaceDayEventDefinition ev, EventSessionDefinition session, int? carNumber = null)
+    {
+        if (session.ProgressStatus != EventSessionStatus.Completed)
+            throw new InvalidOperationException("Choose a completed race to export.");
+        var report = new RaceReport { Title = "Completed race — lap times",
+            Subtitle = $"{ev.Name} • {ev.EventDate:MM/dd/yyyy} • {session.RoundLabel} • {session.DashboardDisplay}" };
+        var cars = session.Entrants.Select(e => e.CarNumber).Concat(session.Results.Select(r => r.CarNumber))
+            .Concat(session.Laps.Select(l => l.CarNumber)).Distinct().Where(c => carNumber is null || c == carNumber).Order().ToList();
+        foreach (var car in cars)
+        {
+            var result = session.Results.FirstOrDefault(r => r.CarNumber == car);
+            var laps = session.Laps.Where(l => l.CarNumber == car).OrderBy(l => l.LapNumber).ThenBy(l => l.Sequence).ToList();
+            var name = session.Entrants.FirstOrDefault(e => e.CarNumber == car)?.DisplayName ?? result?.DriverName ?? laps.FirstOrDefault()?.DriverName ?? "Unknown driver";
+            var notes = result is null ? "No saved finishing result." : $"Position: {result.Position} • Laps: {result.Laps} • Total: {result.TotalTime} • Best lap: {result.BestLap}";
+            if (laps.Count == 0) notes += " No recorded laps.";
+            report.Sections.Add(new ReportSection($"Car {car} — {name}", ["Lap", "Lap time", "Elapsed time"],
+                laps.Select(l => new[] { l.LapNumber.ToString(), l.LapTimeDisplay, l.ElapsedDisplay }).ToList(), notes));
+        }
+        return report;
+    }
+
+    public static string LapReportCsv(RaceReport report)
+    {
+        static string Cell(string value) => "\"" + value.Replace("\"", "\"\"") + "\"";
+        var lines = new List<string> { string.Join(",", new[] { "Race", "Driver", "Summary", "Lap", "Lap time", "Elapsed time" }.Select(Cell)) };
+        foreach (var section in report.Sections)
+            foreach (var row in section.Rows.DefaultIfEmpty(["", "", ""]))
+                lines.Add(string.Join(",", new[] { report.Subtitle, section.Title, section.Notes }.Concat(row).Select(Cell)));
+        return string.Join("\r\n", lines) + "\r\n";
+    }
+
     private static string Number(decimal n) => n.ToString("0.##");
     public static RaceReport Lineups(RaceDayEventDefinition ev, string? classId = null, EventReportScope? scope = null, RentalTransponderState? rentals = null, IEnumerable<ClassDefinition>? classes = null, IEnumerable<DriverRatingRow>? ratings = null)
     {

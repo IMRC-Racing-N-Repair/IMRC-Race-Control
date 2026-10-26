@@ -117,8 +117,11 @@ public partial class RentalTransponderView
         var continuation=new RenderTargetBitmap(816,1056,96,96,PixelFormats.Pbgra32);continuation.Render(continued);
         var continuationPng=new PngBitmapEncoder();continuationPng.Frames.Add(BitmapFrame.Create(continuation));
         using(var file=File.Create(Path.Combine(output,"Transponder-Print-Continuation.png")))continuationPng.Save(file);
+        var lapSession = printEvent.Sessions.First();
+        for (var lap = 1; lap <= 40; lap++)
+            lapSession.Laps.Add(new LapRecord(lap,1,names[0],lap,TimeSpan.FromSeconds(6.033625),TimeSpan.FromSeconds(lap*6.033625),DateTimeOffset.Now,"decoder",lap==40));
         var owner = new Window { Width = 1000, Height = 720 }; owner.Show();
-        foreach (var dialog in new Window[] { new IMRCRaceControl.Dialogs.EventEditorDialog(), new IMRCRaceControl.Dialogs.ClassEditorDialog(), new RentalAppearanceDialog(printSettings) })
+        foreach (var dialog in new Window[] { new IMRCRaceControl.Dialogs.EventEditorDialog(), new IMRCRaceControl.Dialogs.ClassEditorDialog(), new RentalAppearanceDialog(printSettings), new IMRCRaceControl.Dialogs.CompletedRaceExportDialog([printEvent],printEvent,lapSession), new IMRCRaceControl.Dialogs.ReportPrintDialog(RaceReports.CompletedRace(printEvent,lapSession,1)) })
         {
             dialog.Owner = owner; dialog.Show();
             dialog.Dispatcher.Invoke(() => { }, System.Windows.Threading.DispatcherPriority.ApplicationIdle); dialog.UpdateLayout();
