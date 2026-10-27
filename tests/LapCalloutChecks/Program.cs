@@ -113,6 +113,35 @@ Equal("2.100**\n—",breakoutReport.Sections[0].Rows[2][1],"Trailing breakout sh
 Equal(true,RaceReports.LapReportCsv(breakoutReport).Contains("2.950** / 5.432"),"CSV keeps breakout and valid lap together");
 Equal(exportRace.ClassName,breakoutReport.Sections[0].Title,"Class heading retained");
 Equal(true,breakoutReport.Sections[0].RoundHeading.Contains("QUALIFYING ROUND"),"Qual and heat heading provided");
+// Post-race report: saved results, crossing positions, pace, and only prior qualifying.
+var reportStart=DateTimeOffset.Parse("2026-10-27T12:00:00Z");
+var reportRace=new EventSessionDefinition {ClassId="rpt",SessionType=SessionType.Race,ProgressStatus=EventSessionStatus.Completed,
+    StartedAt=reportStart,RaceMinutesOverride=1,Entrants=[new(){CarNumber=1,DriverId="a",DriverName="Alpha"},new(){CarNumber=2,DriverId="b",DriverName="Beta"}],
+    Results=[new(){Position=2,CarNumber=1,DriverName="Alpha",Laps=2,TotalTime="0:12.000"},new(){Position=1,CarNumber=2,DriverName="Beta",Laps=2,TotalTime="0:11.000"}],
+    Laps=[new(1,2,"Beta",1,TimeSpan.FromSeconds(5),TimeSpan.FromSeconds(5),reportStart.AddSeconds(5),"test",false),
+        new(2,1,"Alpha",1,TimeSpan.FromSeconds(6),TimeSpan.FromSeconds(6),reportStart.AddSeconds(6),"test",false),
+        new(3,2,"Beta",2,TimeSpan.FromSeconds(6),TimeSpan.FromSeconds(11),reportStart.AddSeconds(11),"test",true),
+        new(4,1,"Alpha",2,TimeSpan.FromSeconds(6),TimeSpan.FromSeconds(12),reportStart.AddSeconds(12),"test",true)]};
+var reportEvent=new RaceDayEventDefinition {Sessions=[reportRace]};
+foreach(var q in new[]{(1,"a",10,"1:01.000",-2),(2,"b",11,"1:02.000",-1),(3,"a",99,"1:00.000",1)})
+    reportEvent.Sessions.Add(new(){ClassId="rpt",Round=q.Item1,ProgressStatus=EventSessionStatus.Completed,CompletedAt=reportStart.AddMinutes(q.Item5),
+        Entrants=[new(){CarNumber=7,DriverId=q.Item2,DriverName=q.Item2}],Results=[new(){CarNumber=7,Laps=q.Item3,TotalTime=q.Item4}]});
+var detailedReport=RaceReports.CompletedRace(reportEvent,reportRace,1);
+Equal("Alpha",detailedReport.ResultsSummary!.Rows.Single()[2],"Results honor single driver filter");
+Equal(2,detailedReport.LapDetails[(0,1,1)].Position,"Single driver position still compares full race field");
+Equal("11/1:06.000",detailedReport.LapDetails[(0,1,1)].Pace,"Timed pace projects crossing after race duration");
+Equal("2/0:12.000",detailedReport.LapDetails[(0,2,1)].Pace,"Finished lap shows actual finish pace");
+Equal("2",detailedReport.PriorQualifying!.Rows.Single()[0],"Prior qualifying retains overall rank with driver filter");
+Equal("10",detailedReport.PriorQualifying.Rows.Single()[2],"Later qualifying cannot change historical race report");
+Equal("1",detailedReport.PriorQualifying.Rows.Single()[4],"Prior qualifying includes source round");
+reportRace.RaceFormat=RaceFormat.Laps;reportRace.TargetLaps=20;
+Equal("20/2:00.000",RaceReports.CompletedRace(reportEvent,reportRace,1).LapDetails[(0,1,1)].Pace,"Lap race pace uses target laps");
+reportRace.RaceFormat=RaceFormat.Timed;reportRace.RaceMinutesOverride=null;
+Equal("—",RaceReports.CompletedRace(reportEvent,reportRace,1).LapDetails[(0,1,1)].Pace,"Legacy missing duration is not guessed");
+var detailedCsv=RaceReports.LapReportCsv(detailedReport);
+Equal(true,detailedCsv.IndexOf("RACE RESULTS")<detailedCsv.IndexOf("LAP ANALYSIS"),"CSV places results first");
+Equal(true,detailedCsv.IndexOf("QUALIFYING ORDER")>detailedCsv.IndexOf("LAP ANALYSIS"),"CSV places prior qualifying last");
+
 // Race audio follows elapsed race time; repeats and delayed ticks must not replay cues.
 var audioSettings = new AppSettings { RaceLeadersEnabled = true, RaceLeaderCount = 3,
     RaceLeaderIntervalSeconds = 15, RaceHalfwayToneEnabled = true, RaceCountdownEnabled = true,

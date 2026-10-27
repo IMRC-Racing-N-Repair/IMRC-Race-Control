@@ -23,11 +23,11 @@ public sealed class CompletedRaceExportDialog : Window
 
     public CompletedRaceExportDialog(IReadOnlyList<RaceDayEventDefinition> events, RaceDayEventDefinition? active, EventSessionDefinition? loaded)
     {
-        Title = "Export completed race"; Width = 620; SizeToContent = SizeToContent.Height;
+        Title = "Completed race reports"; Width = 620; SizeToContent = SizeToContent.Height;
         ResizeMode = ResizeMode.NoResize; WindowStartupLocation = WindowStartupLocation.CenterOwner;
         var body = new StackPanel { Margin = new Thickness(18) }; Content = body;
-        body.Children.Add(new TextBlock { Text = "COMPLETED RACE • LAP TIMES", FontSize = 19, FontWeight = FontWeights.Bold });
-        body.Children.Add(new TextBlock { Text = "Print or save a PDF, or export lap-by-lap times to CSV.", TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0,8,0,12) });
+        body.Children.Add(new TextBlock { Text = "COMPLETED RACE • REPORTS", FontSize = 19, FontWeight = FontWeights.Bold });
+        body.Children.Add(new TextBlock { Text = "Results, lap-by-lap analysis and prior qualifying order. Print, save a PDF, or export CSV.", TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0,8,0,12) });
         void Field(string label, Control control) { body.Children.Add(new TextBlock { Text = label, Margin = new Thickness(0,8,0,2) }); body.Children.Add(control); }
         Field("Event", _events); Field("Completed race", _races); Field("Drivers", _drivers);
         var status = new TextBlock { TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0,12,0,8) }; body.Children.Add(status);
@@ -39,7 +39,7 @@ public sealed class CompletedRaceExportDialog : Window
             var races = RaceSchedule.DisplayOrder(ev?.Sessions.Where(s => s.ProgressStatus == EventSessionStatus.Completed) ?? []).Select(s => new RaceChoice(s)).ToList();
             _races.ItemsSource = races;
             _races.SelectedItem = races.FirstOrDefault(r => r.Session.Id == loaded?.Id) ?? races.FirstOrDefault();
-            status.Text = races.Count == 0 ? "No completed races in this event yet." : "Drivers across the top, lap numbers down the side, and lap times in each cell. Up to 8 drivers per table.";
+            status.Text = races.Count == 0 ? "No completed races in this event yet." : "Results first, then position / lap time with pace beneath, followed by qualifying order before the race. Up to 8 drivers per lap table.";
             _print.IsEnabled = _export.IsEnabled = races.Count > 0;
         };
         _races.SelectionChanged += (_,_) =>
@@ -66,7 +66,7 @@ public sealed class CompletedRaceExportDialog : Window
             var save = new SaveFileDialog { Filter = "CSV files (*.csv)|*.csv", DefaultExt = ".csv", FileName = $"Race-{session.RaceNumber}-{session.RoundLabel}-Laps.csv" };
             if (save.ShowDialog(this) != true) return;
             File.WriteAllText(save.FileName, RaceReports.LapReportCsv(Report()), new UTF8Encoding(true));
-            status.Text = "Lap times exported successfully.";
+            status.Text = "Race report exported successfully.";
         });
         void Run(Action action) { try { action(); } catch (Exception ex) { MessageBox.Show(this, "Could not export this race: " + ex.Message, "Race export", MessageBoxButton.OK, MessageBoxImage.Warning); } }
         _events.ItemsSource = events.OrderByDescending(e => e.EventDate).ToList();

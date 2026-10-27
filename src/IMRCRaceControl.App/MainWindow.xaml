@@ -31,7 +31,7 @@
 
                 <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                     <controls:BrandLogo Width="165" Height="64" ToolTip="IMRC Race Control"/>
-                    <TextBlock Text="  v0.16.25" Margin="4,2,0,0"
+                    <TextBlock Text="  v0.16.26" Margin="4,2,0,0"
                                Foreground="{DynamicResource MutedBrush}" FontSize="10"
                                VerticalAlignment="Center"/>
                 </StackPanel>
@@ -619,7 +619,7 @@
                                             Margin="0,4,0,0"
                                             Click="PositionSideTabButton_Click"
                                             ToolTip="Live projected overall position for this class / round"/>
-                                <Button Content="EXPORT" Width="64" Height="62" Margin="0,4,0,0" Padding="2" Click="ExportCompletedRace_Click" ToolTip="Print or export completed race lap times"/>
+                                <Button Content="REPORTS" FontSize="10" Width="64" Height="62" Margin="0,4,0,0" Padding="2" Click="ExportCompletedRace_Click" ToolTip="Completed race results, lap analysis and qualifying reports"/>
                                 </StackPanel>
                             </Grid>
                         </Grid>

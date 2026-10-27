@@ -2,6 +2,11 @@
 
 Keep all release history in this file. Add each new version at the top; do not create version-specific changelog files.
 
+## 0.16.26
+
+- Redesign completed-race reports with finishing results first, compact position/lap-time cells with pace underneath, and prior qualifying order at the bottom. Keep alternating rows, driver borders, best-lap emphasis and breakout annotations; repeat table headings across pages.
+- Rename the dashboard EXPORT button to REPORTS. Include results and prior qualifying in CSV exports, and retain completed race duration for future pace reports.
+
 ## 0.16.25
 
 - Give breakout name highlighting priority over normal line crossings on the dashboard, pop-out and web display, using the configured breakout color and duration. Restore normal crossing highlighting when the breakout expires.

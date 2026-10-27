@@ -141,6 +141,7 @@ public partial class RentalTransponderView
                 lapSession.Laps.Add(new LapRecord(lap*8+entrant.CarNumber,entrant.CarNumber,entrant.DisplayName,lap,TimeSpan.FromSeconds(6+entrant.CarNumber*.13),TimeSpan.FromSeconds(lap*(6+entrant.CarNumber*.13)),DateTimeOffset.Now,"decoder",false));
         lapSession.Breakouts.Add(new BreakoutRecord(1,1,names[0],11,TimeSpan.FromSeconds(2.95),TimeSpan.FromSeconds(64.25),TimeSpan.FromSeconds(3),DateTimeOffset.Now,"decoder"));
         lapSession.Breakouts.Add(new BreakoutRecord(2,1,names[0],70,TimeSpan.FromSeconds(2.1),TimeSpan.FromSeconds(430),TimeSpan.FromSeconds(3),DateTimeOffset.Now,"decoder"));
+        lapSession.RaceMinutesOverride=4;
         foreach(var count in new[]{8,3,1})
         {
             var matrix=RaceReports.CompletedRace(printEvent,lapSession);
@@ -150,6 +151,8 @@ public partial class RentalTransponderView
             for(var index=0;index<pages.Pages.Count;index++)
             {
                 var sheet=pages.Pages[index].Child;sheet.Measure(new Size(816,1056));sheet.Arrange(new Rect(0,0,816,1056));sheet.UpdateLayout();
+                foreach(var content in sheet.Children.OfType<System.Windows.Controls.StackPanel>())
+                    if(System.Windows.Documents.FixedPage.GetTop(content)+content.ActualHeight>1005)throw new InvalidDataException("Race report overlaps footer.");
                 var bitmap=new RenderTargetBitmap(816,1056,96,96,PixelFormats.Pbgra32);bitmap.Render(sheet);
                 var encoder=new PngBitmapEncoder();encoder.Frames.Add(BitmapFrame.Create(bitmap));
                 using var file=File.Create(Path.Combine(output,$"Lap-Matrix-{count}-{index+1}.png"));encoder.Save(file);

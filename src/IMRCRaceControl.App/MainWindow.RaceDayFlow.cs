@@ -307,6 +307,9 @@ public partial class MainWindow
         completedSession.ProgressStatus = EventSessionStatus.Completed;
         completedSession.CompletedAt = now;
         completedSession.StartedAt ??= _raceEngine.StartedAt ?? now;
+        completedSession.RaceMinutesOverride = _raceEngine.Duration.TotalMinutes;
+        completedSession.RaceFormat = _raceEngine.RaceFormat;
+        completedSession.TargetLaps = _raceEngine.TargetLaps;
         completedSession.Results = _raceEngine.GetStandings(now).ToList();
         completedSession.Laps = _raceEngine.Laps.OrderBy(l => l.Sequence).ToList();
         completedSession.Breakouts = _raceEngine.Breakouts
