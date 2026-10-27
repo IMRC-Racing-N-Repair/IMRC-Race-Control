@@ -14,7 +14,11 @@ public sealed class RaceReport
     public Dictionary<string, ReportTextStyle> TextStyles { get; } = new(StringComparer.Ordinal);
 }
 public sealed record ReportLapDetail(int Position, string Pace, bool BestLap);
-public sealed record ReportSection(string Title, string[] Columns, List<string[]> Rows, string Notes = "", string RoundHeading = "", string ClassColor = "#DCE1E6", int RaceNumber = 0);
+public sealed record ReportSection(string Title, string[] Columns, List<string[]> Rows, string Notes = "", string RoundHeading = "", string ClassColor = "#DCE1E6", int RaceNumber = 0)
+{
+    public ReportSection? ResultsSummary { get; init; }
+    public ReportSection? PriorQualifying { get; init; }
+}
 public sealed record EventReportScope(SessionType? Type = null, int? Round = null)
 {
     public string Label => Type == SessionType.Qualifying ? $"Qualifying round {Round}" : Type == SessionType.Race ? "Mains" : "All rounds / mains";
@@ -86,8 +90,12 @@ public static class RaceReports
             else return "—"; // Older races may not retain their duration. Do not guess.
             return $"{target}/{RaceEngine.FormatElapsed(TimeSpan.FromSeconds(target*average))}";
         }
-        foreach(var group in cars.Chunk(8))
+        var groupCount=(cars.Count+7)/8;
+        var carOffset=0;
+        for(var groupIndex=0;groupIndex<groupCount;groupIndex++)
         {
+            var size=cars.Count/groupCount+(groupIndex<cars.Count%groupCount?1:0);
+            var group=cars.Skip(carOffset).Take(size).ToArray();carOffset+=size;
             var columns=new[]{"Lap"}.Concat(group.Select(c=>names.Values.Count(n=>n==names[c])>1 ? $"{names[c]} #{c}" : names[c])).ToArray();
             var byCar=group.ToDictionary(c=>c,c=>session.Laps.Where(l=>l.CarNumber==c).GroupBy(l=>l.LapNumber).ToDictionary(g=>g.Key,g=>g.OrderByDescending(l=>l.Sequence).First().LapTimeDisplay));
             var breakouts=session.Breakouts.Where(b=>group.Contains(b.CarNumber)).GroupBy(b=>(b.CarNumber,b.AttemptedLapNumber))
@@ -108,7 +116,12 @@ public static class RaceReports
             }
             var rows=lapNumbers.Select(n=>new[]{n.ToString()}.Concat(group.Select(c=>Cell(c,n))).ToArray()).ToList();
             var round=session.SessionType==SessionType.Qualifying ? $"QUALIFYING ROUND {session.Round} • HEAT {session.Heat}" : $"MAIN ROUND {session.MainLeg} • {session.HeatMainDisplay}-MAIN";
-            report.Sections.Add(new ReportSection(session.ClassName,columns,rows,rows.Count==0 ? "No recorded laps." : "",$"RACE #{session.RaceNumber} • {round}"));
+            var groupLabel=groupCount>1?$" • REPORT {groupIndex+1} OF {groupCount} • CARS {group.First()}–{group.Last()}":"";
+            report.Sections.Add(new ReportSection(session.ClassName,columns,rows,rows.Count==0 ? "No recorded laps." : "",$"RACE #{session.RaceNumber} • {round}{groupLabel}")
+            {
+                ResultsSummary=report.ResultsSummary with {Rows=report.ResultsSummary.Rows.Where(r=>group.Contains(int.Parse(r[1]))).ToList()},
+                PriorQualifying=PriorQualifying(ev,session,group.ToList(),out _)
+            });
         }
         return report;
     }
@@ -159,10 +172,11 @@ public static class RaceReports
             if(section.Rows.Count==0)lines.Add(Cell(section.Notes));
             lines.Add("");
         }
-        Table(report.ResultsSummary);
         for(var index=0;index<report.Sections.Count;index++)
         {
             var section=report.Sections[index];
+            lines.Add(Cell(section.RoundHeading));
+            Table(section.ResultsSummary ?? report.ResultsSummary);
             lines.Add(Cell("LAP ANALYSIS • position / lap time | pace laps/time"));
             lines.Add(string.Join(",",section.Columns.Select(Cell)));
             foreach(var row in section.Rows)
@@ -174,8 +188,8 @@ public static class RaceReports
                 })));
             if(section.Rows.Count==0) lines.Add(Cell(section.Notes));
             lines.Add("");
+            Table(section.PriorQualifying ?? report.PriorQualifying);
         }
-        Table(report.PriorQualifying);
         return string.Join("\r\n", lines);
     }
 

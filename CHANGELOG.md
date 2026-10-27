@@ -4,6 +4,8 @@ Keep all release history in this file. Add each new version at the top; do not c
 
 ## 0.16.26
 
+- Split larger fields into balanced reports of up to eight drivers (10 = 5/5; 18 = 6/6/6), each with its own results, lap grid and prior qualifying while retaining overall positions.
+
 - Label report breakouts as B-Out: #.### and verify all eight driver columns in the Windows print preview.
 
 - Redesign completed-race reports with finishing results first, compact position/lap-time cells with pace underneath, and prior qualifying order at the bottom. Keep alternating rows, driver borders, best-lap emphasis and breakout annotations; repeat table headings across pages.

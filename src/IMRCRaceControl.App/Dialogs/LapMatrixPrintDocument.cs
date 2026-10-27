@@ -16,6 +16,7 @@ internal static class LapMatrixPrintDocument
         var stripe=new SolidColorBrush(Color.FromRgb(229,232,236));
         StackPanel body=null!;
         double used=0;
+        ReportSection? currentSection=null;
         TextBlock Text(string value,double size,bool bold=false) => new() { Text=value,FontFamily=new FontFamily("Segoe UI"),FontSize=size,FontWeight=bold?FontWeights.Bold:FontWeights.Normal,Foreground=Brushes.Black,TextWrapping=TextWrapping.Wrap };
         double Measure(FrameworkElement element) { element.Measure(new Size(available,double.PositiveInfinity));return element.DesiredSize.Height; }
         void Add(FrameworkElement element) {used+=Measure(element);body.Children.Add(element);}
@@ -27,7 +28,7 @@ internal static class LapMatrixPrintDocument
             var heading=new Grid();heading.ColumnDefinitions.Add(new ColumnDefinition {Width=new GridLength(150)});heading.ColumnDefinitions.Add(new ColumnDefinition());
             heading.Children.Add(PrintBranding.Logo());
             var titles=new StackPanel {VerticalAlignment=VerticalAlignment.Center,Margin=new Thickness(10,0,0,0)};
-            var section=report.Sections.FirstOrDefault();
+            var section=currentSection;
             var title=Text(section?.Title ?? report.Title,24,true);title.TextAlignment=TextAlignment.Right;titles.Children.Add(title);
             var round=Text(section?.RoundHeading ?? "",14,true);round.TextAlignment=TextAlignment.Right;titles.Children.Add(round);
             Grid.SetColumn(titles,1);heading.Children.Add(titles);Add(heading);
@@ -96,10 +97,14 @@ internal static class LapMatrixPrintDocument
                 Add(row);
             }
         }
-        NewPage();
-        if(report.ResultsSummary is not null)Table(report.ResultsSummary,false);
-        for(var i=0;i<report.Sections.Count;i++)Table(report.Sections[i],true,i);
-        if(report.PriorQualifying is not null)Table(report.PriorQualifying,false);
+        for(var i=0;i<report.Sections.Count;i++)
+        {
+            currentSection=report.Sections[i];
+            NewPage();
+            if((currentSection.ResultsSummary ?? report.ResultsSummary) is { } results)Table(results,false);
+            Table(currentSection,true,i);
+            if((currentSection.PriorQualifying ?? report.PriorQualifying) is { } qualifying)Table(qualifying,false);
+        }
         return document;
     }
 }

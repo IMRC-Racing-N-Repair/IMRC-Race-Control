@@ -178,6 +178,42 @@ public partial class RentalTransponderView
                 using var file=File.Create(Path.Combine(output,$"Lap-Matrix-{count}-{index+1}.png"));encoder.Save(file);
             }
         }
+        foreach(var total in new[]{10,18})
+        {
+            var splitEvent=System.Text.Json.JsonSerializer.Deserialize<RaceDayEventDefinition>(System.Text.Json.JsonSerializer.Serialize(printEvent))!;
+            var splitRace=splitEvent.Sessions.Single(s=>s.Id==lapSession.Id);
+            var splitQual=splitEvent.Sessions.Single(s=>s.Id==qualifying.Id);
+            for(var car=9;car<=total;car++)
+            {
+                var entrant=new SessionEntrant {CarNumber=car,DriverId="split"+car,DriverName="Racer "+car};
+                splitRace.Entrants.Add(entrant);splitQual.Entrants.Add(entrant);
+                splitRace.Results.Add(new StandingRow {CarNumber=car,DriverName=entrant.DriverName,Position=car,BestLap="6.500"});
+                splitQual.Results.Add(new StandingRow {CarNumber=car,DriverName=entrant.DriverName,Position=car,Laps=30-car,TotalTime="4:03.000"});
+            }
+            splitRace.Laps.Clear();splitRace.Breakouts.Clear();
+            foreach(var entrant in splitRace.Entrants)
+            {
+                var seconds=6+entrant.CarNumber*.13;
+                for(var lap=1;lap<=12;lap++)splitRace.Laps.Add(new LapRecord(lap*total+entrant.CarNumber,entrant.CarNumber,entrant.DriverName,lap,TimeSpan.FromSeconds(seconds),TimeSpan.FromSeconds(lap*seconds),reportStart.AddSeconds(lap*seconds),"test",lap==12));
+                splitRace.Breakouts.Add(new BreakoutRecord(entrant.CarNumber,entrant.CarNumber,entrant.DriverName,11,TimeSpan.FromSeconds(2.95),TimeSpan.FromSeconds(64),TimeSpan.FromSeconds(3),reportStart.AddSeconds(64),"test"));
+                var result=splitRace.Results.Single(r=>r.CarNumber==entrant.CarNumber);result.Laps=12;result.TotalTime=RaceEngine.FormatElapsed(TimeSpan.FromSeconds(12*seconds));
+            }
+            var balanced=RaceReports.CompletedRace(splitEvent,splitRace);
+            var expected=total==10?5:6;
+            if(balanced.Sections.Count!=(total==10?2:3) || balanced.Sections.Any(s=>s.Columns.Length!=expected+1 || s.ResultsSummary?.Rows.Count!=expected || s.PriorQualifying?.Rows.Count!=expected))
+                throw new InvalidDataException("Balanced race report grouping failed.");
+            var pages=IMRCRaceControl.Dialogs.LapMatrixPrintDocument.Build(balanced,816,1056);
+            for(var index=0;index<pages.Pages.Count;index++)
+            {
+                var sheet=pages.Pages[index].Child;sheet.Measure(new Size(816,1056));sheet.Arrange(new Rect(0,0,816,1056));sheet.UpdateLayout();
+                foreach(var content in sheet.Children.OfType<System.Windows.Controls.StackPanel>())
+                    if(System.Windows.Documents.FixedPage.GetTop(content)+content.ActualHeight>1005)throw new InvalidDataException("Balanced report overlaps footer.");
+                var bitmap=new RenderTargetBitmap(816,1056,96,96,PixelFormats.Pbgra32);bitmap.Render(sheet);
+                var encoder=new PngBitmapEncoder();encoder.Frames.Add(BitmapFrame.Create(bitmap));
+                using var file=File.Create(Path.Combine(output,$"Balanced-{total}-{index+1}.png"));encoder.Save(file);
+            }
+        }
+        File.WriteAllText(Path.Combine(output,"Balanced-Report-Checks.txt"),"PASS: 10 drivers = 5/5; 18 drivers = 6/6/6; each report contains its own results, laps, qualifying and page boundaries.");
         File.WriteAllText(Path.Combine(output,"Breakout-Report-8-Checks.txt"),"PASS: eight driver columns with B-Out: 2.950 labels, valid laps and pace, paginated without footer overlap.");
         File.WriteAllText(Path.Combine(output,"Race-Report-Checks.txt"),"PASS: results, prior qualifying, 8/3/1 driver lap grids and pagination without footer overlap.");
         var owner = new Window { Width = 1000, Height = 720 }; owner.Show();

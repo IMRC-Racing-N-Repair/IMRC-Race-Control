@@ -101,9 +101,9 @@ exportRace.Entrants[0].Nickname="YOSHI";
 for(var car=4;car<=9;car++)exportRace.Entrants.Add(new SessionEntrant {CarNumber=car,DriverName="Driver "+car});
 var wideReport=RaceReports.CompletedRace(exportEvent,exportRace);
 Equal(2,wideReport.Sections.Count,"More than eight drivers split across tables");
-Equal(9,wideReport.Sections[0].Columns.Length,"Eight driver columns plus lap number");
+Equal(6,wideReport.Sections[0].Columns.Length,"Nine-driver report balances first group to five drivers");
 Equal("YOSHI",wideReport.Sections[0].Columns[1],"Nickname preferred in matrix header");
-Equal(2,wideReport.Sections[1].Columns.Length,"Remaining driver retained");
+Equal(5,wideReport.Sections[1].Columns.Length,"Nine-driver report balances remaining four drivers");
 Equal("—",allLapReport.Sections[0].Rows[1][2],"Unequal lap counts align by lap number");
 exportRace.Breakouts.Add(new BreakoutRecord(1,1,"One",2,TimeSpan.FromSeconds(2.95),TimeSpan.FromSeconds(8),TimeSpan.FromSeconds(3),liveStart,"decoder"));
 exportRace.Breakouts.Add(new BreakoutRecord(2,1,"One",3,TimeSpan.FromSeconds(2.1),TimeSpan.FromSeconds(12),TimeSpan.FromSeconds(3),liveStart.AddSeconds(1),"decoder"));
@@ -128,6 +128,32 @@ try
     Equal(true,RaceReports.CompletedRace(exportEvent,eightBreakoutRace).Sections[0].Rows.Single(r=>r[0]=="2")[1].StartsWith("B-Out: 2.950\n"),"Breakout labels always use decimal seconds with a dot");
 }
 finally { System.Globalization.CultureInfo.CurrentCulture=reportCulture; }
+foreach(var total in new[]{8,9,10,16,17,18,25})
+{
+    var splitRace=new EventSessionDefinition {ProgressStatus=EventSessionStatus.Completed,ClassId="split",SessionType=SessionType.Race};
+    var splitQual=new EventSessionDefinition {ProgressStatus=EventSessionStatus.Completed,ClassId="split",Round=1};
+    for(var car=1;car<=total;car++)
+    {
+        splitRace.Entrants.Add(new(){CarNumber=car,DriverId="split"+car,DriverName="Driver "+car});
+        splitRace.Results.Add(new(){CarNumber=car,DriverName="Driver "+car,Position=car,Laps=1,TotalTime="0:10.000"});
+        splitRace.Laps.Add(new(car,car,"Driver "+car,1,TimeSpan.FromSeconds(10),TimeSpan.FromSeconds(10),liveStart,"test",true));
+        splitQual.Entrants.Add(splitRace.Entrants.Last());splitQual.Results.Add(splitRace.Results.Last());
+    }
+    var splitReport=RaceReports.CompletedRace(new(){Sessions=[splitQual,splitRace]},splitRace);
+    var sizes=splitReport.Sections.Select(s=>s.Columns.Length-1).ToArray();
+    Equal((total+7)/8,sizes.Length,"Balanced report count for "+total);
+    Equal(total,sizes.Sum(),"Every driver retained for "+total);
+    Equal(true,sizes.Max()<=8 && sizes.Max()-sizes.Min()<=1,"Balanced group sizes for "+total);
+    Equal(total,splitReport.Sections.SelectMany(s=>s.ResultsSummary!.Rows).Select(r=>r[1]).Distinct().Count(),"No duplicate or lost finishing results for "+total);
+    foreach(var section in splitReport.Sections)
+    {
+        Equal(section.Columns.Length-1,section.ResultsSummary!.Rows.Count,"Group has its own finishing results");
+        Equal(section.Columns.Length-1,section.PriorQualifying!.Rows.Count,"Group has its own prior qualifiers");
+    }
+    if(total==10)Equal("5,5",string.Join(",",sizes),"Ten drivers split five and five");
+    if(total==18)Equal("6,6,6",string.Join(",",sizes),"Eighteen drivers split six six six");
+    if(total>8)Equal(sizes[0]+1,splitReport.LapDetails[(1,1,1)].Position,"Split report retains full-field position");
+}
 // Post-race report: saved results, crossing positions, pace, and only prior qualifying.
 var reportStart=DateTimeOffset.Parse("2026-10-27T12:00:00Z");
 var reportRace=new EventSessionDefinition {ClassId="rpt",SessionType=SessionType.Race,ProgressStatus=EventSessionStatus.Completed,

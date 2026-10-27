@@ -75,3 +75,5 @@ if (-not (Test-Path (Join-Path $branding "Race-Report-Checks.txt"))) { throw "Mi
 
 # Report breakout labels use decimal seconds: B-Out: #.###.
 if (-not (Test-Path (Join-Path $branding "Breakout-Report-8-Checks.txt"))) { throw "Missing eight-driver B-Out report checks" }
+
+if (-not (Test-Path (Join-Path $branding "Balanced-Report-Checks.txt"))) { throw "Missing balanced 10/18-driver race report checks" }
