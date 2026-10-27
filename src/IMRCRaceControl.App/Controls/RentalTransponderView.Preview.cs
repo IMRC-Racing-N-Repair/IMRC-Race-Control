@@ -136,15 +136,31 @@ public partial class RentalTransponderView
         var continuationPng=new PngBitmapEncoder();continuationPng.Frames.Add(BitmapFrame.Create(continuation));
         using(var file=File.Create(Path.Combine(output,"Transponder-Print-Continuation.png")))continuationPng.Save(file);
         var lapSession = printEvent.Sessions.First();
+        var reportStart=DateTimeOffset.Now.AddMinutes(-10);
+        var qualifying=new EventSessionDefinition {ClassId=lapSession.ClassId,ClassName=lapSession.ClassName,Round=1,
+            ProgressStatus=EventSessionStatus.Completed,CompletedAt=reportStart.AddMinutes(-5),RaceNumber=1,
+            Entrants=lapSession.Entrants.Select(e=>new SessionEntrant {DriverId=e.DriverId,DriverName=e.DriverName,CarNumber=e.CarNumber}).ToList(),
+            Results=lapSession.Results.Select(r=>new StandingRow {CarNumber=r.CarNumber,DriverName=names[r.CarNumber-1],Position=r.Position,Laps=r.Laps,TotalTime=r.TotalTime,BestLap="5.895",Top3="18.125"}).ToList()};
+        printEvent.Sessions.Add(qualifying);
+        lapSession.Round=2;lapSession.StartedAt=reportStart;lapSession.CompletedAt=reportStart.AddMinutes(8);
         foreach(var entrant in lapSession.Entrants)
             for (var lap = 1; lap <= 70-entrant.CarNumber; lap++)
-                lapSession.Laps.Add(new LapRecord(lap*8+entrant.CarNumber,entrant.CarNumber,entrant.DisplayName,lap,TimeSpan.FromSeconds(6+entrant.CarNumber*.13),TimeSpan.FromSeconds(lap*(6+entrant.CarNumber*.13)),DateTimeOffset.Now,"decoder",false));
+                lapSession.Laps.Add(new LapRecord(lap*8+entrant.CarNumber,entrant.CarNumber,entrant.DisplayName,lap,TimeSpan.FromSeconds(6+entrant.CarNumber*.13),TimeSpan.FromSeconds(lap*(6+entrant.CarNumber*.13)),reportStart.AddSeconds(lap*(6+entrant.CarNumber*.13)),"decoder",lap==70-entrant.CarNumber));
         lapSession.Breakouts.Add(new BreakoutRecord(1,1,names[0],11,TimeSpan.FromSeconds(2.95),TimeSpan.FromSeconds(64.25),TimeSpan.FromSeconds(3),DateTimeOffset.Now,"decoder"));
         lapSession.Breakouts.Add(new BreakoutRecord(2,1,names[0],70,TimeSpan.FromSeconds(2.1),TimeSpan.FromSeconds(430),TimeSpan.FromSeconds(3),DateTimeOffset.Now,"decoder"));
         lapSession.RaceMinutesOverride=4;
+        foreach(var result in lapSession.Results)
+        {
+            result.DriverName=names[result.CarNumber-1];
+            var laps=lapSession.Laps.Where(l=>l.CarNumber==result.CarNumber).ToList();
+            result.Laps=laps.Count;result.TotalTime=laps.Last().ElapsedDisplay;result.BestLap=laps.First().LapTimeDisplay;
+            result.Average5=result.Average10=result.Average15=result.BestLap;result.GapBehind=result.Position==1?"—":"1.250";
+        }
         foreach(var count in new[]{8,3,1})
         {
             var matrix=RaceReports.CompletedRace(printEvent,lapSession);
+            if(matrix.ResultsSummary?.Rows.Count!=8 || matrix.PriorQualifying?.Rows.Count!=8)
+                throw new InvalidDataException("Race report must include finishing results and prior qualifying.");
             var section=matrix.Sections[0];
             matrix.Sections[0]=section with { Columns=section.Columns.Take(count+1).ToArray(),Rows=section.Rows.Select(row=>row.Take(count+1).ToArray()).ToList() };
             var pages=IMRCRaceControl.Dialogs.LapMatrixPrintDocument.Build(matrix,816,1056);
@@ -158,6 +174,7 @@ public partial class RentalTransponderView
                 using var file=File.Create(Path.Combine(output,$"Lap-Matrix-{count}-{index+1}.png"));encoder.Save(file);
             }
         }
+        File.WriteAllText(Path.Combine(output,"Race-Report-Checks.txt"),"PASS: results, prior qualifying, 8/3/1 driver lap grids and pagination without footer overlap.");
         var owner = new Window { Width = 1000, Height = 720 }; owner.Show();
         foreach (var dialog in new Window[] { new IMRCRaceControl.Dialogs.EventEditorDialog(), new IMRCRaceControl.Dialogs.ClassEditorDialog(), new RentalAppearanceDialog(printSettings), new IMRCRaceControl.Dialogs.CompletedRaceExportDialog([printEvent],printEvent,lapSession), new IMRCRaceControl.Dialogs.ReportPrintDialog(RaceReports.CompletedRace(printEvent,lapSession)) })
         {

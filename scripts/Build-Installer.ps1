@@ -70,3 +70,5 @@ if (-not (Test-Path (Join-Path $branding "Lap-Matrix-8-1.png"))) { throw "Missin
 if (-not (Test-Path (Join-Path $branding "Lap-Matrix-8-2.png"))) { throw "Missing continued lap matrix preview" }
 
 if (-not (Test-Path (Join-Path $branding "Breakout-Highlight-Checks.txt"))) { throw "Missing scoped-resource breakout highlight checks" }
+
+if (-not (Test-Path (Join-Path $branding "Race-Report-Checks.txt"))) { throw "Missing race results and qualifying pagination checks" }
