@@ -121,6 +121,13 @@ Equal(9,eightBreakoutReport.Sections.Single().Columns.Length,"Breakout report co
 var breakoutRow=eightBreakoutReport.Sections.Single().Rows.Single(r=>r[0]=="2");
 Equal(true,breakoutRow.Skip(1).All(c=>c.StartsWith("B-Out: 2.950\n")),"All eight columns use labeled three-decimal breakout times");
 Equal(false,RaceReports.LapReportCsv(eightBreakoutReport).Contains("**"),"CSV does not retain old breakout markers");
+var reportCulture=System.Globalization.CultureInfo.CurrentCulture;
+try
+{
+    System.Globalization.CultureInfo.CurrentCulture=System.Globalization.CultureInfo.GetCultureInfo("de-DE");
+    Equal(true,RaceReports.CompletedRace(exportEvent,eightBreakoutRace).Sections[0].Rows.Single(r=>r[0]=="2")[1].StartsWith("B-Out: 2.950\n"),"Breakout labels always use decimal seconds with a dot");
+}
+finally { System.Globalization.CultureInfo.CurrentCulture=reportCulture; }
 // Post-race report: saved results, crossing positions, pace, and only prior qualifying.
 var reportStart=DateTimeOffset.Parse("2026-10-27T12:00:00Z");
 var reportRace=new EventSessionDefinition {ClassId="rpt",SessionType=SessionType.Race,ProgressStatus=EventSessionStatus.Completed,
