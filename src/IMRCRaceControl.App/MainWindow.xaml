@@ -31,7 +31,7 @@
 
                 <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                     <controls:BrandLogo Width="165" Height="64" ToolTip="IMRC Race Control"/>
-                    <TextBlock Text="  v0.16.26" Margin="4,2,0,0"
+                    <TextBlock Text="  v0.16.27" Margin="4,2,0,0"
                                Foreground="{DynamicResource MutedBrush}" FontSize="10"
                                VerticalAlignment="Center"/>
                 </StackPanel>
@@ -1835,44 +1835,57 @@
                 </Grid>
             </TabItem>
             <TabItem Header="TRACK INFO">
-                <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
-                    <StackPanel Margin="24" MaxWidth="850" HorizontalAlignment="Stretch">
-                        <TextBlock Text="TRACK INFORMATION" FontSize="24" FontWeight="Bold"/>
-                        <TextBlock Margin="0,8,0,16" TextWrapping="Wrap" Text="Save your track details before creating events. New events keep a copy of this track information for future results publishing."/>
-                        <TextBlock Text="Permanent track ID"/>
-                        <TextBox x:Name="TrackIdText" IsReadOnly="True" Margin="0,4,0,12"/>
-                        <TextBlock Text="Track name *"/>
-                        <TextBox x:Name="TrackNameText" Margin="0,4,0,12"/>
-                        <TextBlock Text="Street address"/>
-                        <TextBox x:Name="TrackAddressText" Margin="0,4,0,12"/>
-                        <TextBlock Text="City"/>
-                        <TextBox x:Name="TrackCityText" Margin="0,4,0,12"/>
-                        <TextBlock Text="State / province"/>
-                        <TextBox x:Name="TrackRegionText" Margin="0,4,0,12"/>
-                        <TextBlock Text="ZIP / postal code"/>
-                        <TextBox x:Name="TrackPostalCodeText" Margin="0,4,0,12"/>
-                        <TextBlock Text="Country"/>
-                        <TextBox x:Name="TrackCountryText" Margin="0,4,0,12"/>
-                        <TextBlock Text="Track type (oval, on-road, off-road, etc.)"/>
-                        <TextBox x:Name="TrackTrackTypeText" Margin="0,4,0,12"/>
-                        <TextBlock Text="Surface (carpet, dirt, asphalt, etc.)"/>
-                        <TextBox x:Name="TrackSurfaceText" Margin="0,4,0,12"/>
-                        <TextBlock Text="Website (https://...)"/>
-                        <TextBox x:Name="TrackWebsiteText" Margin="0,4,0,12"/>
-                        <TextBlock Text="Public contact email"/>
-                        <TextBox x:Name="TrackPublicEmailText" Margin="0,4,0,12"/>
-                        <TextBlock Text="Public contact phone"/>
-                        <TextBox x:Name="TrackPublicPhoneText" Margin="0,4,0,12"/>
-                        <TextBlock Text="Notes / regular racing schedule"/>
-                        <TextBox x:Name="TrackNotesText" Margin="0,4,0,12" AcceptsReturn="True" TextWrapping="Wrap" Height="80" VerticalScrollBarVisibility="Auto"/>
-                        <TextBlock Text="Track time zone"/>
-                        <ComboBox x:Name="TrackTimeZoneCombo" DisplayMemberPath="DisplayName" SelectedValuePath="Id" Margin="0,4,0,16"/>
+                <TabControl Margin="8">
+                    <TabItem Header="TRACK RECORDS"><controls:TrackRecordsView x:Name="TrackRecordsPanel"/></TabItem>
+                    <TabItem Header="TRACK DETAILS">
+                        <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                            <StackPanel Margin="18" MaxWidth="1050" HorizontalAlignment="Stretch">
+                                <TextBlock Text="TRACK DETAILS" FontSize="24" FontWeight="Bold"/>
+                                <TextBlock Text="Your venue, contact details and racing schedule. New events use this saved track." TextWrapping="Wrap" Margin="0,6,0,18"/>
+                                <Grid>
+                                    <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                                    <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+                                    <StackPanel Grid.Row="0" Grid.Column="0" Margin="0,0,18,0"><TextBlock Text="Permanent track ID"/>
+                        <TextBox x:Name="TrackIdText" IsReadOnly="True" Margin="0,4,0,12"/></StackPanel>
+                                    <StackPanel Grid.Row="0" Grid.Column="1" Margin="0,0,18,0"><TextBlock Text="Track name *"/>
+                        <TextBox x:Name="TrackNameText" Margin="0,4,0,12"/></StackPanel>
+                                    <StackPanel Grid.Row="1" Grid.Column="0" Margin="0,0,18,0"><TextBlock Text="Street address"/>
+                        <TextBox x:Name="TrackAddressText" Margin="0,4,0,12"/></StackPanel>
+                                    <StackPanel Grid.Row="1" Grid.Column="1" Margin="0,0,18,0"><TextBlock Text="City"/>
+                        <TextBox x:Name="TrackCityText" Margin="0,4,0,12"/></StackPanel>
+                                    <StackPanel Grid.Row="2" Grid.Column="0" Margin="0,0,18,0"><TextBlock Text="State / province"/>
+                        <TextBox x:Name="TrackRegionText" Margin="0,4,0,12"/></StackPanel>
+                                    <StackPanel Grid.Row="2" Grid.Column="1" Margin="0,0,18,0"><TextBlock Text="ZIP / postal code"/>
+                        <TextBox x:Name="TrackPostalCodeText" Margin="0,4,0,12"/></StackPanel>
+                                    <StackPanel Grid.Row="3" Grid.Column="0" Margin="0,0,18,0"><TextBlock Text="Country"/>
+                        <TextBox x:Name="TrackCountryText" Margin="0,4,0,12"/></StackPanel>
+                                    <StackPanel Grid.Row="3" Grid.Column="1" Margin="0,0,18,0"><TextBlock Text="Track type (oval, on-road, off-road, etc.)"/>
+                        <TextBox x:Name="TrackTrackTypeText" Margin="0,4,0,12"/></StackPanel>
+                                    <StackPanel Grid.Row="4" Grid.Column="0" Margin="0,0,18,0"><TextBlock Text="Surface (carpet, dirt, asphalt, etc.)"/>
+                        <TextBox x:Name="TrackSurfaceText" Margin="0,4,0,12"/></StackPanel>
+                                    <StackPanel Grid.Row="4" Grid.Column="1" Margin="0,0,18,0"><TextBlock Text="Website (https://...)"/>
+                        <TextBox x:Name="TrackWebsiteText" Margin="0,4,0,12"/></StackPanel>
+                                    <StackPanel Grid.Row="5" Grid.Column="0" Margin="0,0,18,0"><TextBlock Text="Public contact email"/>
+                        <TextBox x:Name="TrackPublicEmailText" Margin="0,4,0,12"/></StackPanel>
+                                    <StackPanel Grid.Row="5" Grid.Column="1" Margin="0,0,18,0"><TextBlock Text="Public contact phone"/>
+                        <TextBox x:Name="TrackPublicPhoneText" Margin="0,4,0,12"/></StackPanel>
+                                    <StackPanel Grid.Row="6" Grid.Column="0" Margin="0,0,18,0"><TextBlock Text="Notes / regular racing schedule"/>
+                        <TextBox x:Name="TrackNotesText" Margin="0,4,0,12" AcceptsReturn="True" TextWrapping="Wrap" Height="80" VerticalScrollBarVisibility="Auto"/></StackPanel>
+                                    <StackPanel Grid.Row="6" Grid.Column="1" Margin="0,0,18,0"><TextBlock Text="Track time zone"/>
+                        <ComboBox x:Name="TrackTimeZoneCombo" DisplayMemberPath="DisplayName" SelectedValuePath="Id" Margin="0,4,0,16"/></StackPanel>
+                                </Grid>
                         <WrapPanel>
                             <Button Content="SAVE TRACK INFO" Click="SaveTrackInfo_Click"/>
                             <Button Content="ASSIGN SAVED TRACK TO SELECTED EVENT" Click="AssignTrackToEvent_Click"/>
                         </WrapPanel>
                         <TextBlock x:Name="TrackSaveStatusText" Margin="0,12,0,0" TextWrapping="Wrap"/>
-                        <Separator Margin="0,24,0,18"/>
+
+                            </StackPanel>
+                        </ScrollViewer>
+                    </TabItem>
+                    <TabItem Header="WEBSITE CONNECTION">
+                        <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                            <StackPanel Margin="18" MaxWidth="850" HorizontalAlignment="Left">
                         <TextBlock Text="IMRC LIVE — WEBSITE CONNECTION" FontSize="20" FontWeight="Bold"/>
                         <TextBlock Margin="0,8,0,12" TextWrapping="Wrap" Text="Save your Track Info, then click REGISTER TRACK ONLINE. No login is needed: your track is added, its upload key is saved securely, and publishing starts automatically. Associated lineups, racer display names, results and Series points become public. Only IMRC can modify or delete website tracks. Use one publishing race PC per track."/>
                         <Button Content="REGISTER TRACK ONLINE" Click="RegisterOnlineTrack_Click" HorizontalAlignment="Left" Margin="0,0,0,12"/>
@@ -1891,8 +1904,11 @@
                         </WrapPanel>
                         <TextBlock x:Name="OnlineStatusText" Margin="0,12,0,0" TextWrapping="Wrap"/>
                         <TextBlock Margin="0,8,0,0" TextWrapping="Wrap" Text="Results remain public when publishing is paused. Upload keys are encrypted for this Windows user. Internet outages do not stop scoring; pending updates retry automatically while publishing is enabled."/>
-                    </StackPanel>
-                </ScrollViewer>
+
+                            </StackPanel>
+                        </ScrollViewer>
+                    </TabItem>
+                </TabControl>
             </TabItem>
         </TabControl>
 

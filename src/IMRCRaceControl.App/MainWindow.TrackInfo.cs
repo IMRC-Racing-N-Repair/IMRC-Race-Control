@@ -7,6 +7,7 @@ public partial class MainWindow
 {
     private void LoadTrackInfo()
     {
+        TrackRecordsPanel.Configure(() => (_settings.Track, Events.ToList(), Classes.ToList()));
         var track = _settings.Track;
         TrackIdText.Text = track.Id;
         TrackTimeZoneCombo.ItemsSource = TimeZoneInfo.GetSystemTimeZones();
@@ -63,6 +64,7 @@ public partial class MainWindow
         try
         {
             await CaptureAndSaveSettingsAsync(reportFailureToCaller: true);
+            TrackRecordsPanel.Refresh();
             TrackSaveStatusText.Text = $"Saved {track.Name}. New events will use this track.";
         }
         catch (Exception ex)
@@ -86,6 +88,7 @@ public partial class MainWindow
         try
         {
             await CaptureAndSaveSettingsAsync(reportFailureToCaller: true);
+            TrackRecordsPanel.Refresh();
             TrackSaveStatusText.Text = $"Assigned {ev.Track.Name} to {ev.Name}.";
         }
         catch (Exception ex)

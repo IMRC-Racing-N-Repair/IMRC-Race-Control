@@ -516,6 +516,7 @@ if (args.Contains("--isolated-database"))
     Equal(2, twice.DriverAssignments.Count, "Race removal does not delete event registration");
     Equal(4, twice.Sessions.Count, "Repeated edit does not duplicate heats");
 }
+checks += TrackRecordsChecks.Run();
 checks += LapFinishChecks.Run();
 checks += EligibilityPrintChecks.Run();
 checks += await SeriesChecks.Run(args.Contains("--isolated-database"));

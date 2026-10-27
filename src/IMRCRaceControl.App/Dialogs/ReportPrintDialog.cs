@@ -23,7 +23,7 @@ public sealed class ReportPrintDialog : Window
         }
         else root.Children.Add(new FlowDocumentReader { Document=BuildDocument(816,1056), ViewingMode=FlowDocumentReaderViewingMode.Page, IsFindEnabled=true, IsPrintEnabled=false, Background=Brushes.Gray });
     }
-    private FlowDocument BuildDocument(double width,double height)
+    internal FlowDocument BuildDocument(double width,double height)
     {
         var doc=new FlowDocument { PageWidth=width, PageHeight=height, ColumnWidth=width, PagePadding=new Thickness(32), FontFamily=new FontFamily("Segoe UI"), FontSize=11, Foreground=Brushes.Black, Background=Brushes.White };
         doc.Blocks.Add(new BlockUIContainer(PrintBranding.Logo()));

@@ -2,6 +2,11 @@
 
 Keep all release history in this file. Add each new version at the top; do not create version-specific changelog files.
 
+## 0.16.27
+- Redesign Track Info with separate Track Records, Track Details and Website Connection pages and a compact two-column details form.
+- Show the fastest valid completed-race lap per driver in each class, with driver, lap time, event date and event. Default to all classes and top 10; choose any positive record count or one class.
+- Print or save a PDF of the selected track records, with class headings and alternating rows. Records are scoped to the saved track; unassigned older events are flagged for assignment.
+
 ## 0.16.26
 
 - Repeat all racers in the results table on every split report, and label lap-cell positions as P:#/LapTime.

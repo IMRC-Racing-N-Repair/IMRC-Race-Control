@@ -78,4 +78,5 @@ if (-not (Test-Path (Join-Path $branding "Breakout-Report-8-Checks.txt"))) { thr
 
 if (-not (Test-Path (Join-Path $branding "Balanced-Report-Checks.txt"))) { throw "Missing balanced 10/18-driver race report checks" }
 
+if (-not (Test-Path (Join-Path $branding "Track-Records-Checks.txt"))) { throw "Missing track records UI and print checks" }
 if (-not (Test-Path (Join-Path $branding "Full-Results-Report-Checks.txt"))) { throw "Missing complete-results split report checks" }
