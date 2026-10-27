@@ -15,10 +15,15 @@ public sealed class PendingOnlineUpload
 }
 public sealed class OnlineOutboxState
 {
+    public long UploadedBytes { get; set; }
+    public DateTimeOffset MeterStartedAt { get; set; } = DateTimeOffset.UtcNow;
+    public bool CompletedOnly { get; set; }
     public string LastGeneratedAt { get; set; } = "";
     public Dictionary<string, string> Delivered { get; set; } = new();
     public Dictionary<string, PendingOnlineUpload> Pending { get; set; } = new();
 }
+public sealed class OnlineUploadLimitException() : Exception("Upload limit reached. Increase the limit or reset the meter to resume website uploads.");
+
 // One instance is scoped to server + online track + local track. No secret enters this file.
 // Caller serializes Capture/Flush operations. Latest snapshot replaces pending data per record.
 public sealed class OnlinePublisher : IDisposable
@@ -26,6 +31,28 @@ public sealed class OnlinePublisher : IDisposable
     private readonly string _statePath;
     private readonly HttpClient _http;
     private OnlineOutboxState _state = new();
+    public long UploadLimitBytes { get; set; }
+    public long UploadedBytes => _state.UploadedBytes;
+    public DateTimeOffset MeterStartedAt => _state.MeterStartedAt;
+    public bool LimitBlocked { get; private set; }
+    public async Task ResetMeterAsync()
+    {
+        var before = _state.UploadedBytes; var started = _state.MeterStartedAt;
+        _state.UploadedBytes = 0; _state.MeterStartedAt = DateTimeOffset.UtcNow;
+        try { await SaveAsync(); LimitBlocked = false; }
+        catch { _state.UploadedBytes = before; _state.MeterStartedAt = started; throw; }
+    }
+    private async Task<HttpResponseMessage> SendMeteredAsync(HttpRequestMessage request, CancellationToken cancel)
+    {
+        cancel.ThrowIfCancellationRequested();
+        var bytes = request.Content is null ? 0 : (await request.Content.ReadAsByteArrayAsync(cancel)).LongLength;
+        LimitBlocked = UploadLimitBytes > 0 && bytes > Math.Max(0, UploadLimitBytes - _state.UploadedBytes);
+        if (LimitBlocked) throw new OnlineUploadLimitException();
+        // Reserve durably before transmission. Failed/uncertain requests count too, so retries cannot bypass a cap.
+        _state.UploadedBytes = checked(_state.UploadedBytes + bytes);
+        await SaveAsync();
+        return await _http.SendAsync(request, cancel);
+    }
     public int PendingCount => _state.Pending.Count;
     public static Uri ValidateBaseUrl(string address)
     {
@@ -51,8 +78,14 @@ public sealed class OnlinePublisher : IDisposable
         await File.WriteAllTextAsync(temp, JsonSerializer.Serialize(_state));
         File.Move(temp, _statePath, true);
     }
-    public async Task CaptureAsync(OnlineCapture capture, string localTrackId, bool force = false)
+    public async Task CaptureAsync(OnlineCapture capture, string localTrackId, bool force = false, bool completedOnly = false)
     {
+        if (_state.CompletedOnly != completedOnly)
+        {
+            _state.CompletedOnly = completedOnly;
+            // Never replay queued live/practice content after opting into results-only publishing.
+            _state.Pending.Clear(); _state.Delivered.Clear();
+        }
         var now = DateTimeOffset.UtcNow;
         if (DateTimeOffset.TryParse(_state.LastGeneratedAt, out var previous) && now <= previous) now = previous.AddMilliseconds(1);
         var generatedAt = now.ToString("yyyy-MM-dd'T'HH:mm:ss.fff'Z'", System.Globalization.CultureInfo.InvariantCulture);
@@ -63,7 +96,7 @@ public sealed class OnlinePublisher : IDisposable
         {
             var fingerprint = (doc?.Value.GetRawText() ?? "") + "|" + capture.CurrentEventId;
             var hash = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(fingerprint)));
-            if (!force && doc is not null && !doc.Heartbeat && _state.Delivered.GetValueOrDefault(id) == hash && !_state.Pending.ContainsKey(id)) continue;
+            if (!force && (completedOnly || doc is not null && !doc.Heartbeat) && _state.Delivered.GetValueOrDefault(id) == hash && !_state.Pending.ContainsKey(id)) continue;
             var body = JsonSerializer.Serialize(new { schemaVersion = 1, localTrackId, generatedAt, currentEventId = capture.CurrentEventId,
                 practice = capture.Practice,
                 events = doc?.Kind == "event" ? new[] { doc.Value } : Array.Empty<JsonElement>(),
@@ -79,7 +112,7 @@ public sealed class OnlinePublisher : IDisposable
         using var request = new HttpRequestMessage(HttpMethod.Post, new Uri(origin, "api/register"));
         request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", key);
         request.Content = new StringContent(OnlineTrackRegistration.BuildBody(track), Encoding.UTF8, "application/json");
-        using var response = await _http.SendAsync(request, cancel);
+        using var response = await SendMeteredAsync(request, cancel);
         if (response.StatusCode == HttpStatusCode.Conflict)
             throw new HttpRequestException("This UUID is already registered with another upload key. Contact shopimrc@gmail.com for recovery; its existing data is unchanged.");
         if (response.StatusCode == HttpStatusCode.Gone)
@@ -95,7 +128,7 @@ public sealed class OnlinePublisher : IDisposable
     public async Task<string> TestAsync(string baseUrl, string trackId, string key, string localTrackId, CancellationToken cancel = default)
     {
         using var request = Request(baseUrl, trackId, "connection", key, JsonSerializer.Serialize(new { localTrackId }));
-        using var response = await _http.SendAsync(request, cancel);
+        using var response = await SendMeteredAsync(request, cancel);
         var text = await response.Content.ReadAsStringAsync(cancel);
         EnsureSuccess(response, text);
         using var json = JsonDocument.Parse(text);
@@ -108,7 +141,7 @@ public sealed class OnlinePublisher : IDisposable
         {
             if (shouldContinue is not null && !shouldContinue()) break;
             using var request = Request(baseUrl, trackId, "snapshot", key, item.Value.Body);
-            using var response = await _http.SendAsync(request, cancel);
+            using var response = await SendMeteredAsync(request, cancel);
             var text = await response.Content.ReadAsStringAsync(cancel);
             EnsureSuccess(response, text);
             _state.Delivered[item.Key] = item.Value.Hash;

@@ -4,6 +4,12 @@ using IMRCRaceControl.Models;
 using IMRCRaceControl.Services;
 
 
+if (args.Contains("--online-data-only"))
+{
+    Console.WriteLine($"PASS: {await OnlineDataChecks.Run()} online upload budget and results-only checks.");
+    return;
+}
+
 var legacyFormat = JsonSerializer.Deserialize<ClassDefinition>("{\"RaceFormat\":1}")!;
 if (legacyFormat.FormatFor(SessionType.Race) != legacyFormat.RaceFormat) throw new Exception("Legacy mains format changed");
 var splitFormat = new ClassDefinition { RaceFormat = RaceFormat.Timed, MainRaceFormat = RaceFormat.Laps };
@@ -530,6 +536,7 @@ checks += await V141Checks.Run();
 checks += await V143Checks.Run(args.Contains("--isolated-database"));
 checks += await V142Checks.Run(args.Contains("--isolated-database"));
 checks += await OnlineChecks.Run();
+checks += await OnlineDataChecks.Run();
 checks += await DataProtectionChecks.Run();
 checks += await RentalTransponderChecks.Run(args.Contains("--isolated-database"));
 Console.WriteLine($"PASS: {checks} speech, race-engine, round editing, Series, report, decoder and persistence checks.");

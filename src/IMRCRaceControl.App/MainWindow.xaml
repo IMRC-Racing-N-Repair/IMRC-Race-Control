@@ -1888,6 +1888,21 @@
                             <StackPanel Margin="18" MaxWidth="850" HorizontalAlignment="Left">
                         <TextBlock Text="IMRC LIVE — WEBSITE CONNECTION" FontSize="20" FontWeight="Bold"/>
                         <TextBlock Margin="0,8,0,12" TextWrapping="Wrap" Text="Save your Track Info, then click REGISTER TRACK ONLINE. No login is needed: your track is added, its upload key is saved securely, and publishing starts automatically. Associated lineups, racer display names, results and Series points become public. Only IMRC can modify or delete website tracks. Use one publishing race PC per track."/>
+                        <Border Background="{DynamicResource PanelAltBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" Padding="12" Margin="0,0,0,14">
+                            <StackPanel>
+                                <TextBlock Text="UPLOAD DATA" FontSize="15" FontWeight="Bold"/>
+                                <TextBlock x:Name="OnlineUsageText" Margin="0,5,0,4" TextWrapping="Wrap"/>
+                                <ProgressBar x:Name="OnlineUsageBar" Height="7" Minimum="0" Maximum="100" Margin="0,0,0,8"/>
+                                <WrapPanel VerticalAlignment="Center">
+                                    <TextBlock Text="Limit (MB)" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                                    <TextBox x:Name="OnlineLimitText" Text="0" Width="80" Margin="0,0,10,0" VerticalContentAlignment="Center" ToolTip="0 = unlimited. Uploads pause before the next request exceeds this budget."/>
+                                    <CheckBox x:Name="OnlineCompletedOnlyCheck" Content="Completed races only" VerticalAlignment="Center" Margin="0,0,10,0"/>
+                                    <Button Content="APPLY" Click="ApplyOnlineData_Click"/>
+                                    <Button Content="RESET METER" Click="ResetOnlineMeter_Click"/>
+                                </WrapPanel>
+                                <TextBlock Text="0 = unlimited • Since last reset, saved across restarts. Counts upload payloads and retries; excludes network overhead and spectator downloads. Results-only mode sends saved results when they change, without live race or practice timing." FontSize="11" Foreground="{DynamicResource MutedBrush}" TextWrapping="Wrap" Margin="0,6,0,0"/>
+                            </StackPanel>
+                        </Border>
                         <Button Content="REGISTER TRACK ONLINE" Click="RegisterOnlineTrack_Click" HorizontalAlignment="Left" Margin="0,0,0,12"/>
                         <TextBlock Text="Website address"/>
                         <TextBox x:Name="OnlineBaseUrlText" Margin="0,4,0,12"/>
@@ -1895,7 +1910,7 @@
                         <TextBox x:Name="OnlineTrackIdText" Margin="0,4,0,12"/>
                         <TextBlock Text="Upload key (leave blank to keep the saved key)"/>
                         <PasswordBox x:Name="OnlineUploadKeyBox" Margin="0,4,0,12" Padding="8"/>
-                        <CheckBox x:Name="OnlineEnabledCheck" Content="Enable automatic publishing every 10 seconds" Margin="0,4,0,12"/>
+                        <CheckBox x:Name="OnlineEnabledCheck" Content="Enable automatic publishing" Margin="0,4,0,12"/>
                         <WrapPanel>
                             <Button Content="TEST CONNECTION / SAVE" Click="SaveOnlineConnection_Click"/>
                             <Button Content="PUBLISH NOW" Click="PublishOnlineNow_Click"/>

@@ -8,6 +8,8 @@ $project = 'src/IMRCRaceControl.App/IMRCRaceControl.App.csproj'
 $version = [string]$xml.Project.PropertyGroup.Version
 if ($version -notmatch '^\d+\.\d+\.\d+$') { throw 'Version must use major.minor.patch' }
 function Checked([string[]]$Arguments) { & dotnet @Arguments; if ($LASTEXITCODE -ne 0) { throw "dotnet command failed: $($Arguments[0])" } }
+# Exercise upload limits, durable metering and results-only mode before packaging.
+Checked @('run','--project','tests/LapCalloutChecks/LapCalloutChecks.csproj','-c','Release','--','--online-data-only')
 Checked @('tool','restore')
 # Clean generated payloads so a release never includes stale files.
 Remove-Item 'artifacts/publish','artifacts/releases' -Recurse -Force -ErrorAction SilentlyContinue

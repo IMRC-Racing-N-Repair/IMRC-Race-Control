@@ -19,6 +19,9 @@ public partial class MainWindow
         OnlineBaseUrlText.Text = _settings.OnlinePublishing.BaseUrl;
         OnlineTrackIdText.Text = string.IsNullOrWhiteSpace(_settings.OnlinePublishing.OnlineTrackId) ? _settings.Track.Id : _settings.OnlinePublishing.OnlineTrackId;
         OnlineEnabledCheck.IsChecked = _settings.OnlinePublishing.Enabled;
+        OnlineLimitText.Text = _settings.OnlinePublishing.UploadLimitMb.ToString();
+        OnlineCompletedOnlyCheck.IsChecked = _settings.OnlinePublishing.CompletedRacesOnly;
+        UpdateOnlineMeter();
         OnlineStatusText.Text = _settings.OnlinePublishing.Enabled ? "Publishing enabled. First synchronization will start shortly." : "Publishing off. Local scoring is independent of the website.";
         _onlineTimer.Tick += async (_, _) => await PublishOnlineAsync();
         _onlineTimer.Start();
@@ -32,6 +35,7 @@ public partial class MainWindow
             _onlinePublisher = new OnlinePublisher(Path.Combine(ApplicationDataPaths.DataDirectory, "OnlineOutbox"), scope);
             _onlineScope = scope;
         }
+        _onlinePublisher.UploadLimitBytes = checked(Math.Max(0, settings.UploadLimitMb) * 1_000_000L);
         return _onlinePublisher;
     }
     private async void SaveOnlineConnection_Click(object sender, RoutedEventArgs e)
@@ -39,9 +43,11 @@ public partial class MainWindow
         if (_onlineBusy) { OnlineStatusText.Text = "Please wait for the current connection attempt."; return; }
         var candidate = new OnlinePublishingSettings { BaseUrl = OnlineBaseUrlText.Text.Trim().TrimEnd('/'),
             OnlineTrackId = OnlineTrackIdText.Text.Trim(), Enabled = OnlineEnabledCheck.IsChecked == true,
-            ProtectedUploadKey = _settings.OnlinePublishing.ProtectedUploadKey, RegistrationTrackUuid = _settings.Track.Id };
+            ProtectedUploadKey = _settings.OnlinePublishing.ProtectedUploadKey, RegistrationTrackUuid = _settings.Track.Id,
+            CompletedRacesOnly = _settings.OnlinePublishing.CompletedRacesOnly, UploadLimitMb = _settings.OnlinePublishing.UploadLimitMb };
         try
         {
+            ReadOnlineDataOptions(candidate);
             OnlinePublisher.ValidateBaseUrl(candidate.BaseUrl);
             if (string.IsNullOrWhiteSpace(candidate.OnlineTrackId)) throw new ArgumentException("Copy the online track ID from Track manager on the website.");
             if (OnlineUploadKeyBox.Password.Length > 0) candidate.ProtectedUploadKey = OnlineSecret.Protect(OnlineUploadKeyBox.Password.Trim());
@@ -63,7 +69,7 @@ public partial class MainWindow
         }
         catch (OperationCanceledException) { OnlineStatusText.Text = "Connection timed out or was cancelled. Try again."; }
         catch (Exception ex) { OnlineStatusText.Text = "Connection not saved: " + ex.Message; }
-        finally { _onlineBusy = false; }
+        finally { _onlineBusy = false; UpdateOnlineMeter(); }
         if (_settings.OnlinePublishing.Enabled) await PublishOnlineAsync(true);
     }
     private async void DisableOnlinePublishing_Click(object sender, RoutedEventArgs e)
@@ -89,6 +95,7 @@ public partial class MainWindow
             var candidate = new OnlinePublishingSettings {
                 BaseUrl = baseUrl, OnlineTrackId = sameTrack && previous.OnlineTrackId.Length > 0 ? previous.OnlineTrackId : _settings.Track.Id,
                 RegistrationTrackUuid = _settings.Track.Id, Enabled = false,
+                CompletedRacesOnly = previous.CompletedRacesOnly, UploadLimitMb = previous.UploadLimitMb,
                 ProtectedUploadKey = sameTrack && previous.ProtectedUploadKey.Length > 0 ? previous.ProtectedUploadKey :
                     OnlineSecret.Protect(Convert.ToHexString(System.Security.Cryptography.RandomNumberGenerator.GetBytes(32)))
             };
@@ -112,7 +119,7 @@ public partial class MainWindow
         }
         catch (OperationCanceledException) { OnlineStatusText.Text = "Registration timed out. Click REGISTER TRACK ONLINE again; the saved key makes retries safe."; }
         catch (Exception ex) { OnlineStatusText.Text = "Registration not completed: " + ex.Message; }
-        finally { _onlineBusy = false; }
+        finally { _onlineBusy = false; UpdateOnlineMeter(); }
         if (registered) await PublishOnlineAsync(true);
     }
     private void OpenOnlineTrack_Click(object sender, RoutedEventArgs e)
@@ -132,14 +139,18 @@ public partial class MainWindow
             var key = OnlineSecret.Unprotect(settings.ProtectedUploadKey);
             var capture = OnlineSnapshotBuilder.Capture(_settings.Track, Events, SeriesDefinitions, Drivers, Classes,
                 _activeEvent?.Id, _loadedSession?.Id, _raceEngine.State, _raceEngine.GetStandings(DateTimeOffset.Now),
-                _raceEngine.Laps, !_recallMode && !_practiceActive && !_raceEngine.PracticeMode);
-            capture = capture with { Practice = OnlineSnapshotBuilder.CapturePractice(_practiceActive, PracticeCards, DateTimeOffset.UtcNow) };
-            await publisher.CaptureAsync(capture, _settings.Track.Id, force);
+                _raceEngine.Laps, !_recallMode && !_practiceActive && !_raceEngine.PracticeMode, settings.CompletedRacesOnly);
+            capture = capture with { Practice = OnlineSnapshotBuilder.CapturePractice(_practiceActive && !settings.CompletedRacesOnly, PracticeCards, DateTimeOffset.UtcNow) };
+            await publisher.CaptureAsync(capture, _settings.Track.Id, force, settings.CompletedRacesOnly);
             await publisher.FlushAsync(settings.BaseUrl, settings.OnlineTrackId, key, _onlineCancel.Token, () => _settings.OnlinePublishing.Enabled);
             if (!_settings.OnlinePublishing.Enabled) { OnlineStatusText.Text = "Publishing paused. Pending updates are retained."; return; }
             _onlineFailures = 0; _nextOnlineAttempt = DateTimeOffset.MinValue;
             OnlineStatusText.Text = $"Published at {DateTime.Now:T}. {capture.Documents.Count} event/Series records checked. " +
                 $"{capture.ExcludedEvents} events excluded (not assigned to this track); {capture.ExcludedSeries} multi-track Series excluded.";
+        }
+        catch (OnlineUploadLimitException ex)
+        {
+            OnlineStatusText.Text = ex.Message + " Local scoring continues; results remain saved.";
         }
         catch (Exception ex)
         {
@@ -148,7 +159,61 @@ public partial class MainWindow
             _nextOnlineAttempt = DateTimeOffset.UtcNow.AddSeconds(seconds);
             OnlineStatusText.Text = $"Online update pending ({_onlinePublisher?.PendingCount ?? 0}). {ex.Message} Retry in {seconds}s. Local scoring continues.";
         }
-        finally { _onlineBusy = false; }
+        finally { _onlineBusy = false; UpdateOnlineMeter(); }
+    }
+    private void ReadOnlineDataOptions(OnlinePublishingSettings target)
+    {
+        if (!long.TryParse(OnlineLimitText.Text, out var limit) || limit < 0 || limit > 1_000_000_000)
+            throw new ArgumentException("Enter a whole-number data limit in MB (0 = unlimited).");
+        target.UploadLimitMb = limit;
+        target.CompletedRacesOnly = OnlineCompletedOnlyCheck.IsChecked == true;
+    }
+    private void UpdateOnlineMeter()
+    {
+        if (OnlineUsageText is null) return;
+        try
+        {
+            var pub = GetPublisher(_settings.OnlinePublishing);
+            var limit = _settings.OnlinePublishing.UploadLimitMb;
+            var used = pub.UploadedBytes / 1_000_000d;
+            OnlineUsageText.Text = $"{used:N3} MB uploaded" + (limit > 0 ? $" / {limit:N0} MB limit" : " • Unlimited") +
+                $" • Since {pub.MeterStartedAt.ToLocalTime():g}" + (pub.LimitBlocked ? " • PAUSED AT LIMIT" : "");
+            OnlineUsageBar.Value = limit > 0 ? Math.Min(100, used / limit * 100) : 0;
+        }
+        catch (Exception ex) { OnlineUsageText.Text = "Usage meter unavailable: " + ex.Message; }
+    }
+    private async void ApplyOnlineData_Click(object sender, RoutedEventArgs e)
+    {
+        if (_onlineBusy) { OnlineStatusText.Text = "Please wait for the current upload before changing data settings."; return; }
+        var settings = _settings.OnlinePublishing;
+        var oldLimit = settings.UploadLimitMb; var oldMode = settings.CompletedRacesOnly;
+        _onlineBusy = true;
+        try
+        {
+            ReadOnlineDataOptions(settings);
+            await CaptureAndSaveSettingsAsync(reportFailureToCaller: true);
+            _nextOnlineAttempt = DateTimeOffset.MinValue;
+            OnlineStatusText.Text = settings.CompletedRacesOnly ? "Saved. Only completed race results and changed Series standings will upload." : "Saved. Live website publishing uses the selected data limit.";
+        }
+        catch (Exception ex)
+        {
+            settings.UploadLimitMb = oldLimit; settings.CompletedRacesOnly = oldMode;
+            OnlineStatusText.Text = "Data settings not saved: " + ex.Message;
+        }
+        finally { _onlineBusy = false; UpdateOnlineMeter(); }
+    }
+    private async void ResetOnlineMeter_Click(object sender, RoutedEventArgs e)
+    {
+        if (_onlineBusy) { OnlineStatusText.Text = "Please wait for the current upload before resetting usage."; return; }
+        _onlineBusy = true;
+        try
+        {
+            await GetPublisher(_settings.OnlinePublishing).ResetMeterAsync();
+            _nextOnlineAttempt = DateTimeOffset.MinValue;
+            OnlineStatusText.Text = "Upload meter reset. Enabled publishing will resume within the selected limit.";
+        }
+        catch (Exception ex) { OnlineStatusText.Text = "Could not reset usage: " + ex.Message; }
+        finally { _onlineBusy = false; UpdateOnlineMeter(); }
     }
     private void StopOnlinePublishing()
     {

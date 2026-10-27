@@ -3,6 +3,7 @@
 Keep all release history in this file. Add each new version at the top; do not create version-specific changelog files.
 
 ## 0.16.27
+- Add a compact Website Connection upload meter, saved MB budget (0 = unlimited), reset control, and completed-races-only publishing. Count attempted payload bytes including retries across restarts; pause uploads before exceeding the budget without interrupting local scoring.
 - Redesign Track Info with separate Track Records, Track Details and Website Connection pages and a compact two-column details form.
 - Show the fastest valid completed-race lap per driver in each class, with driver, lap time, event date and event. Default to all classes and top 10; choose any positive record count or one class.
 - Print or save a PDF of the selected track records, with class headings and alternating rows. Records are scoped to the saved track; unassigned older events are flagged for assignment.

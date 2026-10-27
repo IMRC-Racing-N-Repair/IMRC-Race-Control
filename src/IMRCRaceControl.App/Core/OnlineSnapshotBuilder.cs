@@ -22,7 +22,7 @@ public static class OnlineSnapshotBuilder
     public static OnlineCapture Capture(TrackProfile track, IEnumerable<RaceDayEventDefinition> allEvents,
         IEnumerable<RaceSeriesDefinition> allSeries, IEnumerable<DriverProfile> drivers, IEnumerable<ClassDefinition> classes,
         string? currentEventId, string? loadedSessionId, RaceState state, IEnumerable<StandingRow> liveRows,
-        IEnumerable<LapRecord> liveLaps, bool showLive)
+        IEnumerable<LapRecord> liveLaps, bool showLive, bool completedOnly = false)
     {
         var all = allEvents.ToList();
         var events = all.Where(e => e.Track?.Id == track.Id).ToList();
@@ -31,10 +31,10 @@ public static class OnlineSnapshotBuilder
         var documents = new List<OnlineDocument>();
         foreach (var ev in events)
         {
-            var races = ev.Sessions.Where(s => s.SessionType != SessionType.Practice)
+            var races = ev.Sessions.Where(s => s.SessionType != SessionType.Practice && (!completedOnly || s.ProgressStatus == EventSessionStatus.Completed))
                 .OrderBy(s => s.ScheduleStageOrder).ThenBy(s => s.ScheduleRoundOrder).ThenBy(s => s.RaceNumber).ThenBy(s => s.QueueOrder)
                 .Select(s => {
-                    var engine = showLive && ev.Id == currentEventId && s.Id == loadedSessionId &&
+                    var engine = !completedOnly && showLive && ev.Id == currentEventId && s.Id == loadedSessionId &&
                         state is RaceState.Armed or RaceState.Running or RaceState.TimeExpired or RaceState.Complete;
                     var completed = s.ProgressStatus == EventSessionStatus.Completed || engine && state == RaceState.Complete;
                     var status = s.ProgressStatus == EventSessionStatus.Skipped ? "skipped" : completed ? "completed" : engine ? "live" : "planned";
@@ -60,7 +60,7 @@ public static class OnlineSnapshotBuilder
             var value = JsonSerializer.SerializeToElement(new { id = ev.Id, name = ev.Name,
                 date = ev.EventDate.ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture),
                 status = ev.Status == EventStatus.Completed ? "completed" : ev.Id == currentEventId ? "active" : "upcoming", races }, Json);
-            documents.Add(new("event", ev.Id, value, ev.Id == currentEventId));
+            documents.Add(new("event", ev.Id, value, !completedOnly && ev.Id == currentEventId));
         }
         var excludedSeries = 0;
         foreach (var series in allSeries)

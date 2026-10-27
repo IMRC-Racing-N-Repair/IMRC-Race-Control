@@ -103,7 +103,7 @@ public static class OnlineChecks
                 Check(pub.PendingCount==1,"unchanged history not repeatedly uploaded");
                 await pub.FlushAsync("https://example.com","online-id","test-key");
             }
-            Check(!File.ReadAllText(Directory.GetFiles(folder,"*.json").Single()).Contains("test-key"),"outbox contains no key");
+            Check(Directory.GetFiles(folder,"*.json").All(f=>!File.ReadAllText(f).Contains("test-key")),"outbox contains no key");
             if(Environment.GetEnvironmentVariable("IMRC_CONTRACT_FIXTURE") is string fixture)
                 await File.WriteAllTextAsync(fixture,JsonSerializer.Serialize(new{schemaVersion=1,localTrackId=track.Id,generatedAt=DateTimeOffset.UtcNow.ToString("yyyy-MM-dd'T'HH:mm:ss.fff'Z'"),currentEventId=ev.Id,events=completed.Documents.Where(d=>d.Kind=="event").Select(d=>d.Value),series=completed.Documents.Where(d=>d.Kind=="series").Select(d=>d.Value)},OnlineSnapshotBuilder.Json));
         }
