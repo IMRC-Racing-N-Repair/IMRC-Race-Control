@@ -4,6 +4,8 @@ Keep all release history in this file. Add each new version at the top; do not c
 
 ## 0.16.26
 
+- Label report breakouts as B-Out: #.### and verify all eight driver columns in the Windows print preview.
+
 - Redesign completed-race reports with finishing results first, compact position/lap-time cells with pace underneath, and prior qualifying order at the bottom. Keep alternating rows, driver borders, best-lap emphasis and breakout annotations; repeat table headings across pages.
 - Rename the dashboard EXPORT button to REPORTS. Include results and prior qualifying in CSV exports, and retain completed race duration for future pace reports.
 

@@ -32,7 +32,7 @@ internal static class LapMatrixPrintDocument
             var round=Text(section?.RoundHeading ?? "",14,true);round.TextAlignment=TextAlignment.Right;titles.Children.Add(round);
             Grid.SetColumn(titles,1);heading.Children.Add(titles);Add(heading);
             var subtitle=Text(report.Subtitle,10);subtitle.Margin=new Thickness(0,4,0,10);Add(subtitle);
-            var footer=Text($"Page {document.Pages.Count+1} • Cell: position / lap time; pace below • ** Breakout, not counted • — Unavailable",9);
+            var footer=Text($"Page {document.Pages.Count+1} • Cell: position / lap time; pace below • B-Out: breakout, not counted • — Unavailable",9);
             FixedPage.SetLeft(footer,28);FixedPage.SetTop(footer,height-38);footer.Width=available;page.Children.Add(footer);
             document.Pages.Add(new PageContent {Child=page});
         }

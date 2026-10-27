@@ -108,11 +108,19 @@ Equal("—",allLapReport.Sections[0].Rows[1][2],"Unequal lap counts align by lap
 exportRace.Breakouts.Add(new BreakoutRecord(1,1,"One",2,TimeSpan.FromSeconds(2.95),TimeSpan.FromSeconds(8),TimeSpan.FromSeconds(3),liveStart,"decoder"));
 exportRace.Breakouts.Add(new BreakoutRecord(2,1,"One",3,TimeSpan.FromSeconds(2.1),TimeSpan.FromSeconds(12),TimeSpan.FromSeconds(3),liveStart.AddSeconds(1),"decoder"));
 var breakoutReport=RaceReports.CompletedRace(exportEvent,exportRace,1);
-Equal("2.950**\n5.432",breakoutReport.Sections[0].Rows[1][1],"Breakout above true scored lap with same number");
-Equal("2.100**\n—",breakoutReport.Sections[0].Rows[2][1],"Trailing breakout shown without inventing a lap");
-Equal(true,RaceReports.LapReportCsv(breakoutReport).Contains("2.950** / 5.432"),"CSV keeps breakout and valid lap together");
+Equal("B-Out: 2.950\n5.432",breakoutReport.Sections[0].Rows[1][1],"Breakout above true scored lap with same number");
+Equal("B-Out: 2.100\n—",breakoutReport.Sections[0].Rows[2][1],"Trailing breakout shown without inventing a lap");
+Equal(true,RaceReports.LapReportCsv(breakoutReport).Contains("B-Out: 2.950 / 5.432"),"CSV keeps breakout and valid lap together");
 Equal(exportRace.ClassName,breakoutReport.Sections[0].Title,"Class heading retained");
 Equal(true,breakoutReport.Sections[0].RoundHeading.Contains("QUALIFYING ROUND"),"Qual and heat heading provided");
+var eightBreakoutRace=JsonSerializer.Deserialize<EventSessionDefinition>(JsonSerializer.Serialize(exportRace))!;
+eightBreakoutRace.Entrants=eightBreakoutRace.Entrants.Take(8).ToList();
+for(var car=2;car<=8;car++)eightBreakoutRace.Breakouts.Add(new(car+10,car,"Driver",2,TimeSpan.FromSeconds(2.95),TimeSpan.FromSeconds(8),TimeSpan.FromSeconds(3),liveStart,"test"));
+var eightBreakoutReport=RaceReports.CompletedRace(exportEvent,eightBreakoutRace);
+Equal(9,eightBreakoutReport.Sections.Single().Columns.Length,"Breakout report contains all eight drivers");
+var breakoutRow=eightBreakoutReport.Sections.Single().Rows.Single(r=>r[0]=="2");
+Equal(true,breakoutRow.Skip(1).All(c=>c.StartsWith("B-Out: 2.950\n")),"All eight columns use labeled three-decimal breakout times");
+Equal(false,RaceReports.LapReportCsv(eightBreakoutReport).Contains("**"),"CSV does not retain old breakout markers");
 // Post-race report: saved results, crossing positions, pace, and only prior qualifying.
 var reportStart=DateTimeOffset.Parse("2026-10-27T12:00:00Z");
 var reportRace=new EventSessionDefinition {ClassId="rpt",SessionType=SessionType.Race,ProgressStatus=EventSessionStatus.Completed,

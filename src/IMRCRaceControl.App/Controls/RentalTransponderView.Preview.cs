@@ -148,6 +148,8 @@ public partial class RentalTransponderView
                 lapSession.Laps.Add(new LapRecord(lap*8+entrant.CarNumber,entrant.CarNumber,entrant.DisplayName,lap,TimeSpan.FromSeconds(6+entrant.CarNumber*.13),TimeSpan.FromSeconds(lap*(6+entrant.CarNumber*.13)),reportStart.AddSeconds(lap*(6+entrant.CarNumber*.13)),"decoder",lap==70-entrant.CarNumber));
         lapSession.Breakouts.Add(new BreakoutRecord(1,1,names[0],11,TimeSpan.FromSeconds(2.95),TimeSpan.FromSeconds(64.25),TimeSpan.FromSeconds(3),DateTimeOffset.Now,"decoder"));
         lapSession.Breakouts.Add(new BreakoutRecord(2,1,names[0],70,TimeSpan.FromSeconds(2.1),TimeSpan.FromSeconds(430),TimeSpan.FromSeconds(3),DateTimeOffset.Now,"decoder"));
+        for(var car=2;car<=8;car++)
+            lapSession.Breakouts.Add(new BreakoutRecord(car+10,car,names[car-1],11,TimeSpan.FromSeconds(2.95),TimeSpan.FromSeconds(64.25),TimeSpan.FromSeconds(3),reportStart.AddSeconds(64.25),"decoder"));
         lapSession.RaceMinutesOverride=4;
         foreach(var result in lapSession.Results)
         {
@@ -162,6 +164,8 @@ public partial class RentalTransponderView
             if(matrix.ResultsSummary?.Rows.Count!=8 || matrix.PriorQualifying?.Rows.Count!=8)
                 throw new InvalidDataException("Race report must include finishing results and prior qualifying.");
             var section=matrix.Sections[0];
+            if(count==8 && (section.Columns.Length!=9 || !section.Rows.Single(r=>r[0]=="11").Skip(1).All(c=>c.StartsWith("B-Out: 2.950\n"))))
+                throw new InvalidDataException("Eight-driver breakout report labels are missing.");
             matrix.Sections[0]=section with { Columns=section.Columns.Take(count+1).ToArray(),Rows=section.Rows.Select(row=>row.Take(count+1).ToArray()).ToList() };
             var pages=IMRCRaceControl.Dialogs.LapMatrixPrintDocument.Build(matrix,816,1056);
             for(var index=0;index<pages.Pages.Count;index++)
@@ -174,6 +178,7 @@ public partial class RentalTransponderView
                 using var file=File.Create(Path.Combine(output,$"Lap-Matrix-{count}-{index+1}.png"));encoder.Save(file);
             }
         }
+        File.WriteAllText(Path.Combine(output,"Breakout-Report-8-Checks.txt"),"PASS: eight driver columns with B-Out: 2.950 labels, valid laps and pace, paginated without footer overlap.");
         File.WriteAllText(Path.Combine(output,"Race-Report-Checks.txt"),"PASS: results, prior qualifying, 8/3/1 driver lap grids and pagination without footer overlap.");
         var owner = new Window { Width = 1000, Height = 720 }; owner.Show();
         foreach (var dialog in new Window[] { new IMRCRaceControl.Dialogs.EventEditorDialog(), new IMRCRaceControl.Dialogs.ClassEditorDialog(), new RentalAppearanceDialog(printSettings), new IMRCRaceControl.Dialogs.CompletedRaceExportDialog([printEvent],printEvent,lapSession), new IMRCRaceControl.Dialogs.ReportPrintDialog(RaceReports.CompletedRace(printEvent,lapSession)) })

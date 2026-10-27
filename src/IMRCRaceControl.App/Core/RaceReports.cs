@@ -91,7 +91,7 @@ public static class RaceReports
             var columns=new[]{"Lap"}.Concat(group.Select(c=>names.Values.Count(n=>n==names[c])>1 ? $"{names[c]} #{c}" : names[c])).ToArray();
             var byCar=group.ToDictionary(c=>c,c=>session.Laps.Where(l=>l.CarNumber==c).GroupBy(l=>l.LapNumber).ToDictionary(g=>g.Key,g=>g.OrderByDescending(l=>l.Sequence).First().LapTimeDisplay));
             var breakouts=session.Breakouts.Where(b=>group.Contains(b.CarNumber)).GroupBy(b=>(b.CarNumber,b.AttemptedLapNumber))
-                .ToDictionary(g=>g.Key,g=>string.Join(", ",g.OrderBy(b=>b.Timestamp).ThenBy(b=>b.Sequence).Select(b=>b.LapTimeDisplay+"**")));
+                .ToDictionary(g=>g.Key,g=>string.Join(", ",g.OrderBy(b=>b.Timestamp).ThenBy(b=>b.Sequence).Select(b=>"B-Out: "+b.LapTimeDisplay)));
             var lapNumbers=group.SelectMany(c=>byCar[c].Keys).Concat(breakouts.Keys.Select(k=>k.AttemptedLapNumber)).Distinct().Order();
             string Cell(int car,int lap)
             {
