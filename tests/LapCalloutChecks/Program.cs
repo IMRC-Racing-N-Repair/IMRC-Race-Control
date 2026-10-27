@@ -147,7 +147,7 @@ foreach(var total in new[]{8,9,10,16,17,18,25})
     Equal(total,splitReport.Sections.SelectMany(s=>s.ResultsSummary!.Rows).Select(r=>r[1]).Distinct().Count(),"No duplicate or lost finishing results for "+total);
     foreach(var section in splitReport.Sections)
     {
-        Equal(section.Columns.Length-1,section.ResultsSummary!.Rows.Count,"Group has its own finishing results");
+        Equal(total,section.ResultsSummary!.Rows.Count,"Every group repeats all race results");
         Equal(section.Columns.Length-1,section.PriorQualifying!.Rows.Count,"Group has its own prior qualifiers");
     }
     if(total==10)Equal("5,5",string.Join(",",sizes),"Ten drivers split five and five");
@@ -168,7 +168,7 @@ foreach(var q in new[]{(1,"a",10,"1:01.000",-2),(2,"b",11,"1:02.000",-1),(3,"a",
     reportEvent.Sessions.Add(new(){ClassId="rpt",Round=q.Item1,ProgressStatus=EventSessionStatus.Completed,CompletedAt=reportStart.AddMinutes(q.Item5),
         Entrants=[new(){CarNumber=7,DriverId=q.Item2,DriverName=q.Item2}],Results=[new(){CarNumber=7,Laps=q.Item3,TotalTime=q.Item4}]});
 var detailedReport=RaceReports.CompletedRace(reportEvent,reportRace,1);
-Equal("Alpha",detailedReport.ResultsSummary!.Rows.Single()[2],"Results honor single driver filter");
+Equal("Beta,Alpha",string.Join(",",detailedReport.ResultsSummary!.Rows.Select(r=>r[2])),"Single-driver lap export retains complete finishing order");
 Equal(2,detailedReport.LapDetails[(0,1,1)].Position,"Single driver position still compares full race field");
 Equal("11/1:06.000",detailedReport.LapDetails[(0,1,1)].Pace,"Timed pace projects crossing after race duration");
 Equal("2/0:12.000",detailedReport.LapDetails[(0,2,1)].Pace,"Finished lap shows actual finish pace");
@@ -180,6 +180,7 @@ Equal("20/2:00.000",RaceReports.CompletedRace(reportEvent,reportRace,1).LapDetai
 reportRace.RaceFormat=RaceFormat.Timed;reportRace.RaceMinutesOverride=null;
 Equal("—",RaceReports.CompletedRace(reportEvent,reportRace,1).LapDetails[(0,1,1)].Pace,"Legacy missing duration is not guessed");
 var detailedCsv=RaceReports.LapReportCsv(detailedReport);
+Equal(true,detailedCsv.Contains("P:2/6.000 | 11/1:06.000"),"CSV lap cells label race position with P colon");
 Equal(true,detailedCsv.IndexOf("RACE RESULTS")<detailedCsv.IndexOf("LAP ANALYSIS"),"CSV places results first");
 Equal(true,detailedCsv.IndexOf("QUALIFYING ORDER")>detailedCsv.IndexOf("LAP ANALYSIS"),"CSV places prior qualifying last");
 

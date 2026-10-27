@@ -200,7 +200,7 @@ public partial class RentalTransponderView
             }
             var balanced=RaceReports.CompletedRace(splitEvent,splitRace);
             var expected=total==10?5:6;
-            if(balanced.Sections.Count!=(total==10?2:3) || balanced.Sections.Any(s=>s.Columns.Length!=expected+1 || s.ResultsSummary?.Rows.Count!=expected || s.PriorQualifying?.Rows.Count!=expected))
+            if(balanced.Sections.Count!=(total==10?2:3) || balanced.Sections.Any(s=>s.Columns.Length!=expected+1 || s.ResultsSummary?.Rows.Count!=total || s.PriorQualifying?.Rows.Count!=expected))
                 throw new InvalidDataException("Balanced race report grouping failed.");
             var pages=IMRCRaceControl.Dialogs.LapMatrixPrintDocument.Build(balanced,816,1056);
             for(var index=0;index<pages.Pages.Count;index++)
@@ -213,7 +213,8 @@ public partial class RentalTransponderView
                 using var file=File.Create(Path.Combine(output,$"Balanced-{total}-{index+1}.png"));encoder.Save(file);
             }
         }
-        File.WriteAllText(Path.Combine(output,"Balanced-Report-Checks.txt"),"PASS: 10 drivers = 5/5; 18 drivers = 6/6/6; each report contains its own results, laps, qualifying and page boundaries.");
+        File.WriteAllText(Path.Combine(output,"Full-Results-Report-Checks.txt"),"PASS: complete finishing order on all split reports; lap cells use P:position/lap time.");
+        File.WriteAllText(Path.Combine(output,"Balanced-Report-Checks.txt"),"PASS: 10 drivers = 5/5; 18 drivers = 6/6/6; each report repeats all race results with grouped laps, qualifying and page boundaries.");
         File.WriteAllText(Path.Combine(output,"Breakout-Report-8-Checks.txt"),"PASS: eight driver columns with B-Out: 2.950 labels, valid laps and pace, paginated without footer overlap.");
         File.WriteAllText(Path.Combine(output,"Race-Report-Checks.txt"),"PASS: results, prior qualifying, 8/3/1 driver lap grids and pagination without footer overlap.");
         var owner = new Window { Width = 1000, Height = 720 }; owner.Show();

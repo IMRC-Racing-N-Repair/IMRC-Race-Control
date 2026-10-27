@@ -65,7 +65,7 @@ public static class RaceReports
         }
         report.ResultsSummary = new ReportSection("RACE RESULTS",
             ["Pos", "Car", "Driver", "Laps", "Time", "Behind", "Best", "Avg 5", "Avg 10", "Avg 15", "Qual #"],
-            session.Results.Where(r=>cars.Contains(r.CarNumber)).OrderBy(r=>r.Position).Select(r=>new[] {
+            session.Results.OrderBy(r=>r.Position).Select(r=>new[] {
                 r.Position.ToString(), r.CarNumber.ToString(), r.DriverName, r.Laps.ToString(), r.TotalTime,
                 r.GapBehind, r.BestLap, r.Average5, r.Average10, r.Average15, QualRank(r.CarNumber) }).ToList(),
             "No saved finishing results.");
@@ -119,7 +119,7 @@ public static class RaceReports
             var groupLabel=groupCount>1?$" • REPORT {groupIndex+1} OF {groupCount} • CARS {group.First()}–{group.Last()}":"";
             report.Sections.Add(new ReportSection(session.ClassName,columns,rows,rows.Count==0 ? "No recorded laps." : "",$"RACE #{session.RaceNumber} • {round}{groupLabel}")
             {
-                ResultsSummary=report.ResultsSummary with {Rows=report.ResultsSummary.Rows.Where(r=>group.Contains(int.Parse(r[1]))).ToList()},
+                ResultsSummary=report.ResultsSummary,
                 PriorQualifying=PriorQualifying(ev,session,group.ToList(),out _)
             });
         }
@@ -177,13 +177,13 @@ public static class RaceReports
             var section=report.Sections[index];
             lines.Add(Cell(section.RoundHeading));
             Table(section.ResultsSummary ?? report.ResultsSummary);
-            lines.Add(Cell("LAP ANALYSIS • position / lap time | pace laps/time"));
+            lines.Add(Cell("LAP ANALYSIS • P:position/lap time | pace laps/time"));
             lines.Add(string.Join(",",section.Columns.Select(Cell)));
             foreach(var row in section.Rows)
                 lines.Add(string.Join(",",row.Select((value,column)=> {
                     var text=value.Replace("\n"," / ");
                     if(column>0 && int.TryParse(row[0],out var lap) && report.LapDetails.TryGetValue((index,lap,column),out var detail))
-                        text=$"{detail.Position} / {text} | {detail.Pace}";
+                        text=$"P:{detail.Position}/{text} | {detail.Pace}";
                     return Cell(text);
                 })));
             if(section.Rows.Count==0) lines.Add(Cell(section.Notes));

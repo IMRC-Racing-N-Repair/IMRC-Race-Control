@@ -33,7 +33,7 @@ internal static class LapMatrixPrintDocument
             var round=Text(section?.RoundHeading ?? "",14,true);round.TextAlignment=TextAlignment.Right;titles.Children.Add(round);
             Grid.SetColumn(titles,1);heading.Children.Add(titles);Add(heading);
             var subtitle=Text(report.Subtitle,10);subtitle.Margin=new Thickness(0,4,0,10);Add(subtitle);
-            var footer=Text($"Page {document.Pages.Count+1} • Cell: position / lap time; pace below • B-Out: breakout, not counted • — Unavailable",9);
+            var footer=Text($"Page {document.Pages.Count+1} • Cell: P:position/lap time; pace below • B-Out: breakout, not counted • — Unavailable",9);
             FixedPage.SetLeft(footer,28);FixedPage.SetTop(footer,height-38);footer.Width=available;page.Children.Add(footer);
             document.Pages.Add(new PageContent {Child=page});
         }
@@ -62,7 +62,7 @@ internal static class LapMatrixPrintDocument
                         var rejected=Text(parts[0],9);rejected.TextAlignment=TextAlignment.Center;stack.Children.Add(rejected);
                         stack.Children.Add(new Border {Height=1,Background=Brushes.Gray,Margin=new Thickness(8,1,8,1)});
                     }
-                    var lapText=Text(detail is null?parts[^1]:$"{detail.Position}/{parts[^1]}",font,detail?.BestLap==true);
+                    var lapText=Text(detail is null?parts[^1]:$"P:{detail.Position}/{parts[^1]}",font,detail?.BestLap==true);
                     lapText.TextAlignment=TextAlignment.Center;stack.Children.Add(lapText);
                     if(detail is not null)
                     {
@@ -80,7 +80,7 @@ internal static class LapMatrixPrintDocument
         void Table(ReportSection section,bool matrix,int sectionIndex=0)
         {
             FrameworkElement Header()=>Row(section.Columns,true,0,matrix,sectionIndex);
-            var caption=matrix?"LAP ANALYSIS • POSITION / LAP TIME • PACE":section.Title;
+            var caption=matrix?"LAP ANALYSIS • P:POSITION/LAP TIME • PACE":section.Title;
             void StartTable(bool continued)
             {
                 Add(Caption(caption+(continued?" • CONTINUED":"")));Add(Header());

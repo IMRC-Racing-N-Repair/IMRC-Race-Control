@@ -4,7 +4,9 @@ Keep all release history in this file. Add each new version at the top; do not c
 
 ## 0.16.26
 
-- Split larger fields into balanced reports of up to eight drivers (10 = 5/5; 18 = 6/6/6), each with its own results, lap grid and prior qualifying while retaining overall positions.
+- Repeat all racers in the results table on every split report, and label lap-cell positions as P:#/LapTime.
+
+- Split larger fields into balanced reports of up to eight drivers (10 = 5/5; 18 = 6/6/6), each with the complete race results above its grouped lap grid and prior qualifying while retaining overall positions.
 
 - Label report breakouts as B-Out: #.### and verify all eight driver columns in the Windows print preview.
 

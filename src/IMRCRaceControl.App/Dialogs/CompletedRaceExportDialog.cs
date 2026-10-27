@@ -39,7 +39,7 @@ public sealed class CompletedRaceExportDialog : Window
             var races = RaceSchedule.DisplayOrder(ev?.Sessions.Where(s => s.ProgressStatus == EventSessionStatus.Completed) ?? []).Select(s => new RaceChoice(s)).ToList();
             _races.ItemsSource = races;
             _races.SelectedItem = races.FirstOrDefault(r => r.Session.Id == loaded?.Id) ?? races.FirstOrDefault();
-            status.Text = races.Count == 0 ? "No completed races in this event yet." : "Results first, then position / lap time with pace beneath, followed by qualifying order before the race. Larger fields split into balanced reports of up to 8 drivers each.";
+            status.Text = races.Count == 0 ? "No completed races in this event yet." : "Full race results first, then P:position/lap time with pace beneath, followed by qualifying order before the race. Larger fields split into balanced reports of up to 8 drivers each.";
             _print.IsEnabled = _export.IsEnabled = races.Count > 0;
         };
         _races.SelectionChanged += (_,_) =>
