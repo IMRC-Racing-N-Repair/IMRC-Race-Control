@@ -538,7 +538,7 @@ public partial class RoundMainBuilderDialog : Window
         }
 
         ReorderNumbers();
-        HeatGrid.SelectedIndex = HeatPlans.Count > 0 ? 0 : -1;
+        HeatGrid.SelectedItem = HeatPlans.FirstOrDefault();
         RefreshSelectedMainSeriesEditor(HeatGrid.SelectedItem as HeatPlan);
     }
 
@@ -900,7 +900,7 @@ public partial class RoundMainBuilderDialog : Window
 
         RefreshPreviewRaceNumbers();
         HeatGrid.Items.Refresh();
-        HeatGrid.SelectedIndex = HeatPlans.Count > 0 ? 0 : -1;
+        HeatGrid.SelectedItem = HeatPlans.FirstOrDefault();
         RefreshSelectedMainSeriesEditor(HeatGrid.SelectedItem as HeatPlan);
     }
 
@@ -975,7 +975,7 @@ public partial class RoundMainBuilderDialog : Window
                 ReorderNumbers();
 
             HeatGrid.Items.Refresh();
-            HeatGrid.SelectedIndex = HeatPlans.Count > 0 ? 0 : -1;
+            HeatGrid.SelectedItem = HeatPlans.FirstOrDefault();
             SaveButton.IsEnabled = HeatPlans.Count > 0;
             BuilderStatusText.Text = HeatPlans.Count == 0
                 ? "No drivers are checked into the selected class scope."
@@ -1832,7 +1832,7 @@ public partial class RoundMainBuilderDialog : Window
             ReorderNumbers();
 
         HeatGrid.Items.Refresh();
-        HeatGrid.SelectedIndex = HeatPlans.Count > 0 ? 0 : -1;
+        HeatGrid.SelectedItem = HeatPlans.FirstOrDefault();
     }
 
     private void DriverUp_Click(object sender, RoutedEventArgs e) => MoveDriverOrder(-1);

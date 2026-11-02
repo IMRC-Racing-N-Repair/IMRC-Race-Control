@@ -85,3 +85,4 @@ if (-not (Test-Path (Join-Path $branding "Full-Results-Report-Checks.txt"))) { t
 
 if (-not (Test-Path (Join-Path $branding "Lineup-Overview-Checks.txt"))) { throw "Missing persistent lineup overview checks" }
 if (-not (Test-Path (Join-Path $branding "Lineup-Overview.png"))) { throw "Missing full lineup overview preview" }
+if ((Get-Content (Join-Path $branding "Lineup-Overview-Checks.txt") -Raw) -notmatch "^PASS:") { throw "Lineup overview validation did not pass" }

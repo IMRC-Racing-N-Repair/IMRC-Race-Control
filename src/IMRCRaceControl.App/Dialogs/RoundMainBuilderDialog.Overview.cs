@@ -98,7 +98,7 @@ public partial class RoundMainBuilderDialog
         dialog.AddHeat_Click(dialog,new RoutedEventArgs());
         if(dialog.HeatGrid.Items.Count!=7 || dialog.HeatPlans.Count!=2 || dialog.HeatPlans.Any(h=>h.ClassId!=classes[1].Id || h.Round!=2))throw new InvalidOperationException("Add heat used the wrong class/round.");
         dialog.RemoveHeat_Click(dialog,new RoutedEventArgs());
-        if(dialog.HeatGrid.Items.Count!=6 || ev.Sessions.Count!=6)throw new InvalidOperationException("Removing preview heat changed saved sessions or overview.");
+        if(dialog.HeatGrid.Items.Count!=6 || ev.Sessions.Count!=6 || dialog.HeatPlans.Any(h=>h.ClassId!=classes[1].Id || h.Round!=2))throw new InvalidOperationException("Removing preview heat changed saved sessions or overview.");
         dialog.UpdateLayout();
         var bitmap=new System.Windows.Media.Imaging.RenderTargetBitmap((int)Math.Ceiling(dialog.ActualWidth),(int)Math.Ceiling(dialog.ActualHeight),96,96,System.Windows.Media.PixelFormats.Pbgra32);bitmap.Render(dialog);
         var encoder=new System.Windows.Media.Imaging.PngBitmapEncoder();encoder.Frames.Add(System.Windows.Media.Imaging.BitmapFrame.Create(bitmap));
