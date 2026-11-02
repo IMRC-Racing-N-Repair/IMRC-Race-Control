@@ -84,3 +84,4 @@ if (-not (Test-Path (Join-Path $branding "Track-Records-Checks.txt"))) { throw "
 if (-not (Test-Path (Join-Path $branding "Full-Results-Report-Checks.txt"))) { throw "Missing complete-results split report checks" }
 
 if (-not (Test-Path (Join-Path $branding "Lineup-Overview-Checks.txt"))) { throw "Missing persistent lineup overview checks" }
+if (-not (Test-Path (Join-Path $branding "Lineup-Overview.png"))) { throw "Missing full lineup overview preview" }
