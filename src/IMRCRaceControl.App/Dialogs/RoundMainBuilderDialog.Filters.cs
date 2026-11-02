@@ -56,6 +56,7 @@ public partial class RoundMainBuilderDialog
         var sessions=_raceEvent.Sessions.Where(s=>s.SessionType is SessionType.Qualifying or SessionType.Race)
             .Where(s=>round is null || round.Round==-1 || round.Round==0 && s.SessionType==SessionType.Race || round.Round>0 && s.SessionType==SessionType.Qualifying && s.Round==round.Round)
             .Where(s=>cls is null || cls.AllClasses || s.ClassId==cls.ClassId).OrderBy(s=>s.QueueOrder).ToList();
+        _overviewEditing = true;
         _browsingSavedLineups=true; _editingExistingScope=false; _lineupSnapshot=null;
         _loadingSavedFilters = true;
         try { LoadExisting(sessions); } finally { _loadingSavedFilters = false; }
@@ -74,14 +75,6 @@ public partial class RoundMainBuilderDialog
         RefreshSavedSessions();
         SavedSessionGrid.SelectedItem=SavedSessions.FirstOrDefault(s=>s.SessionId==id);
         LoadSavedSession_Click(this,new RoutedEventArgs());
-    }
-    private void HeatGrid_OpenSelectedLineup(object sender, System.Windows.Input.MouseButtonEventArgs e)
-    {
-        if (_browsingSavedLineups && !_loadingSavedFilters &&
-            e.OriginalSource is DependencyObject source &&
-            ItemsControl.ContainerFromElement(HeatGrid, source) is DataGridRow row &&
-            row.Item is HeatPlan { SourceSessionId.Length: >0 } plan)
-            OpenSavedLineup(plan.SourceSessionId);
     }
     private void EditBrowsedLineup_Click(object sender, RoutedEventArgs e)
     {

@@ -144,7 +144,7 @@
 
                             <TextBlock Text="ROUND / MAINS LINEUP" FontWeight="Bold" FontSize="15"/>
 
-                            <DataGrid x:Name="HeatGrid" PreviewMouseLeftButtonUp="HeatGrid_OpenSelectedLineup"
+                            <DataGrid x:Name="HeatGrid" PreviewMouseRightButtonDown="HeatGrid_RightClick"
                                       Grid.Row="1"
                                       ItemsSource="{Binding HeatPlans}"
                                       AutoGenerateColumns="False"
@@ -153,6 +153,7 @@
                                       SelectionChanged="HeatGrid_SelectionChanged"
                                       ScrollViewer.HorizontalScrollBarVisibility="Disabled"
                                       Margin="0,5,0,0">
+                                <DataGrid.ContextMenu><ContextMenu><MenuItem Header="Add heat / lower main for this class" Click="AddHeat_Click"/><MenuItem Header="Remove this heat / main…" Click="RemoveHeat_Click"/></ContextMenu></DataGrid.ContextMenu>
                                 <DataGrid.Columns>
                                     <DataGridTextColumn Header="#" Binding="{Binding RaceNumber}" Width="30" MinWidth="30"/>
                                     <DataGridTextColumn Header="CLASS" Binding="{Binding ClassName}" Width="1.05*" MinWidth="85"/>
@@ -210,7 +211,7 @@
                                 <Button x:Name="HeatUpButton" Content="HEAT UP" Click="HeatUp_Click"/>
                                 <Button x:Name="HeatDownButton" Content="HEAT DOWN" Click="HeatDown_Click"/>
                                 <Button x:Name="AddHeatButton" Content="+ EMPTY HEAT" Click="AddHeat_Click"/>
-                                <Button x:Name="RemoveHeatButton" Content="REMOVE EMPTY" Click="RemoveHeat_Click"
+                                <Button x:Name="RemoveHeatButton" Content="REMOVE HEAT" Click="RemoveHeat_Click"
                                         Background="{DynamicResource AccentDarkBrush}"/>
                                 <Button x:Name="AutoSortMainsButton" Content="AUTO SORT MAINS" Visibility="Collapsed"
                                         Click="AutoSortMains_Click" Background="{DynamicResource AccentDarkBrush}"/>

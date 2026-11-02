@@ -522,6 +522,18 @@ if (args.Contains("--isolated-database"))
     Equal(2, twice.DriverAssignments.Count, "Race removal does not delete event registration");
     Equal(4, twice.Sessions.Count, "Repeated edit does not duplicate heats");
 }
+var transferSource = new List<SessionEntrant> { new() { DriverId="one",TransponderId="123" } };
+var transferTarget = new List<SessionEntrant> { new() { DriverId="two",TransponderId="456" } };
+HeatDriverTransfer.Validate(transferSource,transferTarget,2);
+Equal(1,transferSource.Count,"Transfer validation leaves source intact");
+foreach(var scenario in new[]{0,1,2})
+{
+    var destination = scenario==0 ? transferTarget : new List<SessionEntrant> {new() {DriverId=scenario==1?"one":"three",TransponderId=scenario==2?"123":"789"}};
+    var blocked=false;
+    try { HeatDriverTransfer.Validate(transferSource,destination,scenario==0?1:30); } catch(InvalidOperationException) {blocked=true;}
+    Equal(true,blocked,"Reject full/duplicate driver/duplicate transponder destination");
+    Equal(1,transferSource.Count,"Rejected transfer leaves source intact");
+}
 checks += TrackRecordsChecks.Run();
 checks += LapFinishChecks.Run();
 checks += EligibilityPrintChecks.Run();

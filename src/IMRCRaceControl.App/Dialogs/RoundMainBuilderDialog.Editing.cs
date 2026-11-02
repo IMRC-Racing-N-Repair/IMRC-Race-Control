@@ -35,6 +35,7 @@ public partial class RoundMainBuilderDialog
 
     private void BeginNewRound()
     {
+        _overviewEditing = false;
         _browsingSavedLineups = false;
         _lineupSnapshot = null;
         InitializeSavedFilters();

@@ -68,6 +68,7 @@ public partial class MainWindow
             previous.CompletedAt = null;
         }
 
+        ReleaseFinishedSpectatorFrame();
         LoadSessionIntoRaceControl(selected);
 
         if (selected.ProgressStatus == EventSessionStatus.Completed)

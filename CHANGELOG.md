@@ -2,6 +2,11 @@
 
 Keep all release history in this file. Add each new version at the top; do not create version-specific changelog files.
 
+## 0.16.28
+- Switch pop-out and local web boards to the explicitly selected dashboard race, including race/round dropdowns and previous/next navigation.
+- Keep the saved lineup overview visible while selecting a race to edit; only explicit round/class filters narrow the overview.
+- Add right-click add/remove heat or main actions. Occupied heats offer unassign-all or move-all to an eligible race, validating capacity, duplicate drivers and transponders before changing the lineup. Event registrations remain intact.
+
 ## 0.16.27
 - Add a compact Website Connection upload meter, saved MB budget (0 = unlimited), reset control, and completed-races-only publishing. Count attempted payload bytes including retries across restarts; pause uploads before exceeding the budget without interrupting local scoring.
 - Redesign Track Info with separate Track Records, Track Details and Website Connection pages and a compact two-column details form.

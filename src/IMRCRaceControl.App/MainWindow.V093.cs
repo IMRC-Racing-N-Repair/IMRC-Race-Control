@@ -51,7 +51,7 @@ public partial class MainWindow
         if (index < 0 || targetIndex < 0 || targetIndex >= sessions.Count)
             return;
 
-        if (offset > 0) ReleaseFinishedSpectatorFrame();
+        ReleaseFinishedSpectatorFrame();
         LoadSessionIntoRaceControl(sessions[targetIndex]);
         RefreshRaceDayQueue();
     }

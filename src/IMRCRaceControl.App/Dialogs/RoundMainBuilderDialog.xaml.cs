@@ -370,7 +370,7 @@ public partial class RoundMainBuilderDialog : Window
             return;
         }
 
-        if (!ConfirmLeaveLineup()) return;
+        if (!ConfirmLeaveLineup()) { HeatGrid.SelectedItem=HeatPlans.FirstOrDefault(); return; }
 
         var classChoice = (ClassCombo.ItemsSource as IEnumerable<ClassChoice>)?
             .FirstOrDefault(c => !c.AllClasses &&
@@ -405,9 +405,10 @@ public partial class RoundMainBuilderDialog : Window
             _loadingOptions = false;
         }
 
+        _overviewEditing = true;
         _browsingSavedLineups = false;
         _editingExistingScope = true;
-        SyncSavedFilters(saved);
+        // Row selection edits its scope without changing the overview filters.
         var mains = CurrentMode == BuildMode.Mains;
         RoundPanel.IsEnabled = !mains;
         SortPanel.IsEnabled = false;
@@ -419,7 +420,9 @@ public partial class RoundMainBuilderDialog : Window
         SaveButton.Content = "SAVE CHANGES";
         UpdateGenerateButtonLabel();
         UpdateModeSpecificControls();
-        LoadExistingOrGenerate();
+        _loadingSavedFilters = true;
+        try { LoadExistingOrGenerate(); } finally { _loadingSavedFilters = false; }
+        RefreshLineupOverview();
         HeatGrid.SelectedItem = HeatPlans.FirstOrDefault(h => h.SourceSessionId == saved.SessionId)
             ?? HeatPlans.FirstOrDefault();
         RememberLineup();
@@ -860,7 +863,7 @@ public partial class RoundMainBuilderDialog : Window
             var plan = new HeatPlan
             {
                 SourceSessionId = session.Id,
-                IsLocked = session.ProgressStatus == EventSessionStatus.Completed,
+                IsLocked = session.ProgressStatus is EventSessionStatus.Completed or EventSessionStatus.Running,
                 Order = HeatPlans.Count + 1,
                 RaceNumber = session.RaceNumber,
                 ClassId = session.ClassId,
@@ -1485,8 +1488,9 @@ public partial class RoundMainBuilderDialog : Window
 
     private void HeatGrid_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
+        if (_refreshingOverview) return;
         var selected = HeatGrid.SelectedItem as HeatPlan;
-        if (_browsingSavedLineups && !_loadingSavedFilters && IsLoaded && selected is { SourceSessionId.Length: > 0 })
+        if (!_refreshingOverview && !_loadingSavedFilters && IsLoaded && selected is { SourceSessionId.Length: > 0 } && (_browsingSavedLineups || !HeatPlans.Contains(selected)))
         {
             OpenSavedLineup(selected.SourceSessionId);
             return;
@@ -1814,9 +1818,7 @@ public partial class RoundMainBuilderDialog : Window
 
         if (selected.Entrants.Count > 0)
         {
-            MessageBox.Show(this, "Move the drivers out of this heat before removing it.",
-                "Remove heat", MessageBoxButton.OK, MessageBoxImage.Information);
-            return;
+            if (!ResolveHeatDrivers(selected)) return;
         }
 
         var classId = selected.ClassId;
@@ -1889,7 +1891,7 @@ public partial class RoundMainBuilderDialog : Window
     private async void Save_Click(object sender, RoutedEventArgs e)
     {
         if (_browsingSavedLineups) return;
-        if (HeatPlans.Count == 0)
+        if (HeatPlans.Count == 0 && !_editingExistingScope)
         {
             MessageBox.Show(this, "Generate at least one heat/main before saving.",
                 "Rounds / mains", MessageBoxButton.OK, MessageBoxImage.Information);
@@ -1923,6 +1925,8 @@ public partial class RoundMainBuilderDialog : Window
             {
                 Id = original?.Id ?? Guid.NewGuid().ToString("N"),
                 QueueOrder = original?.QueueOrder ?? 0,
+                RaceMinutesOverride = original?.RaceMinutesOverride,
+                MinimumLapSecondsOverride = original?.MinimumLapSecondsOverride,
                 RaceNumber = plan.RaceNumber,
                 Name = plan.Name,
                 ClassId = plan.ClassId,
@@ -2070,6 +2074,7 @@ public partial class RoundMainBuilderDialog : Window
             RaceNumber=_raceEvent.Sessions.FirstOrDefault(s=>s.Id==plan.SourceSessionId)?.RaceNumber ?? 0 }).ToList();
         RaceSchedule.AssignRaceNumbers(existing.Concat(previews));
         for (var i=0;i<HeatPlans.Count;i++) HeatPlans[i].RaceNumber=previews[i].RaceNumber;
+        RefreshLineupOverview();
     }
 
     private static string MainLetter(int index)
