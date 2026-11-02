@@ -92,7 +92,7 @@ public partial class RoundMainBuilderDialog
         dialog.Dispatcher.Invoke(()=>{},System.Windows.Threading.DispatcherPriority.ApplicationIdle);
         if(dialog.HeatGrid.Items.Count!=6)throw new InvalidOperationException("Saved lineup overview did not show all six races.");
         var first=dialog.HeatGrid.Items.Cast<HeatPlan>().First();dialog.HeatGrid.SelectedItem=first;
-        if(dialog.HeatGrid.Items.Count!=6 || dialog._browsingSavedLineups || dialog.HeatPlans.Count!=2)throw new InvalidOperationException("Selecting a race narrowed the overview or failed to open its roster.");
+        if(dialog.HeatGrid.Items.Count!=6 || dialog._browsingSavedLineups || dialog.HeatPlans.Count!=2)throw new InvalidOperationException($"Selecting a race narrowed the overview or failed to open its roster: visible={dialog.HeatGrid.Items.Count}, browsing={dialog._browsingSavedLineups}, editing={dialog.HeatPlans.Count}.");
         var other=dialog.HeatGrid.Items.Cast<HeatPlan>().First(h=>h.ClassId==classes[1].Id && h.Round==2);dialog.HeatGrid.SelectedItem=other;
         if(dialog.HeatGrid.Items.Count!=6 || dialog.HeatPlans.Count!=1 || dialog.HeatPlans[0].Round!=2)throw new InvalidOperationException("Changing class/round hid the lineup.");
         dialog.AddHeat_Click(dialog,new RoutedEventArgs());

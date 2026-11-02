@@ -66,6 +66,7 @@ public partial class RoundMainBuilderDialog
         ClassCombo.IsEnabled=false; ModeCombo.IsEnabled=false; SortPanel.IsEnabled=false; GenerateButton.IsEnabled=false;
         BuildOptionsPanel.Visibility=Visibility.Collapsed; GenerateButton.Visibility=Visibility.Collapsed;
         SaveButton.IsEnabled=false; SaveButton.Content="SAVE CHANGES"; RosterEditActions.IsEnabled=false;
+        HeatGrid.SelectedItem=null;
         BuilderStatusText.Text=$"Showing {sessions.Count} saved lineups. Select a race to edit its lineup, or choose a specific round and class above.";
         if (round is { Round: >=0 } && cls is { AllClasses:false } && sessions.Count>0)
             OpenSavedLineup(sessions[0].Id);
