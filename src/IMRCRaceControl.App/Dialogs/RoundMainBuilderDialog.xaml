@@ -11,7 +11,7 @@
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
-            <RowDefinition Height="190"/>
+            <RowDefinition Height="0"/>
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
 
@@ -25,7 +25,7 @@
                 </Grid>
             </DockPanel>
             <TextBlock Text="ROUNDS / MAINS LINEUPS" FontSize="23" FontWeight="Bold"/>
-            <TextBlock Text="Filter all saved lineups above. Choose a race to edit its round and class, or create a new round."
+            <TextBlock Text="Filter all saved lineups above. Select a race to see its drivers. Unrun races can be edited; completed races are read-only."
                        Foreground="{DynamicResource MutedBrush}" Margin="0,2,0,6"/>
         </StackPanel>
 
@@ -113,7 +113,7 @@
                             <ColumnDefinition Width="Auto"/>
                             <ColumnDefinition Width="*"/>
                         </Grid.ColumnDefinitions>
-                        <TextBlock Text="PREVIEW" FontWeight="Bold"/>
+                        <TextBlock Text="LINEUP" FontWeight="Bold"/>
                         <TextBlock Grid.Column="1"
                                    Text="Changes here are saved only when you press SAVE. Completed races are locked; select an unrun race to edit its drivers."
                                    Foreground="{DynamicResource MutedBrush}"
@@ -124,9 +124,9 @@
 
                 <Grid Grid.Row="3">
                     <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="1.55*"/>
+                        <ColumnDefinition Width="1.35*"/>
                         <ColumnDefinition Width="10"/>
-                        <ColumnDefinition Width="0.90*"/>
+                        <ColumnDefinition Width="1.10*"/>
                     </Grid.ColumnDefinitions>
 
                     <Border Background="{DynamicResource PanelAltBrush}"
@@ -153,12 +153,13 @@
                                       SelectionChanged="HeatGrid_SelectionChanged"
                                       ScrollViewer.HorizontalScrollBarVisibility="Disabled"
                                       Margin="0,5,0,0">
-                                <DataGrid.ContextMenu><ContextMenu><MenuItem Header="Add heat / lower main for this class" Click="AddHeat_Click"/><MenuItem Header="Remove this heat / main…" Click="RemoveHeat_Click"/></ContextMenu></DataGrid.ContextMenu>
+                                <DataGrid.ContextMenu><ContextMenu><ContextMenu.Resources><Style TargetType="MenuItem"><Style.Triggers><DataTrigger Binding="{Binding PlacementTarget.SelectedItem.IsLocked, RelativeSource={RelativeSource AncestorType=ContextMenu}}" Value="True"><Setter Property="IsEnabled" Value="False"/></DataTrigger></Style.Triggers></Style></ContextMenu.Resources><MenuItem Header="Add heat / lower main for this class" Click="AddHeat_Click"/><MenuItem Header="Remove this heat / main…" Click="RemoveHeat_Click"/></ContextMenu></DataGrid.ContextMenu>
                                 <DataGrid.Columns>
                                     <DataGridTextColumn Header="#" Binding="{Binding RaceNumber}" Width="30" MinWidth="30"/>
                                     <DataGridTextColumn Header="CLASS" Binding="{Binding ClassName}" Width="1.05*" MinWidth="85"/>
-                                    <DataGridTextColumn Header="SESSION" Binding="{Binding SessionDisplay}" Width="1.20*" MinWidth="100"/>
-                                    <DataGridTextColumn Header="RACERS" Binding="{Binding RacerCount}" Width="0.62*" MinWidth="58"/>
+                                    <DataGridTextColumn Header="SESSION" Binding="{Binding SessionDisplay}" Width="1.25*" MinWidth="130"/>
+                                    <DataGridTextColumn Header="STATUS" Binding="{Binding StatusDisplay}" Width="100"/>
+                                    <DataGridTextColumn Header="RACERS" Binding="{Binding RacerCount}" Width="58"/>
                                     <DataGridTextColumn Header="RULE" Binding="{Binding MainRuleDisplay}" Width="1.65*" MinWidth="155"/>
                                 </DataGrid.Columns>
                             </DataGrid>
@@ -275,7 +276,7 @@
             </Grid>
         </Border>
 
-        <Border Grid.Row="2"
+        <Border Grid.Row="2" Visibility="Collapsed"
                 Background="{DynamicResource PanelBrush}"
                 BorderBrush="{DynamicResource BorderBrush}"
                 BorderThickness="0,0,0,1"
@@ -342,7 +343,7 @@
                 <ColumnDefinition Width="Auto"/>
             </Grid.ColumnDefinitions>
 
-            <TextBlock Text="SAVE / REBUILD commits only the preview above. DELETE SELECTED removes that saved race after confirmation."
+            <TextBlock Text="Select a race to view its drivers. Save lineup changes when finished. Completed races can only be changed after restarting from the dashboard."
                        Foreground="{DynamicResource MutedBrush}"
                        TextWrapping="Wrap"
                        VerticalAlignment="Center"/>

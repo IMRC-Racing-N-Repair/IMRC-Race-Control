@@ -61,7 +61,7 @@ public partial class RoundMainBuilderDialog
         _loadingSavedFilters = true;
         try { LoadExisting(sessions); } finally { _loadingSavedFilters = false; }
         // Make all-round rows unambiguous without repeating the class in Session.
-        foreach (var plan in HeatPlans.Where(h=>h.SessionType==SessionType.Qualifying)) plan.SessionDisplay=$"Q{plan.Round} • {plan.SessionDisplay}";
+
         HeatGrid.Items.Refresh();
         ClassCombo.IsEnabled=false; ModeCombo.IsEnabled=false; SortPanel.IsEnabled=false; GenerateButton.IsEnabled=false;
         BuildOptionsPanel.Visibility=Visibility.Collapsed; GenerateButton.Visibility=Visibility.Collapsed;

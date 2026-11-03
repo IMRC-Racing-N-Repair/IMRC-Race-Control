@@ -534,6 +534,9 @@ foreach(var scenario in new[]{0,1,2})
     Equal(true,blocked,"Reject full/duplicate driver/duplicate transponder destination");
     Equal(1,transferSource.Count,"Rejected transfer leaves source intact");
 }
+Equal(false,SavedRoundEditor.CanDelete(new() { ProgressStatus=EventSessionStatus.Completed }),"Completed race cannot be deleted");
+Equal(false,SavedRoundEditor.CanDelete(new() { ProgressStatus=EventSessionStatus.Running }),"Running race cannot be deleted");
+Equal(true,SavedRoundEditor.CanDelete(new() { ProgressStatus=EventSessionStatus.Planned }),"Restarted/unrun race can be removed");
 checks += TrackRecordsChecks.Run();
 checks += LapFinishChecks.Run();
 checks += EligibilityPrintChecks.Run();

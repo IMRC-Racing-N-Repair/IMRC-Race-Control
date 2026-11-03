@@ -17,9 +17,6 @@ public partial class RoundMainBuilderDialog
         try
         {
             var list=HeatPlans.ToList();
-            if (_overviewEditing)
-                foreach(var plan in list.Where(h=>h.SessionType==SessionType.Qualifying && !h.SessionDisplay.StartsWith($"Q{h.Round} • ")))
-                    plan.SessionDisplay=$"Q{plan.Round} • {plan.SessionDisplay}";
             if (_overviewEditing && !_browsingSavedLineups)
             {
                 var round=SavedRoundFilter.SelectedItem as SavedRoundChoice;
@@ -32,16 +29,24 @@ public partial class RoundMainBuilderDialog
                         (round is {Round:>=0} && !(round.Round==0 ? s.SessionType==SessionType.Race : s.SessionType==SessionType.Qualifying && s.Round==round.Round))) continue;
                     var plan=new HeatPlan { SourceSessionId=s.Id, ClassId=s.ClassId,ClassName=s.ClassName,Name=s.Name,
                         SessionType=s.SessionType,Round=s.Round,RaceNumber=s.RaceNumber,Order=s.QueueOrder,
-                        SessionDisplay=$"{s.RoundLabel} • {s.HeatMainDisplay}",IsLocked=s.ProgressStatus is EventSessionStatus.Completed or EventSessionStatus.Running };
+                        SessionDisplay=$"{s.RoundLabel} • {s.HeatMainDisplay}",StatusDisplay=s.ProgressStatus.ToString().ToUpperInvariant(),IsLocked=s.ProgressStatus is EventSessionStatus.Completed or EventSessionStatus.Running };
                     foreach(var e in s.Entrants)plan.Entrants.Add(CloneEntrant(e));
                     list.Add(plan);
                 }
                 list=list.OrderBy(h=>_raceEvent.Sessions.FirstOrDefault(s=>s.Id==h.SourceSessionId)?.QueueOrder ?? int.MaxValue).ThenBy(h=>h.Order).ToList();
             }
+            foreach(var plan in list.Where(h=>h.SessionType==SessionType.Qualifying))
+            {
+                var saved=_raceEvent.Sessions.FirstOrDefault(s=>s.Id==plan.SourceSessionId);
+                var heat=HeatPlans.Contains(plan) ? GetHeatIndex(plan) : saved?.Heat ?? 1;
+                var total=list.Count(h=>h.ClassId==plan.ClassId && h.Round==plan.Round && h.SessionType==SessionType.Qualifying);
+                plan.SessionDisplay=$"Q{plan.Round} • Heat {heat}/{total}";
+            }
             HeatGrid.ItemsSource=list;
             HeatGrid.SelectedItem=selected is null ? null : list.FirstOrDefault(h=>ReferenceEquals(h,selected)) ?? list.FirstOrDefault(h=>h.SourceSessionId==selected.SourceSessionId && selected.SourceSessionId.Length>0);
         }
         finally { _refreshingOverview=false; }
+        UpdateSelectedLineup();
     }
     private void HeatGrid_RightClick(object sender,MouseButtonEventArgs e)
     {
@@ -88,22 +93,31 @@ public partial class RoundMainBuilderDialog
             foreach(var round in new[]{1,2})
                 for(int heat=1;heat<=(round==1?2:1);heat++)ev.Sessions.Add(new EventSessionDefinition { ClassId=cls.Id,ClassName=cls.Name,Round=round,Heat=heat,QueueOrder=ev.Sessions.Count+1,RaceNumber=heat,
                     Entrants=[new SessionEntrant {DriverId=Guid.NewGuid().ToString(),DriverName="Sample Racer",CarNumber=1}] });
+        ev.Sessions[0].ProgressStatus=EventSessionStatus.Completed;
+        var originalCompleted=System.Text.Json.JsonSerializer.Serialize(ev.Sessions[0]);
         var dialog=new RoundMainBuilderDialog(ev,classes,[]);dialog.Show();dialog.UpdateLayout();
         dialog.Dispatcher.Invoke(()=>{},System.Windows.Threading.DispatcherPriority.ApplicationIdle);
         if(dialog.HeatGrid.Items.Count!=6)throw new InvalidOperationException("Saved lineup overview did not show all six races.");
-        var first=dialog.HeatGrid.Items.Cast<HeatPlan>().First();dialog.HeatGrid.SelectedItem=first;
+        var first=dialog.HeatGrid.Items.Cast<HeatPlan>().First();var label=first.SessionDisplay;dialog.HeatGrid.SelectedItem=first;
+        if(dialog.EntrantGrid.Items.Count!=1 || dialog.SelectedHeatTitle.Text=="SELECT A RACE")throw new InvalidOperationException("Completed race selection did not display its drivers immediately.");
+        if(dialog.RosterEditActions.IsEnabled || dialog.RemoveHeatButton.IsEnabled || dialog.AddHeatButton.IsEnabled || dialog.HeatUpButton.IsEnabled)throw new InvalidOperationException("Completed race editing controls remain enabled.");
+        if(((HeatPlan)dialog.HeatGrid.SelectedItem).SessionDisplay!=label || label!="Q1 • Heat 1/2")throw new InvalidOperationException("Session label changed on selection.");
+        if(dialog.SavedSessionGrid.IsVisible)throw new InvalidOperationException("Duplicate lower race list is still visible.");
         if(dialog.HeatGrid.Items.Count!=6 || dialog._browsingSavedLineups || dialog.HeatPlans.Count!=2)throw new InvalidOperationException($"Selecting a race narrowed the overview or failed to open its roster: visible={dialog.HeatGrid.Items.Count}, browsing={dialog._browsingSavedLineups}, editing={dialog.HeatPlans.Count}.");
         var other=dialog.HeatGrid.Items.Cast<HeatPlan>().First(h=>h.ClassId==classes[1].Id && h.Round==2);dialog.HeatGrid.SelectedItem=other;
         if(dialog.HeatGrid.Items.Count!=6 || dialog.HeatPlans.Count!=1 || dialog.HeatPlans[0].Round!=2)throw new InvalidOperationException("Changing class/round hid the lineup.");
+        if(dialog.EntrantGrid.Items.Count!=1 || !dialog.RosterEditActions.IsEnabled)throw new InvalidOperationException("Unrun race selection did not display editable drivers immediately.");
         dialog.AddHeat_Click(dialog,new RoutedEventArgs());
         if(dialog.HeatGrid.Items.Count!=7 || dialog.HeatPlans.Count!=2 || dialog.HeatPlans.Any(h=>h.ClassId!=classes[1].Id || h.Round!=2))throw new InvalidOperationException("Add heat used the wrong class/round.");
         dialog.RemoveHeat_Click(dialog,new RoutedEventArgs());
         if(dialog.HeatGrid.Items.Count!=6 || ev.Sessions.Count!=6 || dialog.HeatPlans.Any(h=>h.ClassId!=classes[1].Id || h.Round!=2))throw new InvalidOperationException("Removing preview heat changed saved sessions or overview.");
+        if(System.Text.Json.JsonSerializer.Serialize(ev.Sessions[0])!=originalCompleted)throw new InvalidOperationException("Browsing changed completed race data.");
         dialog.UpdateLayout();
         var bitmap=new System.Windows.Media.Imaging.RenderTargetBitmap((int)Math.Ceiling(dialog.ActualWidth),(int)Math.Ceiling(dialog.ActualHeight),96,96,System.Windows.Media.PixelFormats.Pbgra32);bitmap.Render(dialog);
         var encoder=new System.Windows.Media.Imaging.PngBitmapEncoder();encoder.Frames.Add(System.Windows.Media.Imaging.BitmapFrame.Create(bitmap));
         using(var file=System.IO.File.Create(System.IO.Path.Combine(output,"Lineup-Overview.png")))encoder.Save(file);
         dialog._lineupSnapshot=null;dialog.Close();
+        System.IO.File.WriteAllText(System.IO.Path.Combine(output,"Unified-Lineup-Checks.txt"),"PASS: one visible race list; stable Q1 Heat labels; completed and unrun rosters display on first selection; completed edit/remove/add/reorder controls disabled; saved completed data unchanged.");
         System.IO.File.WriteAllText(System.IO.Path.Combine(output,"Lineup-Overview-Checks.txt"),"PASS: all classes/rounds remain visible while selecting, editing, adding and removing a heat; source sessions unchanged before saving.");
     }
 }

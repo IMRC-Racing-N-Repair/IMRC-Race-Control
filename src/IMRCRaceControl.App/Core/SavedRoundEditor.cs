@@ -4,6 +4,8 @@ namespace IMRCRaceControl.Core;
 
 public static class SavedRoundEditor
 {
+    public static bool CanDelete(EventSessionDefinition session) => session.ProgressStatus is not (EventSessionStatus.Completed or EventSessionStatus.Running);
+
     public static bool PreservesCompletedResults(IEnumerable<EventSessionDefinition> existing,
         IReadOnlyList<EventSessionDefinition> replacement) => existing
         .Where(s => s.ProgressStatus == EventSessionStatus.Completed)

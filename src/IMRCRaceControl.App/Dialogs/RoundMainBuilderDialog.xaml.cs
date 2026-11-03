@@ -52,7 +52,8 @@ public partial class RoundMainBuilderDialog : Window
     {
         public string SourceSessionId { get; init; } = string.Empty;
         public bool IsLocked { get; init; }
-        public string EditStatus => IsLocked ? "LOCKED" : "EDITABLE";
+        public string EditStatus => IsLocked ? "READ ONLY — Restart this race on the dashboard to change its lineup." : "EDITABLE";
+        public string StatusDisplay { get; init; } = "PLANNED";
         public int Order { get; set; }
         public int RaceNumber { get; set; }
         public string ClassId { get; init; } = string.Empty;
@@ -425,6 +426,7 @@ public partial class RoundMainBuilderDialog : Window
         RefreshLineupOverview();
         HeatGrid.SelectedItem = HeatPlans.FirstOrDefault(h => h.SourceSessionId == saved.SessionId)
             ?? HeatPlans.FirstOrDefault();
+        UpdateSelectedLineup();
         RememberLineup();
     }
 
@@ -449,10 +451,10 @@ public partial class RoundMainBuilderDialog : Window
             return;
         }
 
-        if (session.ProgressStatus == EventSessionStatus.Running)
+        if (!SavedRoundEditor.CanDelete(session))
         {
             MessageBox.Show(this,
-                "A race marked RUNNING cannot be deleted from the builder.",
+                "Completed or running races cannot be deleted. Restart the race from the dashboard before changing its lineup.",
                 "Delete race",
                 MessageBoxButton.OK,
                 MessageBoxImage.Warning);
@@ -864,6 +866,7 @@ public partial class RoundMainBuilderDialog : Window
             {
                 SourceSessionId = session.Id,
                 IsLocked = session.ProgressStatus is EventSessionStatus.Completed or EventSessionStatus.Running,
+                StatusDisplay = session.ProgressStatus.ToString().ToUpperInvariant(),
                 Order = HeatPlans.Count + 1,
                 RaceNumber = session.RaceNumber,
                 ClassId = session.ClassId,
@@ -1495,6 +1498,12 @@ public partial class RoundMainBuilderDialog : Window
             OpenSavedLineup(selected.SourceSessionId);
             return;
         }
+        UpdateSelectedLineup();
+    }
+
+    private void UpdateSelectedLineup()
+    {
+        var selected = HeatGrid.SelectedItem as HeatPlan;
         EntrantGrid.ItemsSource = selected?.Entrants;
         SelectedHeatTitle.Text = selected is null
             ? "SELECT A RACE"
@@ -1503,6 +1512,11 @@ public partial class RoundMainBuilderDialog : Window
         RefreshTargetHeats();
         RefreshSelectedMainSeriesEditor(selected);
         if (RosterEditActions is not null) RosterEditActions.IsEnabled = selected is { IsLocked: false } && !_browsingSavedLineups;
+        var structureEnabled = selected is { IsLocked: false } && !HasLockedPlans;
+        HeatUpButton.IsEnabled = HeatDownButton.IsEnabled = AddHeatButton.IsEnabled = RemoveHeatButton.IsEnabled = structureEnabled;
+        AutoSortMainsButton.IsEnabled = structureEnabled;
+        MainSeriesSettingsPanel.IsEnabled = structureEnabled;
+        SaveButton.IsEnabled = !_browsingSavedLineups && (selected is {IsLocked:false} || HeatPlans.Count==0 && _editingExistingScope);
     }
 
     private void RefreshSelectedMainSeriesEditor(HeatPlan? selected)
@@ -2019,9 +2033,7 @@ public partial class RoundMainBuilderDialog : Window
                 ? $"{plan.ClassName} Q{plan.Round}"
                 : $"{plan.ClassName} Q{plan.Round} Heat {i + 1}";
 
-            plan.SessionDisplay = qualifying.Count == 1
-                ? "Qual"
-                : $"Qual • Heat {i + 1}/{qualifying.Count}";
+            plan.SessionDisplay = $"Q{plan.Round} • Heat {i + 1}/{qualifying.Count}";
         }
 
         }
