@@ -1882,25 +1882,7 @@ public partial class RoundMainBuilderDialog : Window
             source.ClassId != target.ClassId)
             return;
 
-        if (_browsingSavedLineups || source.IsLocked || target.IsLocked || !HasRoom(target)) return;
-        if (target.Entrants.Any(e => e.DriverId == entrant.DriverId)) return;
-        if (!string.IsNullOrWhiteSpace(entrant.TransponderId) && target.Entrants.Any(e =>
-            string.Equals(e.TransponderId, entrant.TransponderId, StringComparison.OrdinalIgnoreCase)))
-        {
-            MessageBox.Show(this, "That transponder is already assigned in the destination race.",
-                "Move driver", MessageBoxButton.OK, MessageBoxImage.Information);
-            return;
-        }
-
-        source.Entrants.Remove(entrant);
-        target.Entrants.Add(entrant);
-        Renumber(source.Entrants);
-        Renumber(target.Entrants);
-
-        HeatGrid.Items.Refresh();
-        EntrantGrid.Items.Refresh();
-        RefreshTargetHeats();
-        BuilderStatusText.Text = $"{entrant.DisplayName} moved to {target.Name}.";
+        MoveLineupDriver(source,target,entrant);
     }
 
     public Func<Task<bool>>? SaveRequested { get; set; }

@@ -240,12 +240,12 @@
 
                             <StackPanel>
                                 <TextBlock x:Name="SelectedHeatTitle" Text="SELECT A RACE" FontWeight="Bold" FontSize="15"/>
-                                <TextBlock Text="Driver order becomes car number/order for this race. Use Sort for the starting order, then fine-tune it here."
+                                <TextBlock Text="Drag a driver name onto another race in the same class and round, or use the buttons below. Driver order sets car numbers."
                                            Foreground="{DynamicResource MutedBrush}" FontSize="11" TextWrapping="Wrap"/>
                                 <TextBlock Text="{Binding SelectedItem.EditStatus, ElementName=HeatGrid}" Foreground="{DynamicResource MutedBrush}"/>
                             </StackPanel>
 
-                            <DataGrid x:Name="EntrantGrid" Grid.Row="1"
+                            <DataGrid x:Name="EntrantGrid" Grid.Row="1" PreviewMouseLeftButtonDown="DriverDragStart" PreviewMouseMove="DriverDragMove"
                                       AutoGenerateColumns="False"
                                       IsReadOnly="True"
                                       CanUserAddRows="False"

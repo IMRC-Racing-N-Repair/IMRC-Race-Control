@@ -36,10 +36,12 @@ public partial class RoundMainBuilderDialog
     }
     private void RaceDragOver(object sender,DragEventArgs e)
     {
+        if(HandleDriverDragOver(e))return;
         e.Effects=CanDropRace(e,out _,out _)?DragDropEffects.Move:DragDropEffects.None;e.Handled=true;
     }
     private void RaceDrop(object sender,DragEventArgs e)
     {
+        if(HandleDriverDrop(e))return;
         if(CanDropRace(e,out var id,out var target))StageRaceMove(id,target!.SourceSessionId);
         else BuilderStatusText.Text="Move unrun races within the same round only. Completed races stay locked.";
         e.Handled=true;

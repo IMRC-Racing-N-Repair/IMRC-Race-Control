@@ -88,3 +88,4 @@ if (-not (Test-Path (Join-Path $branding "Lineup-Overview.png"))) { throw "Missi
 if ((Get-Content (Join-Path $branding "Lineup-Overview-Checks.txt") -Raw) -notmatch "^PASS:") { throw "Lineup overview validation did not pass" }
 if (-not (Test-Path (Join-Path $branding "Unified-Lineup-Checks.txt"))) { throw "Missing unified lineup and completed-race protection checks" }
 if (-not (Test-Path (Join-Path $branding "Race-Order-Checks.txt"))) { throw "Missing grouped lineup race ordering checks" }
+if (-not (Test-Path (Join-Path $branding "Driver-Drag-Checks.txt"))) { throw "Missing driver drag and button compatibility checks" }
