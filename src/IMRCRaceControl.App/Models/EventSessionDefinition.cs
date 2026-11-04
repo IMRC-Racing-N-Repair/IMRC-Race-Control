@@ -15,6 +15,7 @@ public sealed class EventSessionDefinition
     public QualificationOrder QualificationOrder { get; set; } = QualificationOrder.Random;
     public int Round { get; set; } = 1;
     public int Heat { get; set; } = 1;
+    public int? LineupOrder { get; set; }
     public int QueueOrder { get; set; }
     // Racer-facing number, repeated for the same class/heat in later rounds.
     // QueueOrder remains the separate, unique event-wide running order.

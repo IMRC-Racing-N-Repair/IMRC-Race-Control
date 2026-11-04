@@ -20,12 +20,12 @@
                 <Button x:Name="NewRoundButton" DockPanel.Dock="Right" Content="NEW ROUND / MAINS" Click="NewRound_Click" Background="{DynamicResource AccentBrush}" Foreground="White" Padding="18,8"/>
                 
                 <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
-                    <StackPanel><TextBlock Text="Saved round / mains"/><ComboBox x:Name="SavedRoundFilter" DisplayMemberPath="Label" SelectionChanged="SavedLineupFilter_Changed"/></StackPanel>
+                    <StackPanel><TextBlock Text="Show round / mains"/><ComboBox x:Name="SavedRoundFilter" DisplayMemberPath="Label" SelectionChanged="SavedLineupFilter_Changed"/></StackPanel>
                     <StackPanel Grid.Column="1" Margin="8,0,8,0"><TextBlock Text="Class"/><ComboBox x:Name="SavedClassFilter" DisplayMemberPath="Label" SelectionChanged="SavedLineupFilter_Changed"/></StackPanel>
                 </Grid>
             </DockPanel>
             <TextBlock Text="ROUNDS / MAINS LINEUPS" FontSize="23" FontWeight="Bold"/>
-            <TextBlock Text="Filter all saved lineups above. Select a race to see its drivers. Unrun races can be edited; completed races are read-only."
+            <TextBlock Text="Filter all saved lineups above. Drag races within the same round to change running order. Use Show round / mains to view one round. Completed races are read-only."
                        Foreground="{DynamicResource MutedBrush}" Margin="0,2,0,6"/>
         </StackPanel>
 
@@ -144,7 +144,9 @@
 
                             <TextBlock Text="ROUND / MAINS LINEUP" FontWeight="Bold" FontSize="15"/>
 
-                            <DataGrid x:Name="HeatGrid" PreviewMouseRightButtonDown="HeatGrid_RightClick"
+                            <DataGrid x:Name="HeatGrid" PreviewMouseRightButtonDown="HeatGrid_RightClick" AllowDrop="True"
+                                      PreviewMouseLeftButtonDown="RaceDragStart" PreviewMouseMove="RaceDragMove"
+                                      DragOver="RaceDragOver" Drop="RaceDrop"
                                       Grid.Row="1"
                                       ItemsSource="{Binding HeatPlans}"
                                       AutoGenerateColumns="False"
@@ -153,6 +155,9 @@
                                       SelectionChanged="HeatGrid_SelectionChanged"
                                       ScrollViewer.HorizontalScrollBarVisibility="Disabled"
                                       Margin="0,5,0,0">
+                                <DataGrid.GroupStyle><GroupStyle><GroupStyle.HeaderTemplate><DataTemplate>
+                                    <Border Background="{DynamicResource PanelBrush}" BorderBrush="{DynamicResource AccentBrush}" BorderThickness="4,0,0,0" Padding="10,9" Margin="0,10,0,3"><TextBlock Text="{Binding Name}" FontSize="15" FontWeight="Bold"/></Border>
+                                </DataTemplate></GroupStyle.HeaderTemplate><GroupStyle.Panel><ItemsPanelTemplate><DataGridRowsPresenter/></ItemsPanelTemplate></GroupStyle.Panel></GroupStyle></DataGrid.GroupStyle>
                                 <DataGrid.ContextMenu><ContextMenu><ContextMenu.Resources><Style TargetType="MenuItem"><Style.Triggers><DataTrigger Binding="{Binding PlacementTarget.SelectedItem.IsLocked, RelativeSource={RelativeSource AncestorType=ContextMenu}}" Value="True"><Setter Property="IsEnabled" Value="False"/></DataTrigger></Style.Triggers></Style></ContextMenu.Resources><MenuItem Header="Add heat / lower main for this class" Click="AddHeat_Click"/><MenuItem Header="Remove this heat / main…" Click="RemoveHeat_Click"/></ContextMenu></DataGrid.ContextMenu>
                                 <DataGrid.Columns>
                                     <DataGridTextColumn Header="#" Binding="{Binding RaceNumber}" Width="30" MinWidth="30"/>

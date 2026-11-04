@@ -3,6 +3,7 @@
 Keep all release history in this file. Add each new version at the top; do not create version-specific changelog files.
 
 ## 0.16.28
+- Drag saved unrun races to change their running order within the same qualifying round or mains round, with order saved across reopening and queue rebuilds. Group the lineup under distinct round headers and add individual mains-round filters. Preserve completed-race positions and heat identities.
 - Merge lineup browsing and editing into one visible race list. Show drivers immediately for completed and unrun races, keep qualifying labels stable (Q1 • Heat 1/2), and display race status. Disable completed-race edits and reject completed-race deletion; restart from the dashboard before modifying a completed lineup.
 - Switch pop-out and local web boards to the explicitly selected dashboard race, including race/round dropdowns and previous/next navigation.
 - Keep the saved lineup overview visible while selecting a race to edit; only explicit round/class filters narrow the overview.

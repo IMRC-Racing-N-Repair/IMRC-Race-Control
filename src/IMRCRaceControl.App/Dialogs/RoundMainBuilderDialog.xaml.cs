@@ -54,6 +54,7 @@ public partial class RoundMainBuilderDialog : Window
         public bool IsLocked { get; init; }
         public string EditStatus => IsLocked ? "READ ONLY — Restart this race on the dashboard to change its lineup." : "EDITABLE";
         public string StatusDisplay { get; init; } = "PLANNED";
+        public string RoundGroup => SessionType == SessionType.Qualifying ? $"QUALIFYING ROUND {Round}" : $"MAINS • ROUND {MainLeg}";
         public int Order { get; set; }
         public int RaceNumber { get; set; }
         public string ClassId { get; init; } = string.Empty;
@@ -173,7 +174,9 @@ public partial class RoundMainBuilderDialog : Window
 
         Closing += (_, e) =>
         {
-            if (!IsEnabled || (DialogResult != true && !ConfirmLeaveLineup())) e.Cancel = true;
+            if (!IsEnabled || (DialogResult != true && (_pendingRaceOrder.Count>0
+                ? MessageBox.Show(this,"Discard unsaved lineup and race-order changes?","Unsaved lineup",MessageBoxButton.YesNo,MessageBoxImage.Question)!=MessageBoxResult.Yes
+                : !ConfirmLeaveLineup()))) e.Cancel = true;
         };
         Loaded += (_, _) =>
         {
@@ -1516,7 +1519,7 @@ public partial class RoundMainBuilderDialog : Window
         HeatUpButton.IsEnabled = HeatDownButton.IsEnabled = AddHeatButton.IsEnabled = RemoveHeatButton.IsEnabled = structureEnabled;
         AutoSortMainsButton.IsEnabled = structureEnabled;
         MainSeriesSettingsPanel.IsEnabled = structureEnabled;
-        SaveButton.IsEnabled = !_browsingSavedLineups && (selected is {IsLocked:false} || HeatPlans.Count==0 && _editingExistingScope);
+        SaveButton.IsEnabled = _pendingRaceOrder.Count>0 || !_browsingSavedLineups && (selected is {IsLocked:false} || HeatPlans.Count==0 && _editingExistingScope);
     }
 
     private void RefreshSelectedMainSeriesEditor(HeatPlan? selected)
@@ -1904,6 +1907,18 @@ public partial class RoundMainBuilderDialog : Window
 
     private async void Save_Click(object sender, RoutedEventArgs e)
     {
+        if (_pendingRaceOrder.Count>0 && (_browsingSavedLineups || _lineupSnapshot==System.Text.Json.JsonSerializer.Serialize(HeatPlans)))
+        {
+            if(SaveRequested is null)return;
+            IsEnabled=false; OrderOnlySave=true;
+            try
+            {
+                if(await SaveRequested()) { _pendingRaceOrder.Clear(); _lineupSnapshot=null; ShowSavedLineups(); BuilderStatusText.Text="Race order saved."; }
+            }
+            catch(Exception ex) { MessageBox.Show(this,"Could not save race order: "+ex.Message,"Save lineup"); }
+            finally { OrderOnlySave=false; IsEnabled=true; }
+            return;
+        }
         if (_browsingSavedLineups) return;
         if (HeatPlans.Count == 0 && !_editingExistingScope)
         {
@@ -1939,6 +1954,7 @@ public partial class RoundMainBuilderDialog : Window
             {
                 Id = original?.Id ?? Guid.NewGuid().ToString("N"),
                 QueueOrder = original?.QueueOrder ?? 0,
+                LineupOrder = original?.LineupOrder,
                 RaceMinutesOverride = original?.RaceMinutesOverride,
                 MinimumLapSecondsOverride = original?.MinimumLapSecondsOverride,
                 RaceNumber = plan.RaceNumber,
@@ -1988,6 +2004,7 @@ public partial class RoundMainBuilderDialog : Window
         {
             if (!await SaveRequested()) return;
             savedSuccessfully = true;
+            _pendingRaceOrder.Clear();
             _deletedSessionIds.Clear();
             _lineupSnapshot = null;
             InitializeSavedFilters();

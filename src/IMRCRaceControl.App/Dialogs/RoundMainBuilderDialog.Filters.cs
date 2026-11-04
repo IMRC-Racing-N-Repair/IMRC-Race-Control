@@ -5,7 +5,7 @@ using IMRCRaceControl.Models;
 namespace IMRCRaceControl.Dialogs;
 public partial class RoundMainBuilderDialog
 {
-    private sealed record SavedRoundChoice(int Round, string Label); // -1 all, 0 mains
+    private sealed record SavedRoundChoice(int Round, string Label, int? MainLeg = null); // -1 all, 0 mains
     private bool _loadingSavedFilters;
     private bool _browsingSavedLineups;
     private string? _lineupSnapshot;
@@ -22,6 +22,7 @@ public partial class RoundMainBuilderDialog
         var rounds = new List<SavedRoundChoice> { new(-1,"ALL ROUNDS / MAINS") };
         rounds.AddRange(_raceEvent.Sessions.Where(s=>s.SessionType==SessionType.Qualifying).Select(s=>s.Round).Distinct().Order().Select(n=>new SavedRoundChoice(n,$"Qualifying round {n}")));
         if (_raceEvent.Sessions.Any(s=>s.SessionType==SessionType.Race)) rounds.Add(new(0,"Mains"));
+        rounds.AddRange(_raceEvent.Sessions.Where(s=>s.SessionType==SessionType.Race).Select(s=>s.MainLeg).Distinct().Order().Select(n=>new SavedRoundChoice(0,$"Mains round {n}",n)));
         SavedRoundFilter.ItemsSource = rounds; SavedRoundFilter.SelectedIndex = 0;
         SavedClassFilter.ItemsSource = ClassCombo.ItemsSource; SavedClassFilter.SelectedIndex = 0;
         _priorSavedRound = SavedRoundFilter.SelectedItem as SavedRoundChoice;
@@ -55,6 +56,7 @@ public partial class RoundMainBuilderDialog
         var cls=SavedClassFilter.SelectedItem as ClassChoice;
         var sessions=_raceEvent.Sessions.Where(s=>s.SessionType is SessionType.Qualifying or SessionType.Race)
             .Where(s=>round is null || round.Round==-1 || round.Round==0 && s.SessionType==SessionType.Race || round.Round>0 && s.SessionType==SessionType.Qualifying && s.Round==round.Round)
+            .Where(s=>round?.MainLeg is null || s.MainLeg==round.MainLeg)
             .Where(s=>cls is null || cls.AllClasses || s.ClassId==cls.ClassId).OrderBy(s=>s.QueueOrder).ToList();
         _overviewEditing = true;
         _browsingSavedLineups=true; _editingExistingScope=false; _lineupSnapshot=null;
@@ -65,7 +67,7 @@ public partial class RoundMainBuilderDialog
         HeatGrid.Items.Refresh();
         ClassCombo.IsEnabled=false; ModeCombo.IsEnabled=false; SortPanel.IsEnabled=false; GenerateButton.IsEnabled=false;
         BuildOptionsPanel.Visibility=Visibility.Collapsed; GenerateButton.Visibility=Visibility.Collapsed;
-        SaveButton.IsEnabled=false; SaveButton.Content="SAVE CHANGES"; RosterEditActions.IsEnabled=false;
+        SaveButton.IsEnabled=_pendingRaceOrder.Count>0; SaveButton.Content="SAVE CHANGES"; RosterEditActions.IsEnabled=false;
         HeatGrid.SelectedItem=null;
         BuilderStatusText.Text=$"Showing {sessions.Count} saved lineups. Select a race to edit its lineup, or choose a specific round and class above.";
         if (round is { Round: >=0 } && cls is { AllClasses:false } && sessions.Count>0)

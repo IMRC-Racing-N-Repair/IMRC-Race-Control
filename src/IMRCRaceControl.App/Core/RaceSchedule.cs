@@ -12,9 +12,13 @@ public sealed record DashboardRoundChoice(SessionType Type, int Number)
 
 public static class RaceSchedule
 {
-    public static IOrderedEnumerable<EventSessionDefinition> DisplayOrder(IEnumerable<EventSessionDefinition> sessions) =>
-        sessions.OrderBy(s => s.ScheduleStageOrder).ThenBy(s => s.ScheduleRoundOrder)
-            .ThenBy(s => s.RaceNumber).ThenBy(s => s.QueueOrder);
+    public static IOrderedEnumerable<EventSessionDefinition> DisplayOrder(IEnumerable<EventSessionDefinition> sessions)
+    {
+        var list=sessions.ToList();
+        var custom=list.Where(s=>s.LineupOrder.HasValue).Select(DashboardRoundChoice.From).ToHashSet();
+        return list.OrderBy(s=>s.ScheduleStageOrder).ThenBy(s=>s.ScheduleRoundOrder)
+            .ThenBy(s=>custom.Contains(DashboardRoundChoice.From(s)) ? s.QueueOrder : s.RaceNumber).ThenBy(s=>s.QueueOrder);
+    }
 
     public static List<DashboardRoundChoice> AvailableRounds(IEnumerable<EventSessionDefinition> sessions) =>
         sessions.Where(s => s.ProgressStatus != EventSessionStatus.Skipped)

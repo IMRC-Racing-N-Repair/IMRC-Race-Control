@@ -1,3 +1,4 @@
+using IMRCRaceControl.Core;
 using System.Globalization;
 using System.Windows;
 using System.Windows.Controls;
@@ -503,6 +504,7 @@ public partial class MainWindow
             session.QueueOrder = order++;
         foreach (var session in remaining)
             session.QueueOrder = order++;
+        RaceLineupOrder.Apply(_activeEvent.Sessions);
     }
 
     private async void MoveSelectedHeatUp_Click(object sender, RoutedEventArgs e) => await MoveSelectedHeatQueueAsync(-1);

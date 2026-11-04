@@ -25,10 +25,10 @@ public partial class RoundMainBuilderDialog
                 foreach(var s in _raceEvent.Sessions.Where(s=>s.SessionType is SessionType.Qualifying or SessionType.Race))
                 {
                     bool inScope=scopeClasses.Contains(s.ClassId) && (CurrentMode==BuildMode.Mains ? s.SessionType==SessionType.Race : s.SessionType==SessionType.Qualifying && s.Round==CurrentRound());
-                    if(inScope || (cls is {AllClasses:false} && cls.ClassId!=s.ClassId) ||
+                    if(inScope || (round?.MainLeg is not null && s.MainLeg!=round.MainLeg) || (cls is {AllClasses:false} && cls.ClassId!=s.ClassId) ||
                         (round is {Round:>=0} && !(round.Round==0 ? s.SessionType==SessionType.Race : s.SessionType==SessionType.Qualifying && s.Round==round.Round))) continue;
                     var plan=new HeatPlan { SourceSessionId=s.Id, ClassId=s.ClassId,ClassName=s.ClassName,Name=s.Name,
-                        SessionType=s.SessionType,Round=s.Round,RaceNumber=s.RaceNumber,Order=s.QueueOrder,
+                        SessionType=s.SessionType,Round=s.Round,MainLeg=s.MainLeg,RaceNumber=s.RaceNumber,Order=s.QueueOrder,
                         SessionDisplay=$"{s.RoundLabel} • {s.HeatMainDisplay}",StatusDisplay=s.ProgressStatus.ToString().ToUpperInvariant(),IsLocked=s.ProgressStatus is EventSessionStatus.Completed or EventSessionStatus.Running };
                     foreach(var e in s.Entrants)plan.Entrants.Add(CloneEntrant(e));
                     list.Add(plan);
@@ -42,7 +42,11 @@ public partial class RoundMainBuilderDialog
                 var total=list.Count(h=>h.ClassId==plan.ClassId && h.Round==plan.Round && h.SessionType==SessionType.Qualifying);
                 plan.SessionDisplay=$"Q{plan.Round} • Heat {heat}/{total}";
             }
-            HeatGrid.ItemsSource=list;
+            if (_overviewEditing && SavedRoundFilter.SelectedItem is SavedRoundChoice {MainLeg:int leg})list=list.Where(p=>p.SessionType==SessionType.Race && p.MainLeg==leg).ToList();
+            list=OrderOverview(list);
+            var view=new System.Windows.Data.ListCollectionView(list);
+            view.GroupDescriptions.Add(new System.Windows.Data.PropertyGroupDescription(nameof(HeatPlan.RoundGroup)));
+            HeatGrid.ItemsSource=view;
             HeatGrid.SelectedItem=selected is null ? null : list.FirstOrDefault(h=>ReferenceEquals(h,selected)) ?? list.FirstOrDefault(h=>h.SourceSessionId==selected.SourceSessionId && selected.SourceSessionId.Length>0);
         }
         finally { _refreshingOverview=false; }
@@ -112,11 +116,22 @@ public partial class RoundMainBuilderDialog
         dialog.RemoveHeat_Click(dialog,new RoutedEventArgs());
         if(dialog.HeatGrid.Items.Count!=6 || ev.Sessions.Count!=6 || dialog.HeatPlans.Any(h=>h.ClassId!=classes[1].Id || h.Round!=2))throw new InvalidOperationException("Removing preview heat changed saved sessions or overview.");
         if(System.Text.Json.JsonSerializer.Serialize(ev.Sessions[0])!=originalCompleted)throw new InvalidOperationException("Browsing changed completed race data.");
+        var dragSource=ev.Sessions.First(s=>s.ClassId==classes[1].Id && s.Round==1);
+        var dragTarget=ev.Sessions.First(s=>s.ClassId==classes[0].Id && s.Round==1 && s.ProgressStatus==EventSessionStatus.Planned);
+        var savedQueue=ev.Sessions.ToDictionary(s=>s.Id,s=>s.QueueOrder);
+        dialog.StageRaceMove(dragSource.Id,dragTarget.Id);
+        if(!dialog.SaveButton.IsEnabled || dialog.PendingRaceOrder.Count==0 || ev.Sessions.Any(s=>s.QueueOrder!=savedQueue[s.Id]))throw new InvalidOperationException("Drag did not stage race order without modifying saved races.");
+        if(System.Text.Json.JsonSerializer.Serialize(ev.Sessions[0])!=originalCompleted)throw new InvalidOperationException("Drag changed completed race.");
+        if(System.Windows.Data.CollectionViewSource.GetDefaultView(dialog.HeatGrid.ItemsSource).Groups?.Count!=2)throw new InvalidOperationException("Qualifying rounds are not grouped.");
         dialog.UpdateLayout();
         var bitmap=new System.Windows.Media.Imaging.RenderTargetBitmap((int)Math.Ceiling(dialog.ActualWidth),(int)Math.Ceiling(dialog.ActualHeight),96,96,System.Windows.Media.PixelFormats.Pbgra32);bitmap.Render(dialog);
         var encoder=new System.Windows.Media.Imaging.PngBitmapEncoder();encoder.Frames.Add(System.Windows.Media.Imaging.BitmapFrame.Create(bitmap));
         using(var file=System.IO.File.Create(System.IO.Path.Combine(output,"Lineup-Overview.png")))encoder.Save(file);
-        dialog._lineupSnapshot=null;dialog.Close();
+        dialog._lineupSnapshot=null;
+        dialog.SavedRoundFilter.SelectedItem=((IEnumerable<SavedRoundChoice>)dialog.SavedRoundFilter.ItemsSource).Single(r=>r.Round==2);
+        if(dialog.HeatGrid.Items.Count!=2 || dialog.HeatGrid.Items.Cast<HeatPlan>().Any(h=>h.Round!=2))throw new InvalidOperationException("Specific round filter includes other rounds.");
+        dialog._pendingRaceOrder.Clear();dialog.Close();
+        System.IO.File.WriteAllText(System.IO.Path.Combine(output,"Race-Order-Checks.txt"),"PASS: drag stages order, saved event unchanged before Save, completed race protected, round headers present, specific round filter works.");
         System.IO.File.WriteAllText(System.IO.Path.Combine(output,"Unified-Lineup-Checks.txt"),"PASS: one visible race list; stable Q1 Heat labels; completed and unrun rosters display on first selection; completed edit/remove/add/reorder controls disabled; saved completed data unchanged.");
         System.IO.File.WriteAllText(System.IO.Path.Combine(output,"Lineup-Overview-Checks.txt"),"PASS: all classes/rounds remain visible while selecting, editing, adding and removing a heat; source sessions unchanged before saving.");
     }

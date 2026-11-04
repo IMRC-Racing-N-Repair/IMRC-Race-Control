@@ -361,6 +361,15 @@ public partial class MainWindow
     private async Task<bool> ApplyRoundBuilderChangesAsync(RoundMainBuilderDialog dialog)
     {
         if (_activeEvent is null) return false;
+        if (dialog.OrderOnlySave)
+        {
+            foreach(var session in _activeEvent.Sessions)
+                if(dialog.PendingRaceOrder.TryGetValue(session.Id,out var position) && RaceLineupOrder.Movable(session))session.LineupOrder=position;
+            RaceLineupOrder.Apply(_activeEvent.Sessions);
+            RefreshPlannedSessions(); RefreshRaceDayFlow();
+            await CaptureAndSaveSettingsAsync(reportFailureToCaller:true);
+            return true;
+        }
         var deletedIds = dialog.DeletedSessionIds.ToHashSet(StringComparer.OrdinalIgnoreCase);
         if (_loadedSession is not null && deletedIds.Contains(_loadedSession.Id))
         {
@@ -411,6 +420,8 @@ public partial class MainWindow
             .Select(s => s.Id).ToHashSet(StringComparer.OrdinalIgnoreCase);
         var loadedId = _loadedSession?.Id;
         SavedRoundEditor.ReplaceScope(_activeEvent, existing, dialog.BuiltSessions);
+        foreach(var session in _activeEvent.Sessions)
+            if(dialog.PendingRaceOrder.TryGetValue(session.Id,out var position) && RaceLineupOrder.Movable(session))session.LineupOrder=position;
         foreach (var driver in dialog.AddedDrivers)
             if (!Drivers.Any(d => d.Id == driver.Id)) Drivers.Add(driver);
         // Car numbers can change after lineup edits. Old car-number check-ins
