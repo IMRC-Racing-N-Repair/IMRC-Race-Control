@@ -89,3 +89,9 @@ if ((Get-Content (Join-Path $branding "Lineup-Overview-Checks.txt") -Raw) -notma
 if (-not (Test-Path (Join-Path $branding "Unified-Lineup-Checks.txt"))) { throw "Missing unified lineup and completed-race protection checks" }
 if (-not (Test-Path (Join-Path $branding "Race-Order-Checks.txt"))) { throw "Missing grouped lineup race ordering checks" }
 if (-not (Test-Path (Join-Path $branding "Driver-Drag-Checks.txt"))) { throw "Missing driver drag and button compatibility checks" }
+
+if (-not (Test-Path (Join-Path $branding "Seasonal-Theme-Checks.txt"))) { throw "Missing seasonal theme contrast and persistence checks" }
+foreach ($theme in @('Thanksgiving','Halloween','Christmas')) {
+    if (-not (Test-Path (Join-Path $branding "Transponder-$theme.png"))) { throw "Missing seasonal preview: $theme" }
+    if (-not (Test-Path (Join-Path $branding "Track-Records-$theme.png"))) { throw "Missing seasonal records preview: $theme" }
+}

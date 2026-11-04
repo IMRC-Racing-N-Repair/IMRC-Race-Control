@@ -13,6 +13,7 @@ public partial class RentalTransponderView
     internal static void ExportPreview(string output)
     {
         Directory.CreateDirectory(output);
+        SeasonalThemeChecks.Run(output);
         // Exercise the actual shared dashboard/pop-out style, not a copied precedence rule.
         var highlightRow=new StandingRow { DriverName="BREAKOUT PRIORITY",IsCheckedIn=false,IsLastPassing=true,IsMinimumLapViolationGlow=true };
         var highlightBorder=new System.Windows.Controls.Border { DataContext=highlightRow,Style=(Style)Application.Current.FindResource("RaceDriverBorderStyle"),Child=new System.Windows.Controls.TextBlock {Text=highlightRow.DriverName,FontSize=22,Foreground=Brushes.White} };

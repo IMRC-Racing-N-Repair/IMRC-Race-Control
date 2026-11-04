@@ -56,6 +56,19 @@ public static class ThemeService
             PositionDown: "#E85B5B",
             PositionSame: "#D9B43B"),
 
+        AppTheme.Thanksgiving => new DashboardThemeColors(
+            Background: "#20150F", Panel: "#2B1D14", Row: "#302116", AlternateRow: "#402B1C", Text: "#FFF4E3",
+            PassingHighlight: "#985126", FastestLapHighlight: "#68501A", NewBestLapHighlight: "#31543A",
+            CheckInGlow: "#FF6464", MinimumLapGlow: "#FFB04F", PositionUp: "#5DC98C", PositionDown: "#FF7777", PositionSame: "#EAC269"),
+        AppTheme.Halloween => new DashboardThemeColors(
+            Background: "#130F1A", Panel: "#201629", Row: "#251B31", AlternateRow: "#352440", Text: "#FAF4FF",
+            PassingHighlight: "#854719", FastestLapHighlight: "#62501A", NewBestLapHighlight: "#315239",
+            CheckInGlow: "#FF6464", MinimumLapGlow: "#FFAA45", PositionUp: "#8AD65C", PositionDown: "#FF7777", PositionSame: "#E8BE60"),
+        AppTheme.Christmas => new DashboardThemeColors(
+            Background: "#0D1B17", Panel: "#142B23", Row: "#19332A", AlternateRow: "#244337", Text: "#F5FFF8",
+            PassingHighlight: "#8D3449", FastestLapHighlight: "#66541D", NewBestLapHighlight: "#326346",
+            CheckInGlow: "#FF6464", MinimumLapGlow: "#FFB04F", PositionUp: "#6ED99A", PositionDown: "#FF7777", PositionSame: "#EAC76B"),
+
         _ => new DashboardThemeColors(
             Background: "#101214",
             Panel: "#171A1D",
@@ -85,6 +98,19 @@ public static class ThemeService
                 "#071522", "#0B2030", "#102B40", "#17415F", "#081B2A",
                 "#24516E", "#3A789D", "#F2F9FF", "#9FC1D9",
                 "#2997DA", "#155D8B", "#3AD48A", "#F3C65B", "#EF6A6A", "#2C6F98"),
+
+            AppTheme.Thanksgiving => new Palette(
+                "#20150F", "#2B1D14", "#3A281B", "#513821", "#241910",
+                "#765438", "#B48959", "#FFF4E3", "#D1B99D",
+                "#B64E18", "#753B1E", "#91C37C", "#EAC269", "#F47C70", "#765438"),
+            AppTheme.Halloween => new Palette(
+                "#130F1A", "#201629", "#2D2038", "#433052", "#19121F",
+                "#634875", "#9D7BB2", "#FAF4FF", "#C3AFD6",
+                "#B95616", "#753617", "#A3CF59", "#EDBE55", "#FF8174", "#634875"),
+            AppTheme.Christmas => new Palette(
+                "#0D1B17", "#142B23", "#1E3A2E", "#2B503D", "#10231C",
+                "#466E58", "#84AB90", "#F5FFF8", "#BFD1C7",
+                "#B52F46", "#762438", "#79D39A", "#EAC76B", "#FF8080", "#466E58"),
 
             _ => new Palette(
                 "#101214", "#171A1D", "#202428", "#2A3035", "#131619",

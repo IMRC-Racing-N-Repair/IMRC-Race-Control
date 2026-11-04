@@ -4,7 +4,10 @@ public enum AppTheme
 {
     Dark,
     Light,
-    Blue
+    Blue,
+    Thanksgiving,
+    Halloween,
+    Christmas
 }
 
 public static class AppThemeExtensions
@@ -14,6 +17,9 @@ public static class AppThemeExtensions
         AppTheme.Dark => "Dark",
         AppTheme.Light => "Light",
         AppTheme.Blue => "Blue theme",
+        AppTheme.Thanksgiving => "Thanksgiving",
+        AppTheme.Halloween => "Halloween",
+        AppTheme.Christmas => "Christmas",
         _ => theme.ToString()
     };
 }
