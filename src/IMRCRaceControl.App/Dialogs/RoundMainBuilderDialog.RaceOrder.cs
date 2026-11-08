@@ -14,11 +14,12 @@ public partial class RoundMainBuilderDialog
     private HeatPlan? RaceAt(object source)=>source is DependencyObject node && ItemsControl.ContainerFromElement(HeatGrid,node) is DataGridRow row ? row.Item as HeatPlan:null;
     private void RaceDragStart(object sender,MouseButtonEventArgs e)
     {
+        if(CombineClick(e)) {_raceDragId=null;return;}
         _raceDragOrigin=e.GetPosition(HeatGrid);_raceDragId=RaceAt(e.OriginalSource)?.SourceSessionId;
     }
     private void RaceDragMove(object sender,MouseEventArgs e)
     {
-        if(e.LeftButton!=MouseButtonState.Pressed || string.IsNullOrEmpty(_raceDragId))return;
+        if(_holdingCombine || e.LeftButton!=MouseButtonState.Pressed || string.IsNullOrEmpty(_raceDragId))return;
         var point=e.GetPosition(HeatGrid);
         if(Math.Abs(point.X-_raceDragOrigin.X)<SystemParameters.MinimumHorizontalDragDistance && Math.Abs(point.Y-_raceDragOrigin.Y)<SystemParameters.MinimumVerticalDragDistance)return;
         var source=_raceEvent.Sessions.FirstOrDefault(s=>s.Id==_raceDragId);
@@ -52,7 +53,12 @@ public partial class RoundMainBuilderDialog
         if(!RaceLineupOrder.CanMove(source,target))return;
         var group=_raceEvent.Sessions.Where(s=>DashboardRoundChoice.From(s)==DashboardRoundChoice.From(source) && RaceLineupOrder.Movable(s))
             .OrderBy(s=>_pendingRaceOrder.GetValueOrDefault(s.Id,s.LineupOrder??int.MaxValue)).ThenBy(s=>s.QueueOrder).ToList();
-        var from=group.IndexOf(source);var to=group.IndexOf(target);group.RemoveAt(from);group.Insert(to,source);
+        var moving=group.Where(s=>s.Id==sourceId || GroupFor(sourceId).Length>0 && GroupFor(s.Id)==GroupFor(sourceId)).ToList();
+        if(moving.Contains(target))return;
+        group.RemoveAll(moving.Contains);
+        var targetGroup=GroupFor(targetId);
+        var to=group.FindIndex(s=>s.Id==targetId || targetGroup.Length>0 && GroupFor(s.Id)==targetGroup);
+        group.InsertRange(to,moving);
         for(int i=0;i<group.Count;i++)_pendingRaceOrder[group[i].Id]=i+1;
         RefreshLineupOverview();SaveButton.IsEnabled=true;
         BuilderStatusText.Text="Race order updated in this round. SAVE CHANGES to keep it. Heat numbers and drivers are unchanged.";

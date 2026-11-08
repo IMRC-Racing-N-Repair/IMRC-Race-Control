@@ -47,6 +47,8 @@ public static class RaceReports
             throw new InvalidOperationException("Choose a completed race to export.");
         var report = new RaceReport { Title = "Race results", IsLapMatrix=true,
             Subtitle = $"{ev.Name} • {ev.EventDate:MM/dd/yyyy} • {session.RoundLabel} • {session.DashboardDisplay}" };
+        if(session.CombinedRaceId.Length>0)
+            report.Subtitle += " • Sharing track: " + string.Join(" + ",CombinedRaces.Members(ev.Sessions,session).Select(s=>s.ClassName).Distinct()) + " • Scored separately";
         var cars = session.Entrants.Select(e => e.CarNumber).Concat(session.Results.Select(r => r.CarNumber))
             .Concat(session.Laps.Select(l => l.CarNumber)).Concat(session.Breakouts.Select(b=>b.CarNumber)).Distinct().Where(c => carNumber is null || c == carNumber).Order().ToList();
         string Name(int car)
@@ -66,7 +68,7 @@ public static class RaceReports
         report.ResultsSummary = new ReportSection("RACE RESULTS",
             ["Pos", "Car", "Driver", "Laps", "Time", "Behind", "Best", "Avg 5", "Avg 10", "Avg 15", "Qual #"],
             session.Results.OrderBy(r=>r.Position).Select(r=>new[] {
-                r.Position.ToString(), r.CarNumber.ToString(), r.DriverName, r.Laps.ToString(), r.TotalTime,
+                r.Position.ToString(), CombinedRaces.TrackCar(ev.Sessions,session,r.CarNumber).ToString(), r.DriverName, r.Laps.ToString(), r.TotalTime,
                 r.GapBehind, r.BestLap, r.Average5, r.Average10, r.Average15, QualRank(r.CarNumber) }).ToList(),
             "No saved finishing results.");
         // Rank the actual field at each crossing, even for a single-driver export.
@@ -234,8 +236,9 @@ public static class RaceReports
                 : s.SessionType == SessionType.Race ? $"Main Round {s.MainLeg}" : $"Practice Round {s.Round}";
             var raceHeading = $"RACE #{s.RaceNumber} - {s.ClassName} - " +
                 (s.SessionType == SessionType.Race ? $"{s.HeatMainDisplay}-MAIN" : $"HEAT {s.Heat}");
+            if(s.CombinedRaceId.Length>0)raceHeading += " • COMBINED — " + string.Join(" + ",CombinedRaces.Members(ev.Sessions,s).Select(m=>m.ClassName).Distinct()) + " (scored separately)";
             report.Sections.Add(new ReportSection(raceHeading, ["Car","Driver","Transponder",s.SessionType == SessionType.Qualifying ? "Best qual · laps / time" : "Last round · laps / time","SOF / SR"],
-                s.Entrants.OrderBy(e=>e.CarNumber).Select(e=>new[] { e.CarNumber.ToString(),e.DisplayName,rentalLabels.Format(e.TransponderId),s.SessionType == SessionType.Qualifying ? BestQualifyingResult(ev,s.ClassId,e.DriverId) : PreviousRoundResult(ev,s,e.DriverId),RatingFor(s,e) }).ToList(),
+                s.Entrants.OrderBy(e=>e.CarNumber).Select(e=>new[] { CombinedRaces.TrackCar(ev.Sessions,s,e.CarNumber).ToString(),e.DisplayName,rentalLabels.Format(e.TransponderId),s.SessionType == SessionType.Qualifying ? BestQualifyingResult(ev,s.ClassId,e.DriverId) : PreviousRoundResult(ev,s,e.DriverId),RatingFor(s,e) }).ToList(),
                 RoundHeading: roundHeading, ClassColor: classes?.FirstOrDefault(c => c.Id == s.ClassId)?.PrintColor ?? ClassPrintColors.Choices[0].Hex, RaceNumber: s.RaceNumber));
         }
         return report;

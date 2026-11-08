@@ -43,7 +43,7 @@ public partial class RoundMainBuilderDialog
                 plan.SessionDisplay=$"Q{plan.Round} • Heat {heat}/{total}";
             }
             if (_overviewEditing && SavedRoundFilter.SelectedItem is SavedRoundChoice {MainLeg:int leg})list=list.Where(p=>p.SessionType==SessionType.Race && p.MainLeg==leg).ToList();
-            list=OrderOverview(list);
+            list=GroupCombinedOverview(OrderOverview(list));
             var view=new System.Windows.Data.ListCollectionView(list);
             view.GroupDescriptions.Add(new System.Windows.Data.PropertyGroupDescription(nameof(HeatPlan.RoundGroup)));
             HeatGrid.ItemsSource=view;
@@ -157,6 +157,27 @@ public partial class RoundMainBuilderDialog
         if(driverSource.Entrants.Count!=1 || driverTarget.Entrants.Count!=1 || driver.CarNumber!=1)throw new InvalidOperationException("Move driver button no longer works alongside drag.");
         if(System.Text.Json.JsonSerializer.Serialize(ev)!=originalEvent)throw new InvalidOperationException("Driver drop changed saved event before Save.");
         dialog._lineupSnapshot=null;dialog.Close();
+        var combinedEvent=CombinedRaces.Clone(ev);
+        foreach(var saved in combinedEvent.Sessions)saved.ProgressStatus=EventSessionStatus.Planned;
+        var combinedDialog=new RoundMainBuilderDialog(combinedEvent,classes,[]);combinedDialog.Show();combinedDialog.UpdateLayout();
+        var members=combinedEvent.Sessions.Where(s=>s.Round==2).ToList();
+        var beforeCombine=System.Text.Json.JsonSerializer.Serialize(combinedEvent);
+        combinedDialog.StageCombination(members);
+        var combinedRows=combinedDialog.HeatGrid.Items.Cast<HeatPlan>().ToList();
+        if(combinedRows.Count!=7 || combinedRows.Count(h=>h.IsCombinedHeader)!=1 || combinedRows.Count(h=>h.IsCombinedChild)!=2)throw new InvalidOperationException("Combined lineup does not contain one parent and two indented heats.");
+        if(System.Text.Json.JsonSerializer.Serialize(combinedEvent)!=beforeCombine)throw new InvalidOperationException("Combined preview changed source event before Save.");
+        var child=combinedRows.First(h=>h.IsCombinedChild);
+        combinedDialog.HeatGrid.SelectedItem=child;
+        if(combinedDialog.EntrantGrid.Items.Count!=1)throw new InvalidOperationException("Combined child does not show its own editable roster.");
+        if(combinedDialog.HeatGrid.Items.Cast<HeatPlan>().Count(h=>h.IsCombinedChild)!=2)throw new InvalidOperationException("Selecting combined child hid its partner.");
+        combinedDialog.UpdateLayout();
+        var combinedBitmap=new System.Windows.Media.Imaging.RenderTargetBitmap((int)Math.Ceiling(combinedDialog.ActualWidth),(int)Math.Ceiling(combinedDialog.ActualHeight),96,96,System.Windows.Media.PixelFormats.Pbgra32);combinedBitmap.Render(combinedDialog);
+        var combinedEncoder=new System.Windows.Media.Imaging.PngBitmapEncoder();combinedEncoder.Frames.Add(System.Windows.Media.Imaging.BitmapFrame.Create(combinedBitmap));
+        using(var file=System.IO.File.Create(System.IO.Path.Combine(output,"Combined-Lineup.png")))combinedEncoder.Save(file);
+        combinedDialog.SeparateCombined_Click(combinedDialog,new RoutedEventArgs());
+        if(combinedDialog.HeatGrid.Items.Count!=6 || combinedDialog.HeatGrid.Items.Cast<HeatPlan>().Any(h=>h.IsCombinedHeader || h.IsCombinedChild))throw new InvalidOperationException("Separate did not restore independent race rows.");
+        combinedDialog._pendingCombinedRaces.Clear();combinedDialog._lineupSnapshot=null;combinedDialog.Close();
+        System.IO.File.WriteAllText(System.IO.Path.Combine(output,"Combined-Lineup-Checks.txt"),"PASS: combined header, indented children, partner visible when selecting a child, individual roster, staged metadata, separation, no event mutation before Save.");
         System.IO.File.WriteAllText(System.IO.Path.Combine(output,"Driver-Drag-Checks.txt"),"PASS: shared button/drop movement, renumbering, cancelled/self/wrong-class/completed/full/duplicate driver/duplicate transponder drops leave lineups intact; saved event unchanged before Save.");
         System.IO.File.WriteAllText(System.IO.Path.Combine(output,"Race-Order-Checks.txt"),"PASS: drag stages order, saved event unchanged before Save, completed race protected, round headers present, specific round filter works.");
         System.IO.File.WriteAllText(System.IO.Path.Combine(output,"Unified-Lineup-Checks.txt"),"PASS: one visible race list; stable Q1 Heat labels; completed and unrun rosters display on first selection; completed edit/remove/add/reorder controls disabled; saved completed data unchanged.");

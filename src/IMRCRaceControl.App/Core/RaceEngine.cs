@@ -34,6 +34,8 @@ public sealed class RaceEngine
     public int LeaderCarNumber { get; private set; }
     public bool PracticeMode => SessionType == SessionType.Practice;
     public bool LapTargetReached => IsLappedRace && _racers.Values.Any(r => r.Laps.Count >= TargetLaps);
+    private IEnumerable<RacerRuntime> Field(RacerRuntime racer) => _racers.Values.Where(r => r.Racer.ScoringGroupId == racer.Racer.ScoringGroupId);
+    private bool FieldTargetReached(RacerRuntime racer) => IsLappedRace && Field(racer).Any(r => r.Laps.Count >= TargetLaps);
     public bool AllDriversFinished => !PracticeMode && _racers.Count > 0 && _racers.Values.All(r => r.Finished);
     public bool IsLappedRace => !PracticeMode && RaceFormat == global::IMRCRaceControl.Models.RaceFormat.Laps;
 
@@ -125,7 +127,11 @@ public sealed class RaceEngine
             throw new ArgumentException("Choose a valid race format, duration and lap target.");
         if (minimumLapTime < TimeSpan.Zero || (startStyle.HasValue && !Enum.IsDefined(startStyle.Value)))
             throw new ArgumentException("Choose a valid minimum lap time and start style.");
-        if (minimumLapTime.HasValue) MinimumLapTime = minimumLapTime.Value;
+        if (minimumLapTime.HasValue)
+        {
+            MinimumLapTime = minimumLapTime.Value;
+            foreach(var racer in _racers.Values)racer.Racer.MinimumLapSeconds=minimumLapTime.Value.TotalSeconds;
+        }
         if (startStyle.HasValue && startStyle.Value != StartStyle)
         {
             var style = startStyle.Value;
@@ -167,18 +173,19 @@ public sealed class RaceEngine
             return new PassingResult(false, $"Car {carNumber} has already finished.", Code: PassingResultCode.AlreadyFinished);
 
         // A leader-start session is not live until the designated lead car crosses.
-        if (StartStyle == StartStyle.LeaderCrossing && StartedAt is null)
+        if (StartStyle == StartStyle.LeaderCrossing && racer.PersonalStartedAt is null)
         {
-            if (carNumber != LeaderCarNumber)
+            var fieldLeader = Field(racer).Min(r => r.Racer.CarNumber);
+            if (carNumber != fieldLeader)
             {
                 return new PassingResult(
                     false,
-                    $"PRESTART: Car {carNumber} crossed before leader Car {LeaderCarNumber}. Passing not counted.",
+                    $"PRESTART: Car {carNumber} crossed before leader Car {fieldLeader}. Passing not counted.",
                     Code: PassingResultCode.PreStartRejected);
             }
 
-            StartedAt = timestamp;
-            foreach (var runtime in _racers.Values)
+            StartedAt ??= timestamp;
+            foreach (var runtime in Field(racer))
                 runtime.PersonalStartedAt = timestamp;
 
             _acceptedPassings.Add(new AcceptedPassing(carNumber, timestamp, source));
@@ -189,7 +196,7 @@ public sealed class RaceEngine
         // Individual staggered start: first crossing starts that racer's personal clock.
         if (StartStyle == StartStyle.IndividualCrossing && racer.PersonalStartedAt is null)
         {
-            if (LapTargetReached)
+            if (FieldTargetReached(racer))
             {
                 _acceptedPassings.Add(new AcceptedPassing(carNumber, timestamp, source));
                 racer.PersonalStartedAt = timestamp;
@@ -214,7 +221,8 @@ public sealed class RaceEngine
 
         var previousTimestamp = racer.Laps.LastOrDefault()?.Timestamp ?? racer.PersonalStartedAt.Value;
         var gap = timestamp - previousTimestamp;
-        if (gap < MinimumLapTime)
+        var minimumLap = racer.Racer.MinimumLapSeconds is double seconds ? TimeSpan.FromSeconds(seconds) : MinimumLapTime;
+        if (gap < minimumLap)
         {
             var elapsed = timestamp - racer.PersonalStartedAt.Value;
             if (elapsed < TimeSpan.Zero)
@@ -227,7 +235,7 @@ public sealed class RaceEngine
                 racer.Laps.Count + 1,
                 gap,
                 elapsed,
-                MinimumLapTime,
+                minimumLap,
                 timestamp,
                 source);
 
@@ -235,7 +243,7 @@ public sealed class RaceEngine
 
             return new PassingResult(
                 false,
-                $"Car {carNumber} BREAKOUT: {FormatLap(gap)} is below the minimum lap time of {FormatLap(MinimumLapTime)}.",
+                $"Car {carNumber} BREAKOUT: {FormatLap(gap)} is below the minimum lap time of {FormatLap(minimumLap)}.",
                 Code: PassingResultCode.MinimumLapRejected,
                 Breakout: breakout);
         }
@@ -243,7 +251,7 @@ public sealed class RaceEngine
         var previousPersonalBest = racer.Laps.Count == 0
             ? (TimeSpan?)null
             : racer.Laps.Min(l => l.LapTime);
-        var previousSessionBest = _racers.Values
+        var previousSessionBest = Field(racer)
             .SelectMany(r => r.Laps)
             .Select(l => (TimeSpan?)l.LapTime)
             .Min();
@@ -262,7 +270,7 @@ public sealed class RaceEngine
             ((RaceFormat == global::IMRCRaceControl.Models.RaceFormat.Timed &&
               timestamp - racer.PersonalStartedAt.Value >= Duration) ||
              (RaceFormat == global::IMRCRaceControl.Models.RaceFormat.Laps &&
-              LapTargetReached));
+              FieldTargetReached(racer)));
 
         if (racerHasFinished)
         {
@@ -447,6 +455,9 @@ public sealed class RaceEngine
         for (var i = 0; i < ordered.Count; i++)
         {
             var x = ordered[i];
+            var field = ordered.Where(o => o.Runtime.Racer.ScoringGroupId == x.Runtime.Racer.ScoringGroupId).ToList();
+            var classIndex = field.IndexOf(x);
+            var classBest = field.SelectMany(o => o.Runtime.Laps).Select(l => (TimeSpan?)l.LapTime).Min();
             var runtime = x.Runtime;
             var laps = runtime.Laps;
             var last = laps.LastOrDefault();
@@ -465,12 +476,14 @@ public sealed class RaceEngine
             var clock = GetClock(runtime, now);
             var pace = GetPace(laps, average);
             var consistency = GetConsistency(laps);
-            var gapToLeader = i == 0 ? "LEADER" : GetGap(ordered[0].Runtime, runtime);
-            var gapBehind = i == ordered.Count - 1 ? "—" : GetGap(runtime, ordered[i + 1].Runtime);
+            var gapToLeader = classIndex == 0 ? "LEADER" : GetGap(field[0].Runtime, runtime);
+            var gapBehind = classIndex == field.Count - 1 ? "—" : GetGap(runtime, field[classIndex + 1].Runtime);
 
             rows.Add(new StandingRow
             {
-                Position = i + 1,
+                Position = classIndex + 1,
+                ScoringGroupId = runtime.Racer.ScoringGroupId,
+                ClassName = runtime.Racer.ClassName, ClassColor = runtime.Racer.ClassColor,
                 CarNumber = runtime.Racer.CarNumber,
                 DriverName = runtime.Racer.DisplayName,
                 Laps = laps.Count,
@@ -492,12 +505,12 @@ public sealed class RaceEngine
                 TotalTime = last is null ? "—" : FormatElapsed(last.Elapsed),
                 Status = status,
                 ManualActionText = "PASS",
-                IsFastestLap = best.HasValue && sessionBest.HasValue && best.Value == sessionBest.Value,
+                IsFastestLap = best.HasValue && classBest.HasValue && best.Value == classBest.Value,
                 IsNewPersonalBest = isNewPersonalBest
             });
         }
 
-        return rows;
+        return rows.OrderBy(r => _racers.Values.Where(x=>x.Racer.ScoringGroupId==r.ScoringGroupId).Min(x=>x.Racer.CarNumber)).ThenBy(r => r.Position).ToList();
     }
 
     private string GetStatus(RacerRuntime racer, DateTimeOffset now)
@@ -512,8 +525,8 @@ public sealed class RaceEngine
             return "PRACTICE";
         if (RaceFormat == global::IMRCRaceControl.Models.RaceFormat.Laps)
         {
-            if (LapTargetReached) return "FINAL LAP";
-            var remainingLaps = Math.Max(0, TargetLaps - _racers.Values.Max(r => r.Laps.Count));
+            if (FieldTargetReached(racer)) return "FINAL LAP";
+            var remainingLaps = Math.Max(0, TargetLaps - Field(racer).Max(r => r.Laps.Count));
             return remainingLaps switch
             {
                 0 => "FINISHED",
@@ -715,6 +728,7 @@ public sealed class RaceEngine
         DriverId = racer.DriverId,
         DriverName = string.IsNullOrWhiteSpace(racer.DriverName) ? $"Car {racer.CarNumber}" : racer.DriverName.Trim(),
         Nickname = racer.Nickname?.Trim() ?? string.Empty,
+        ScoringGroupId = racer.ScoringGroupId, ClassColor = racer.ClassColor, MinimumLapSeconds = racer.MinimumLapSeconds,
         ClassId = racer.ClassId,
         ClassName = racer.ClassName,
         TransponderId = racer.TransponderId?.Trim() ?? string.Empty

@@ -4,6 +4,7 @@
     <ImplicitUsings>enable</ImplicitUsings><Nullable>enable</Nullable>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="../../src/IMRCRaceControl.App/Core/CombinedRaces.cs" Link="CombinedRaces.cs" />
     <Compile Include="../../src/IMRCRaceControl.App/Core/RaceLineupOrder.cs" Link="RaceLineupOrder.cs" />
     <Compile Include="../../src/IMRCRaceControl.App/Core/HeatDriverTransfer.cs" Link="HeatDriverTransfer.cs" />
     <Compile Include="../../src/IMRCRaceControl.App/Core/TrackRecords.cs" Link="TrackRecords.cs" />

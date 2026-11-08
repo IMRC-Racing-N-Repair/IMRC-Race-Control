@@ -34,25 +34,28 @@ public static class OnlineSnapshotBuilder
             var races = ev.Sessions.Where(s => s.SessionType != SessionType.Practice && (!completedOnly || s.ProgressStatus == EventSessionStatus.Completed))
                 .OrderBy(s => s.ScheduleStageOrder).ThenBy(s => s.ScheduleRoundOrder).ThenBy(s => s.RaceNumber).ThenBy(s => s.QueueOrder)
                 .Select(s => {
-                    var engine = !completedOnly && showLive && ev.Id == currentEventId && s.Id == loadedSessionId &&
+                    var combined=CombinedRaces.Run(ev.Sessions,s);
+                    int RuntimeCar(int car) => combined.IsCombinedRace ? combined.Entrants.FirstOrDefault(e=>e.SourceSessionId==s.Id && e.SourceCarNumber==car)?.CarNumber ?? car : car;
+                    var engine = !completedOnly && showLive && ev.Id == currentEventId && combined.Id == loadedSessionId &&
                         state is RaceState.Armed or RaceState.Running or RaceState.TimeExpired or RaceState.Complete;
                     var completed = s.ProgressStatus == EventSessionStatus.Completed || engine && state == RaceState.Complete;
                     var status = s.ProgressStatus == EventSessionStatus.Skipped ? "skipped" : completed ? "completed" : engine ? "live" : "planned";
                     var timing = engine ? rows : s.Results;
                     var lapData = engine ? laps : s.Laps;
                     var ordered = status is "completed" or "live"
-                        ? s.Entrants.OrderBy(e => timing.FirstOrDefault(r => r.CarNumber == e.CarNumber)?.Position ?? int.MaxValue)
+                        ? s.Entrants.OrderBy(e => timing.FirstOrDefault(r => r.CarNumber == (engine ? RuntimeCar(e.CarNumber) : e.CarNumber))?.Position ?? int.MaxValue)
                         : s.Entrants.OrderBy(e => e.CarNumber);
                     return new {
                         id = s.Id, number = s.RaceNumber, round = s.RoundLabel, classId = s.ClassId, className = s.ClassName,
+                        combinedRaceId=s.CombinedRaceId, combinedRaceName=combined.IsCombinedRace ? combined.Name : "", classColor=classes.FirstOrDefault(c=>c.Id==s.ClassId)?.PrintColor ?? "#808080",
                         heat = s.SessionType == SessionType.Race ? s.HeatMainDisplay + "-Main" : "Heat " + s.Heat,
                         status,
                         drivers = ordered.Select(e => {
-                            var row = status is "completed" or "live" ? timing.FirstOrDefault(r => r.CarNumber == e.CarNumber) : null;
+                            var row = status is "completed" or "live" ? timing.FirstOrDefault(r => r.CarNumber == (engine ? RuntimeCar(e.CarNumber) : e.CarNumber)) : null;
                             return new { name = e.DisplayName, carNumber = e.CarNumber, position = row?.Position ?? e.CarNumber,
                                 laps = row?.Laps ?? 0, time = row?.TotalTime ?? "—", best = row?.BestLap ?? "—",
                                 lastLap = row?.LastLap ?? "—", gap = row?.GapToLeader ?? "—", finished = row?.IsFinished ?? false,
-                                lapTimes = row is null ? Array.Empty<double>() : lapData.Where(l => l.CarNumber == e.CarNumber)
+                                lapTimes = row is null ? Array.Empty<double>() : lapData.Where(l => l.CarNumber == (engine ? RuntimeCar(e.CarNumber) : e.CarNumber))
                                     .OrderBy(l => l.LapNumber).Select(l => l.LapTime.TotalSeconds).ToArray() };
                         }).ToArray()
                     };

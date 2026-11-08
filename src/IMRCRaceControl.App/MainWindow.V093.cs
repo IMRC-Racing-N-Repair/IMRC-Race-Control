@@ -383,6 +383,7 @@ public partial class MainWindow
         foreach (var lap in session.Laps.OrderByDescending(l => l.Sequence).Take(250))
             RecentLaps.Add(lap);
 
+        SyncCombinedRun();
         RecalculateEventRankings();
         RefreshEventRankings();
         RefreshPlannedSessions(session.Id);
@@ -409,6 +410,19 @@ public partial class MainWindow
 
     private void RebuildStoredSessionResults(EventSessionDefinition session)
     {
+        if(session.IsCombinedRace)
+        {
+            CombinedRaces.WriteBack(session);
+            foreach(var member in session.CombinedMembers)RebuildStoredSessionResults(member);
+            var rebuilt=CombinedRaces.Run(session.CombinedMembers,session.CombinedMembers[0]);
+            session.Results=rebuilt.Results;
+            foreach(var row in session.Results)
+            {
+                var entrant=session.Entrants.First(e=>e.CarNumber==row.CarNumber);
+                row.ClassColor=ColorFor(MemberFor(session,entrant)?.ClassId ?? session.ClassId);
+            }
+            return;
+        }
         var sessionBest = session.Laps.Count == 0
             ? (TimeSpan?)null
             : session.Laps.Min(l => l.LapTime);

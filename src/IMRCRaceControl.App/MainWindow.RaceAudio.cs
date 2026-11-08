@@ -38,12 +38,14 @@ public partial class MainWindow
         }
         if (!cues.Contains("leaders") || _lapSpeech.IsSpeakingAnnouncement) return;
         _lapSpeech.StopLaps();
-        var names = standings.OrderBy(r => r.Position).Select(r =>
+        string Names(IEnumerable<StandingRow> rows) => RaceAudioSchedule.LeaderText(rows.OrderBy(r=>r.Position).Select(r=>
         {
-            var entrant = SessionRacers.FirstOrDefault(e => e.Enabled && e.CarNumber == r.CarNumber);
-            return Drivers.FirstOrDefault(d => d.Id == entrant?.DriverId)?.SpokenName ?? r.DriverName;
-        });
-        _lapSpeech.Enqueue(RaceAudioSchedule.LeaderText(names, _settings.RaceLeaderCount),
-            _settings.RaceAnnouncementRate, _settings.LapSpeechVolume, _settings.LapSpeechVoice);
+            var entrant=SessionRacers.FirstOrDefault(e=>e.Enabled && e.CarNumber==r.CarNumber);
+            return Drivers.FirstOrDefault(d=>d.Id==entrant?.DriverId)?.SpokenName ?? r.DriverName;
+        }),_settings.RaceLeaderCount);
+        var leaderAnnouncement = _loadedSession is {IsCombinedRace:true}
+            ? string.Join(". ",standings.GroupBy(r=>r.ScoringGroupId).Select(g=>$"{g.First().ClassName}. {Names(g)}"))
+            : Names(standings);
+        _lapSpeech.Enqueue(leaderAnnouncement,_settings.RaceAnnouncementRate,_settings.LapSpeechVolume,_settings.LapSpeechVoice);
     }
 }

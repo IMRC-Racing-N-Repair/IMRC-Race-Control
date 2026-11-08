@@ -160,7 +160,8 @@ public partial class MainWindow
             var racer = ordered[i];
             Standings.Add(new StandingRow
             {
-                Position = i + 1,
+                Position = string.IsNullOrEmpty(racer.ScoringGroupId) ? i+1 : ordered.Take(i+1).Count(r=>r.ScoringGroupId==racer.ScoringGroupId),
+                ScoringGroupId = racer.ScoringGroupId, ClassName = racer.ClassName, ClassColor = racer.ClassColor,
                 CarNumber = racer.CarNumber,
                 DriverName = racer.DisplayName,
                 Laps = 0,
@@ -361,8 +362,10 @@ public partial class MainWindow
     private async Task<bool> ApplyRoundBuilderChangesAsync(RoundMainBuilderDialog dialog)
     {
         if (_activeEvent is null) return false;
+        if(!ValidateCombinedLineup(dialog))return false;
         if (dialog.OrderOnlySave)
         {
+            ApplyCombinedLineup(dialog);
             foreach(var session in _activeEvent.Sessions)
                 if(dialog.PendingRaceOrder.TryGetValue(session.Id,out var position) && RaceLineupOrder.Movable(session))session.LineupOrder=position;
             RaceLineupOrder.Apply(_activeEvent.Sessions);
@@ -422,6 +425,7 @@ public partial class MainWindow
         SavedRoundEditor.ReplaceScope(_activeEvent, existing, dialog.BuiltSessions);
         foreach(var session in _activeEvent.Sessions)
             if(dialog.PendingRaceOrder.TryGetValue(session.Id,out var position) && RaceLineupOrder.Movable(session))session.LineupOrder=position;
+        ApplyCombinedLineup(dialog);
         foreach (var driver in dialog.AddedDrivers)
             if (!Drivers.Any(d => d.Id == driver.Id)) Drivers.Add(driver);
         // Car numbers can change after lineup edits. Old car-number check-ins

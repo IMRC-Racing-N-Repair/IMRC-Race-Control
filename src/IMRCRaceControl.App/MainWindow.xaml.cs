@@ -213,6 +213,7 @@ public partial class MainWindow : Window
         await _settingsSaveGate.WaitAsync();
         try
         {
+            SyncCombinedRun();
             _settings.Classes = Classes.ToList();
             _settings.Drivers = Drivers.ToList();
             _settings.DriverClassAssignments = _driverAssignments.ToList();
@@ -1628,6 +1629,7 @@ public partial class MainWindow : Window
 
     private void LoadSessionIntoRaceControl(EventSessionDefinition session, bool saveSettings = true)
     {
+        if (_activeEvent is not null) session = CombinedRaces.Run(_activeEvent.Sessions, session);
         _lapSpeech.Stop();
         if (_raceEngine.State is RaceState.Armed or RaceState.Running or RaceState.TimeExpired)
         {
@@ -1683,7 +1685,8 @@ public partial class MainWindow : Window
 
         foreach (var other in _activeEvent.Sessions.Where(s =>
                      s.ProgressStatus == EventSessionStatus.Loaded &&
-                     !string.Equals(s.Id, session.Id, StringComparison.OrdinalIgnoreCase)))
+                     !string.Equals(s.Id, session.Id, StringComparison.OrdinalIgnoreCase) &&
+                     !(session.IsCombinedRace && session.CombinedMembers.Contains(s))))
         {
             other.ProgressStatus = EventSessionStatus.Planned;
         }
@@ -1701,8 +1704,11 @@ public partial class MainWindow : Window
                 DriverId = entrant.DriverId,
                 DriverName = entrant.DriverName,
                 Nickname = entrant.Nickname,
-                ClassId = cls.Id,
-                ClassName = cls.Name,
+                ClassId = MemberFor(session,entrant)?.ClassId ?? cls.Id,
+                ClassName = MemberFor(session,entrant)?.ClassName ?? cls.Name,
+                ScoringGroupId = session.IsCombinedRace ? entrant.SourceSessionId : "",
+                ClassColor = ColorFor(MemberFor(session,entrant)?.ClassId ?? cls.Id),
+                MinimumLapSeconds = session.IsCombinedRace ? MinimumFor(session,entrant) : null,
                 TransponderId = entrant.TransponderId
             });
         }
@@ -1737,6 +1743,7 @@ public partial class MainWindow : Window
         FooterStatusText.Text = $"Loaded {session.Name} with {SessionRacers.Count} racers.";
 
         PlannedSessionGrid.Items.Refresh();
+        SyncCombinedRun();
         RefreshRaceDayQueue();
         ReturnFocusToRaceDashboard();
         if (saveSettings)
@@ -1985,6 +1992,7 @@ public partial class MainWindow : Window
             }
 
             _raceAudio.Reset();
+            if (_loadedSession is {IsCombinedRace:true}) CombinedRaces.Validate(_loadedSession.CombinedMembers,Classes.ToList());
             var toneTime = DateTimeOffset.Now;
             _toneService.Play(_settings.StartTone, _settings.StartToneLength, _settings.StartToneFile);
             _endTonePlayed = false;
@@ -2006,6 +2014,7 @@ public partial class MainWindow : Window
                 _loadedSession.CompletedAt = null;
                 _loadedSession.Results.Clear();
                 _loadedSession.Laps.Clear();
+                SyncCombinedRun();
                 PlannedSessionGrid.Items.Refresh();
                 RefreshRaceDayQueue();
             }
@@ -2047,6 +2056,7 @@ public partial class MainWindow : Window
         _raceEngine.FalseStart();
         if (_loadedSession is not null && _loadedSession.ProgressStatus == EventSessionStatus.Running)
             _loadedSession.ProgressStatus = EventSessionStatus.Loaded;
+        SyncCombinedRun();
         PlannedSessionGrid.Items.Refresh();
         RefreshRaceDayQueue();
         _raceTimer.Stop();
@@ -2130,6 +2140,8 @@ public partial class MainWindow : Window
             _loadedSession.CompletedAt = null;
             _loadedSession.Results.Clear();
             _loadedSession.Laps.Clear();
+            _loadedSession.Breakouts.Clear();
+            SyncCombinedRun();
         }
 
         _raceTimer.Stop();

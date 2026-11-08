@@ -308,6 +308,9 @@ public partial class MainWindow
 
     private bool CanEditLoadedRaceRoster()
     {
+        if(_loadedSession is {IsCombinedRace:true})
+        {MessageBox.Show(this,"Select the individual class/heat in Rounds / Mains to add or remove drivers from this combined race.","Combined race roster");return false;}
+
         if (_loadedSession?.ProgressStatus == EventSessionStatus.Completed || _recallMode)
         {
             MessageBox.Show(this,

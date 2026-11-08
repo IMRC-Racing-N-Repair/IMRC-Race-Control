@@ -31,7 +31,7 @@
 
                 <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                     <controls:BrandLogo Width="165" Height="64" ToolTip="IMRC Race Control"/>
-                    <TextBlock Text="  v0.16.28" Margin="4,2,0,0"
+                    <TextBlock Text="  v0.16.29" Margin="4,2,0,0"
                                Foreground="{DynamicResource MutedBrush}" FontSize="10"
                                VerticalAlignment="Center"/>
                 </StackPanel>
@@ -252,7 +252,7 @@
                                 <DataGrid.RowStyle><Style TargetType="DataGridRow" BasedOn="{StaticResource SharedDashboardRowStyle}"><Setter Property="MinHeight" Value="56"/></Style></DataGrid.RowStyle>
                                 <DataGrid.Columns>
                                     <DataGridTemplateColumn Header="POS" Width="64" CanUserReorder="False" CellTemplate="{StaticResource RacePositionTemplate}"/>
-                                    <DataGridTextColumn ElementStyle="{StaticResource DashboardCenteredCellTextStyle}" Header="#" Binding="{Binding CarNumber}" Width="54" CanUserReorder="False"/>
+                                    <DataGridTemplateColumn Header="#" Width="54" CanUserReorder="False" CellTemplate="{StaticResource RaceCarNumberTemplate}"/>
                                     <DataGridTemplateColumn Header="DRIVER" Width="235" CanUserReorder="False"><DataGridTemplateColumn.CellTemplate><StaticResource ResourceKey="RaceDriverNameTemplate"/></DataGridTemplateColumn.CellTemplate></DataGridTemplateColumn>
                                     <DataGridTextColumn ElementStyle="{StaticResource DashboardCenteredCellTextStyle}" Header="LAPS" Binding="{Binding Laps}" Width="70"/>
                                     <DataGridTextColumn ElementStyle="{StaticResource DashboardCenteredCellTextStyle}" Header="LAST LAP" Binding="{Binding LastLap}" Width="105"/>

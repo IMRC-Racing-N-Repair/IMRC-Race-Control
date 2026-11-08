@@ -723,9 +723,20 @@
                 </DataTrigger>
             </DataTemplate.Triggers>
         </DataTemplate>
+        <DataTemplate x:Key="RaceCarNumberTemplate">
+            <Border x:Name="ClassOutline" BorderBrush="Transparent" BorderThickness="3" CornerRadius="5" Padding="3" Margin="2">
+                <TextBlock Text="{Binding CarNumber}" TextAlignment="Center" VerticalAlignment="Center"/>
+            </Border>
+            <DataTemplate.Triggers><DataTrigger Binding="{Binding ShowClass}" Value="True"><Setter TargetName="ClassOutline" Property="BorderBrush" Value="{Binding ClassColor}"/></DataTrigger></DataTemplate.Triggers>
+        </DataTemplate>
         <DataTemplate x:Key="RaceDriverNameTemplate">
             <Border Style="{StaticResource RaceDriverBorderStyle}">
-                <TextBlock Text="{Binding DriverName}" FontWeight="Bold" TextAlignment="Center" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
+                <StackPanel VerticalAlignment="Center">
+                    <TextBlock Text="{Binding DriverName}" FontWeight="Bold" TextAlignment="Center" TextTrimming="CharacterEllipsis"/>
+                    <TextBlock Text="{Binding ClassName}" FontSize="10" TextAlignment="Center" TextTrimming="CharacterEllipsis">
+                        <TextBlock.Style><Style TargetType="TextBlock"><Setter Property="Visibility" Value="Collapsed"/><Style.Triggers><DataTrigger Binding="{Binding ShowClass}" Value="True"><Setter Property="Visibility" Value="Visible"/></DataTrigger></Style.Triggers></Style></TextBlock.Style>
+                    </TextBlock>
+                </StackPanel>
             </Border>
         </DataTemplate>
         <Style x:Key="SharedDashboardCellStyle" TargetType="DataGridCell">

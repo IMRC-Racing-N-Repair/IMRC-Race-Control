@@ -118,8 +118,7 @@
 
                     <DataGrid.Columns>
                         <DataGridTemplateColumn Header="POS" Width="55" CellTemplate="{StaticResource RacePositionTemplate}"/>
-                        <DataGridTextColumn Header="#" Binding="{Binding CarNumber}" Width="48"
-                                            ElementStyle="{StaticResource SpectatorCenteredText}"/>
+                        <DataGridTemplateColumn Header="#" Width="48" CellTemplate="{StaticResource RaceCarNumberTemplate}"/>
 
                         <DataGridTemplateColumn Header="DRIVER" Width="190"><DataGridTemplateColumn.CellTemplate><StaticResource ResourceKey="RaceDriverNameTemplate"/></DataGridTemplateColumn.CellTemplate></DataGridTemplateColumn>
 

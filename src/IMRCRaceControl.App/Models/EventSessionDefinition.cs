@@ -4,6 +4,13 @@ public sealed class EventSessionDefinition
 {
     public string Id { get; set; } = Guid.NewGuid().ToString("N");
     public string Name { get; set; } = string.Empty;
+    // Logical class sessions remain separate in storage; this ID links their on-track run.
+    public string CombinedRaceId { get; set; } = string.Empty;
+    public int CombinedRaceOrder { get; set; }
+    [System.Text.Json.Serialization.JsonIgnore]
+    public List<EventSessionDefinition> CombinedMembers { get; set; } = [];
+    [System.Text.Json.Serialization.JsonIgnore]
+    public bool IsCombinedRace => CombinedMembers.Count > 1;
     public string ClassId { get; set; } = string.Empty;
     public string ClassName { get; set; } = string.Empty;
     public SessionType SessionType { get; set; } = SessionType.Qualifying;

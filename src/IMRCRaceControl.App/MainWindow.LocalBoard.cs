@@ -85,6 +85,7 @@ public partial class MainWindow
             (s.SessionType == SessionType.Race ? s.MainLeg == current.MainLeg : s.Round == current.Round)).ToList();
         if (current.ProgressStatus == EventSessionStatus.Completed)
         { MessageBox.Show(this,"This race is completed. Load an unfinished race to adjust its format."); return; }
+        if(current.IsCombinedRace)sessions=current.CombinedMembers.Append(current).ToList();
         var raceEvent = _activeEvent;
         var cls = Classes.First(c => c.Id == current.ClassId);
         var dialog = new Window { Owner=this, Title=$"{cls.Name} • {current.RoundLabel} format override", Width=540, SizeToContent=SizeToContent.Height, WindowStartupLocation=WindowStartupLocation.CenterOwner, ResizeMode=ResizeMode.NoResize };
@@ -125,7 +126,7 @@ public partial class MainWindow
                 selectedFormat == RaceFormat.Timed ? TimeSpan.FromMinutes(minutes) : _raceEngine.Duration,
                 selectedFormat == RaceFormat.Laps ? laps : _raceEngine.TargetLaps, DateTimeOffset.Now,
                 TimeSpan.FromSeconds(minimumSeconds), styles[clockStyle.SelectedIndex]);
-        foreach(var s in sessions.Where(s => s == current || s.ProgressStatus is EventSessionStatus.Planned or EventSessionStatus.Loaded))
+        foreach(var s in sessions.Where(s => s == current || current.IsCombinedRace || s.ProgressStatus is EventSessionStatus.Planned or EventSessionStatus.Loaded))
         { s.MinimumLapSecondsOverride=minimumSeconds; s.StartStyle=styles[clockStyle.SelectedIndex]; s.RaceFormat=selectedFormat; if(selectedFormat==RaceFormat.Timed)s.RaceMinutesOverride=minutes;else s.TargetLaps=laps; }
         if (!live) LoadSessionIntoRaceControl(current,saveSettings:false);
         else

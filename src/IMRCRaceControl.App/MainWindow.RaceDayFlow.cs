@@ -105,7 +105,7 @@ public partial class MainWindow
         if (_activeEvent is null)
             return [];
 
-        return _activeEvent.Sessions
+        return CombinedRaces.Runs(_activeEvent.Sessions)
             .OrderBy(s => s.QueueOrder <= 0 ? int.MaxValue : s.QueueOrder)
             .ThenBy(s => s.Round)
             .ThenBy(s => s.ClassName)
@@ -317,7 +317,10 @@ public partial class MainWindow
             .ThenBy(b => b.Sequence)
             .ToList();
 
-        var bumpMessage = ApplyMainBumpUps(completedSession);
+        SyncCombinedRun();
+        var bumpMessage = completedSession.IsCombinedRace
+            ? string.Join(" ",completedSession.CombinedMembers.Select(ApplyMainBumpUps))
+            : ApplyMainBumpUps(completedSession);
 
         StartRaceButton.IsEnabled = false;
         FalseStartButton.IsEnabled = false;
@@ -478,6 +481,12 @@ public partial class MainWindow
             return;
 
         var cls = Classes.FirstOrDefault(c => c.Id == session.ClassId);
+        session = CombinedRaces.Run(_activeEvent.Sessions,session);
+        foreach(var row in session.Results)
+        {
+            var entrant=session.Entrants.FirstOrDefault(e=>e.CarNumber==row.CarNumber);
+            row.ClassColor=ColorFor(entrant is null ? session.ClassId : MemberFor(session,entrant)?.ClassId ?? session.ClassId);
+        }
         _loadedSession = session;
         _recallMode = true;
         _raceTimer.Stop();
@@ -494,8 +503,10 @@ public partial class MainWindow
                 DriverId = entrant.DriverId,
                 DriverName = entrant.DriverName,
                 Nickname = entrant.Nickname,
-                ClassId = session.ClassId,
-                ClassName = session.ClassName,
+                ClassId = MemberFor(session,entrant)?.ClassId ?? session.ClassId,
+                ClassName = MemberFor(session,entrant)?.ClassName ?? session.ClassName,
+                ScoringGroupId = session.IsCombinedRace ? entrant.SourceSessionId : "",
+                ClassColor = ColorFor(MemberFor(session,entrant)?.ClassId ?? session.ClassId),
                 TransponderId = entrant.TransponderId
             });
         }

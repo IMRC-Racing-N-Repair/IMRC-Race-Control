@@ -33,6 +33,10 @@ public sealed class StandingRow : INotifyPropertyChanged
     private bool _isCheckedIn;
     private string _manualActionText = "CHECK IN";
 
+    public string ClassName { get; set; } = string.Empty;
+    public string ClassColor { get; set; } = "#808080";
+    public string ScoringGroupId { get; set; } = string.Empty;
+    public bool ShowClass => !string.IsNullOrEmpty(ScoringGroupId);
     public int Position { get => _position; set => Set(ref _position, value); }
     public int CarNumber { get => _carNumber; set => Set(ref _carNumber, value); }
     public string DriverName { get => _driverName; set => Set(ref _driverName, value ?? string.Empty); }
@@ -88,6 +92,10 @@ public sealed class StandingRow : INotifyPropertyChanged
 
     public void CopyTimingFrom(StandingRow source)
     {
+        ClassName = source.ClassName;
+        ClassColor = source.ClassColor;
+        ScoringGroupId = source.ScoringGroupId;
+        OnPropertyChanged(nameof(ClassName)); OnPropertyChanged(nameof(ClassColor)); OnPropertyChanged(nameof(ShowClass));
         Position = source.Position;
         CarNumber = source.CarNumber;
         DriverName = source.DriverName;

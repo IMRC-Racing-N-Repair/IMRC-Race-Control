@@ -144,6 +144,7 @@ public partial class MainWindow
 
             foreach (var entrant in session.Entrants.OrderBy(e => e.CarNumber))
             {
+                var runtimeCar = _loadedSession.IsCombinedRace ? _loadedSession.Entrants.FirstOrDefault(e=>e.SourceSessionId==session.Id && e.SourceCarNumber==entrant.CarNumber)?.CarNumber ?? entrant.CarNumber : entrant.CarNumber;
                 var laps = 0;
                 TimeSpan? elapsed = null;
                 var comparisonLaps = 0;
@@ -154,9 +155,9 @@ public partial class MainWindow
 
                 if (current && session.ProgressStatus != EventSessionStatus.Completed && !_recallMode)
                 {
-                    var standing = Standings.FirstOrDefault(s => s.CarNumber == entrant.CarNumber);
+                    var standing = Standings.FirstOrDefault(s => s.CarNumber == runtimeCar);
                     var engineLaps = _raceEngine.Laps
-                        .Where(l => l.CarNumber == entrant.CarNumber)
+                        .Where(l => l.CarNumber == runtimeCar)
                         .OrderBy(l => l.LapNumber)
                         .ToList();
 
@@ -200,7 +201,7 @@ public partial class MainWindow
                 {
                     var result = session.Results.FirstOrDefault(r => r.CarNumber == entrant.CarNumber);
                     var storedLaps = session.Laps
-                        .Where(l => l.CarNumber == entrant.CarNumber)
+                        .Where(l => l.CarNumber == runtimeCar)
                         .OrderBy(l => l.LapNumber)
                         .ToList();
 
@@ -228,7 +229,7 @@ public partial class MainWindow
                 }
                 else if (current)
                 {
-                    var standing = Standings.FirstOrDefault(s => s.CarNumber == entrant.CarNumber);
+                    var standing = Standings.FirstOrDefault(s => s.CarNumber == runtimeCar);
                     laps = standing?.Laps ?? 0;
                     hasPerformance = laps > 0;
                     paceFinish = hasPerformance && !string.IsNullOrWhiteSpace(standing?.Pace)

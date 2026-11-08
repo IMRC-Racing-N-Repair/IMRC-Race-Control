@@ -95,3 +95,5 @@ foreach ($theme in @('Thanksgiving','Halloween','Christmas')) {
     if (-not (Test-Path (Join-Path $branding "Transponder-$theme.png"))) { throw "Missing seasonal preview: $theme" }
     if (-not (Test-Path (Join-Path $branding "Track-Records-$theme.png"))) { throw "Missing seasonal records preview: $theme" }
 }
+
+if (-not (Test-Path (Join-Path $branding "Combined-Lineup.png")) -or -not (Test-Path (Join-Path $branding "Combined-Lineup-Checks.txt"))) { throw "Missing combined race lineup preview/checks" }

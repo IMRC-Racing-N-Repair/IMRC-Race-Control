@@ -18,7 +18,7 @@ public sealed class CompletedRaceExportDialog : Window
     private readonly Button _export = new() { Content = "EXPORT CSV" };
     private sealed record RaceChoice(EventSessionDefinition Session)
     {
-        public string Label => $"{Session.RoundLabel} • {Session.DashboardDisplay}";
+        public string Label => $"{Session.RoundLabel} • {Session.DashboardDisplay}" + (Session.CombinedRaceId.Length>0 ? " • Combined race" : "");
     }
 
     public CompletedRaceExportDialog(IReadOnlyList<RaceDayEventDefinition> events, RaceDayEventDefinition? active, EventSessionDefinition? loaded)

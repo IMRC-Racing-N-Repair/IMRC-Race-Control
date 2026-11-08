@@ -172,6 +172,7 @@ public partial class MainWindow
             session.Results.Clear();
             session.Laps.Clear();
             session.Breakouts.Clear();
+            SyncCombinedRun();
 
             RecentLaps.Clear();
             DriverLapRows.Clear();

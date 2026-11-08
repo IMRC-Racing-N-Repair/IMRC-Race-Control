@@ -554,6 +554,7 @@ Equal(2,orderLocked.QueueOrder,"Completed race slot unchanged");Equal(4,orderQ2.
 Equal(1,orderA.RaceNumber,"Moving race does not rename heat/race number");
 var savedOrder=JsonSerializer.Deserialize<EventSessionDefinition>(JsonSerializer.Serialize(orderA))!;
 Equal(2,savedOrder.LineupOrder,"Manual lineup order persists");
+checks += CombinedRaceChecks.Run();
 checks += TrackRecordsChecks.Run();
 checks += LapFinishChecks.Run();
 checks += EligibilityPrintChecks.Run();

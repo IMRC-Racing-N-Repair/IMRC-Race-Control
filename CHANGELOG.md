@@ -2,6 +2,12 @@
 
 Keep all release history in this file. Add each new version at the top; do not create version-specific changelog files.
 
+## 0.16.29
+- Hold Shift and click saved unrun races in Rounds / Mains; release Shift to confirm a combined on-track run. Show a hand cursor, selection hint, combined parent and indented class/heat rows. Save Changes commits the grouping; right-click Separate restores independent races.
+- Run combined heats with one start and separate positions, leader gaps, fastest laps, minimum lap times, lap-target finishes and stored class results. Keep qualifying, Series scoring, records and reports tied to each original class. Restart clears the combined run together.
+- Identify combined drivers with their class name and a class-color number outline on the dashboard, pop-out and local web board; show all participating classes in the race heading. Keep live website uploads scoped to each class.
+- Validate matching round, clock style, race format and duration/target, unique drivers/transponders, 30-car capacity and bump-up dependencies. Protect running/completed races and test combined results, recall, restart, persistence and lineup previews.
+
 ## 0.16.28
 - Add Thanksgiving, Halloween and Christmas themes in Appearance, with matching dashboard, practice, pop-out and local web scoreboard palettes. Preserve custom dashboard colors and verify readable text, button contrast and saved theme selection.
 - Drag driver names from the driver panel onto another eligible race, alongside the existing move button. Share validation for class, round, capacity, duplicate drivers/transponders and completed-race locks; cancelled or rejected drops leave both lineups unchanged. Save Changes commits the move.

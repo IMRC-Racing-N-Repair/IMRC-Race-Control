@@ -67,7 +67,7 @@ public partial class RoundMainBuilderDialog
         HeatGrid.Items.Refresh();
         ClassCombo.IsEnabled=false; ModeCombo.IsEnabled=false; SortPanel.IsEnabled=false; GenerateButton.IsEnabled=false;
         BuildOptionsPanel.Visibility=Visibility.Collapsed; GenerateButton.Visibility=Visibility.Collapsed;
-        SaveButton.IsEnabled=_pendingRaceOrder.Count>0; SaveButton.Content="SAVE CHANGES"; RosterEditActions.IsEnabled=false;
+        SaveButton.IsEnabled=HasPendingSchedule; SaveButton.Content="SAVE CHANGES"; RosterEditActions.IsEnabled=false;
         HeatGrid.SelectedItem=null;
         BuilderStatusText.Text=$"Showing {sessions.Count} saved lineups. Select a race to edit its lineup, or choose a specific round and class above.";
         if (round is { Round: >=0 } && cls is { AllClasses:false } && sessions.Count>0)

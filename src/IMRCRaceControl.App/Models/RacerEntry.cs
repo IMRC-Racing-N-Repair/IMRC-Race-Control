@@ -10,6 +10,9 @@ public sealed class RacerEntry : INotifyPropertyChanged
     private string _nickname = string.Empty;
     private string _transponderId = string.Empty;
 
+    public string ScoringGroupId { get; set; } = string.Empty;
+    public string ClassColor { get; set; } = "#808080";
+    public double? MinimumLapSeconds { get; set; }
     public int CarNumber { get; set; }
     public string DriverId { get; set; } = string.Empty;
     public string ClassId { get; set; } = string.Empty;
