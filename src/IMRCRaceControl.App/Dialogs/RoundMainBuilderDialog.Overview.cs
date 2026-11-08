@@ -162,6 +162,12 @@ public partial class RoundMainBuilderDialog
         var combinedDialog=new RoundMainBuilderDialog(combinedEvent,classes,[]);combinedDialog.Show();combinedDialog.UpdateLayout();
         var members=combinedEvent.Sessions.Where(s=>s.Round==2).ToList();
         var beforeCombine=System.Text.Json.JsonSerializer.Serialize(combinedEvent);
+        var selectionRows=combinedDialog.HeatGrid.Items.Cast<HeatPlan>().Where(h=>h.Round==2).ToList();
+        combinedDialog.BeginCombineSelection();
+        foreach(var row in selectionRows)combinedDialog.ToggleCombineRace(row);
+        if(combinedDialog.HeatGrid.SelectedItems.Count!=2 || combinedDialog._combineSelection.Count!=2 || combinedDialog.HeatGrid.Cursor!=Cursors.Hand)throw new InvalidOperationException("Shift selection did not retain multiple races and hand cursor.");
+        combinedDialog.CancelCombineSelection();
+        if(combinedDialog.HeatGrid.SelectedItems.Count!=0 || combinedDialog._combineSelection.Count!=0 || combinedDialog.HeatGrid.Cursor is not null)throw new InvalidOperationException("Shift selection did not restore its cursor/selection.");
         combinedDialog.StageCombination(members);
         var combinedRows=combinedDialog.HeatGrid.Items.Cast<HeatPlan>().ToList();
         if(combinedRows.Count!=7 || combinedRows.Count(h=>h.IsCombinedHeader)!=1 || combinedRows.Count(h=>h.IsCombinedChild)!=2)throw new InvalidOperationException("Combined lineup does not contain one parent and two indented heats.");

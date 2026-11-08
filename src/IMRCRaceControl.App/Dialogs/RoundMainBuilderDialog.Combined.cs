@@ -17,6 +17,10 @@ public partial class RoundMainBuilderDialog
     {
         if(e.Key is not (Key.LeftShift or Key.RightShift) || _holdingCombine) return;
         if(Keyboard.FocusedElement is TextBox)return;
+        BeginCombineSelection();
+    }
+    private void BeginCombineSelection()
+    {
         _holdingCombine=true; _combineSelection.Clear(); HeatGrid.Cursor=Cursors.Hand;
         _refreshingOverview=true; try {HeatGrid.SelectedItems.Clear();} finally {_refreshingOverview=false;}
     }
@@ -36,12 +40,17 @@ public partial class RoundMainBuilderDialog
     private bool CombineClick(MouseButtonEventArgs e)
     {
         if((Keyboard.Modifiers & ModifierKeys.Shift)==0)return false;
-        if(!_holdingCombine) {_holdingCombine=true;HeatGrid.Cursor=Cursors.Hand;_combineSelection.Clear();}
+        if(!_holdingCombine)BeginCombineSelection();
         var row=RaceAt(e.OriginalSource);
         e.Handled=true;
-        if(row is null || row.IsCombinedHeader)return true;
+        if(row is not null)ToggleCombineRace(row);
+        return true;
+    }
+    private void ToggleCombineRace(HeatPlan row)
+    {
+        if(row.IsCombinedHeader)return;
         if(row.SourceSessionId.Length==0 || row.IsLocked)
-        {BuilderStatusText.Text="Select saved, unrun races to combine. Save new lineups first; restart completed races before editing.";return true;}
+        {BuilderStatusText.Text="Select saved, unrun races to combine. Save new lineups first; restart completed races before editing.";return;}
         _refreshingOverview=true;
         try
         {
@@ -50,7 +59,6 @@ public partial class RoundMainBuilderDialog
         }
         finally {_refreshingOverview=false;}
         BuilderStatusText.Text=$"{_combineSelection.Count} races selected. Release Shift to combine.";
-        return true;
     }
     private List<EventSessionDefinition> ExpandSelection(IEnumerable<string> ids)
     {

@@ -145,7 +145,7 @@
                             <StackPanel><TextBlock Text="ROUND / MAINS LINEUP" FontWeight="Bold" FontSize="15"/>
                             <TextBlock Text="Hold Shift and click to combine races. Release Shift to confirm." Foreground="{DynamicResource MutedBrush}" Margin="0,3,0,0"/></StackPanel>
 
-                            <DataGrid x:Name="HeatGrid" PreviewMouseRightButtonDown="HeatGrid_RightClick" AllowDrop="True"
+                            <DataGrid x:Name="HeatGrid" SelectionMode="Extended" PreviewMouseRightButtonDown="HeatGrid_RightClick" AllowDrop="True"
                                       PreviewMouseLeftButtonDown="RaceDragStart" PreviewMouseMove="RaceDragMove"
                                       DragOver="RaceDragOver" Drop="RaceDrop"
                                       Grid.Row="1"
