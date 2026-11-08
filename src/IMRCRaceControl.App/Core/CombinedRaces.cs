@@ -81,6 +81,9 @@ public static class CombinedRaces
     public static void WriteBack(EventSessionDefinition run)
     {
         if (!run.IsCombinedRace) return;
+        // Ending an event marks the original logical sessions skipped before saving.
+        // Preserve that event-level transition instead of reviving a detached loaded run.
+        if(run.CombinedMembers.All(m=>m.ProgressStatus==EventSessionStatus.Skipped))run.ProgressStatus=EventSessionStatus.Skipped;
         foreach (var member in run.CombinedMembers)
         {
             member.ProgressStatus=run.ProgressStatus; member.StartedAt=run.StartedAt; member.CompletedAt=run.CompletedAt;

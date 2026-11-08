@@ -68,6 +68,17 @@ internal static class CombinedRaceChecks
         engine.RegisterPassing(1,"decoder",start.AddSeconds(2));
         Check(engine.RegisterPassing(4,"decoder",start.AddSeconds(3)).Code==PassingResultCode.PreStartRejected,"class B waits for own leader after A start");
         Check(engine.RegisterPassing(3,"decoder",start.AddSeconds(4)).Code==PassingResultCode.StartCrossing,"class B clock begins on its leader");
+        var track=new TrackProfile();
+        var ev=new RaceDayEventDefinition {Track=track,Sessions=[a,b]};
+        var liveRows=run.Entrants.Select(e=>new StandingRow {CarNumber=e.CarNumber,Position=e.CarNumber<=2?e.CarNumber:e.CarNumber-2,Laps=e.CarNumber*10,DriverName=e.DriverName}).ToList();
+        var capture=OnlineSnapshotBuilder.Capture(track,[ev],[],[],classes,ev.Id,run.Id,RaceState.Running,liveRows,[],true);
+        var uploaded=capture.Documents.Single().Value.GetProperty("races");
+        Check(uploaded[0].GetProperty("drivers")[0].GetProperty("laps").GetInt32()==10,"live upload retains A timing");
+        Check(uploaded[1].GetProperty("drivers")[0].GetProperty("laps").GetInt32()==30,"live upload maps B timing independently");
+        Check(uploaded[1].GetProperty("status").GetString()=="live","both classes upload live");
+        a.ProgressStatus=b.ProgressStatus=EventSessionStatus.Skipped;
+        CombinedRaces.WriteBack(run);
+        Check(a.ProgressStatus==EventSessionStatus.Skipped && b.ProgressStatus==EventSessionStatus.Skipped,"ending event cannot revive an unrun combined race");
         a.CombinedRaceId=b.CombinedRaceId="";
         Check(CombinedRaces.Runs([a,b]).Count==2,"separate restores two starts");
         return checks;
