@@ -96,5 +96,5 @@ foreach ($theme in @('Thanksgiving','Halloween','Christmas')) {
     if (-not (Test-Path (Join-Path $branding "Track-Records-$theme.png"))) { throw "Missing seasonal records preview: $theme" }
 }
 
-# Combined-race builds must include the real WPF grouping and separation smoke preview.
+# Combined-race builds must include the full-width header, grouping and separation WPF smoke preview.
 if (-not (Test-Path (Join-Path $branding "Combined-Lineup.png")) -or -not (Test-Path (Join-Path $branding "Combined-Lineup-Checks.txt"))) { throw "Missing combined race lineup preview/checks" }

@@ -79,6 +79,9 @@ internal static class CombinedRaceChecks
         a.ProgressStatus=b.ProgressStatus=EventSessionStatus.Skipped;
         CombinedRaces.WriteBack(run);
         Check(a.ProgressStatus==EventSessionStatus.Skipped && b.ProgressStatus==EventSessionStatus.Skipped,"ending event cannot revive an unrun combined race");
+        a.ProgressStatus=b.ProgressStatus=EventSessionStatus.Planned;
+        CombinedRaces.WriteBack(run);
+        Check(run.ProgressStatus==EventSessionStatus.Planned && a.ProgressStatus==EventSessionStatus.Planned && b.ProgressStatus==EventSessionStatus.Planned,"reopening event preserves reactivated combined races");
         a.CombinedRaceId=b.CombinedRaceId="";
         Check(CombinedRaces.Runs([a,b]).Count==2,"separate restores two starts");
         return checks;
