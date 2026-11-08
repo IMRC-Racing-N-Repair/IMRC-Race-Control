@@ -12,17 +12,13 @@ public partial class RoundMainBuilderDialog
     private SavedRoundChoice? _priorSavedRound;
     private ClassChoice? _priorSavedClass;
     private void RememberLineup() => _lineupSnapshot = JsonSerializer.Serialize(HeatPlans);
-    private bool ConfirmLeaveLineup() => _browsingSavedLineups || _lineupSnapshot is null ||
-        _lineupSnapshot == JsonSerializer.Serialize(HeatPlans) ||
-        MessageBox.Show(this, "Discard unsaved lineup edits and change the view? Save first if you want to keep them.",
-            "Unsaved lineup", MessageBoxButton.YesNo, MessageBoxImage.Question) == MessageBoxResult.Yes;
     private void InitializeSavedFilters()
     {
         _loadingSavedFilters = true;
         var rounds = new List<SavedRoundChoice> { new(-1,"ALL ROUNDS / MAINS") };
-        rounds.AddRange(_raceEvent.Sessions.Where(s=>s.SessionType==SessionType.Qualifying).Select(s=>s.Round).Distinct().Order().Select(n=>new SavedRoundChoice(n,$"Qualifying round {n}")));
-        if (_raceEvent.Sessions.Any(s=>s.SessionType==SessionType.Race)) rounds.Add(new(0,"Mains"));
-        rounds.AddRange(_raceEvent.Sessions.Where(s=>s.SessionType==SessionType.Race).Select(s=>s.MainLeg).Distinct().Order().Select(n=>new SavedRoundChoice(0,$"Mains round {n}",n)));
+        rounds.AddRange(PreviewSessions.Where(s=>s.SessionType==SessionType.Qualifying).Select(s=>s.Round).Distinct().Order().Select(n=>new SavedRoundChoice(n,$"Qualifying round {n}")));
+        if (PreviewSessions.Any(s=>s.SessionType==SessionType.Race)) rounds.Add(new(0,"Mains"));
+        rounds.AddRange(PreviewSessions.Where(s=>s.SessionType==SessionType.Race).Select(s=>s.MainLeg).Distinct().Order().Select(n=>new SavedRoundChoice(0,$"Mains round {n}",n)));
         SavedRoundFilter.ItemsSource = rounds; SavedRoundFilter.SelectedIndex = 0;
         SavedClassFilter.ItemsSource = ClassCombo.ItemsSource; SavedClassFilter.SelectedIndex = 0;
         _priorSavedRound = SavedRoundFilter.SelectedItem as SavedRoundChoice;
@@ -41,10 +37,7 @@ public partial class RoundMainBuilderDialog
     private void SavedLineupFilter_Changed(object sender, SelectionChangedEventArgs e)
     {
         if (_loadingSavedFilters || !IsLoaded) return;
-        if (!ConfirmLeaveLineup())
-        {
-            _loadingSavedFilters=true; SavedRoundFilter.SelectedItem=_priorSavedRound; SavedClassFilter.SelectedItem=_priorSavedClass; _loadingSavedFilters=false; return;
-        }
+        StageCurrentLineup();
         _lineupSnapshot=null;
         _priorSavedRound=SavedRoundFilter.SelectedItem as SavedRoundChoice;
         _priorSavedClass=SavedClassFilter.SelectedItem as ClassChoice;
@@ -54,7 +47,7 @@ public partial class RoundMainBuilderDialog
     {
         var round=SavedRoundFilter.SelectedItem as SavedRoundChoice;
         var cls=SavedClassFilter.SelectedItem as ClassChoice;
-        var sessions=_raceEvent.Sessions.Where(s=>s.SessionType is SessionType.Qualifying or SessionType.Race)
+        var sessions=PreviewSessions.Where(s=>s.SessionType is SessionType.Qualifying or SessionType.Race)
             .Where(s=>round is null || round.Round==-1 || round.Round==0 && s.SessionType==SessionType.Race || round.Round>0 && s.SessionType==SessionType.Qualifying && s.Round==round.Round)
             .Where(s=>round?.MainLeg is null || s.MainLeg==round.MainLeg)
             .Where(s=>cls is null || cls.AllClasses || s.ClassId==cls.ClassId).OrderBy(s=>s.QueueOrder).ToList();
@@ -67,7 +60,7 @@ public partial class RoundMainBuilderDialog
         HeatGrid.Items.Refresh();
         ClassCombo.IsEnabled=false; ModeCombo.IsEnabled=false; SortPanel.IsEnabled=false; GenerateButton.IsEnabled=false;
         BuildOptionsPanel.Visibility=Visibility.Collapsed; GenerateButton.Visibility=Visibility.Collapsed;
-        SaveButton.IsEnabled=HasPendingSchedule; SaveButton.Content="SAVE CHANGES"; RosterEditActions.IsEnabled=false;
+        SaveButton.IsEnabled=HasPendingEdits; SaveButton.Content="SAVE CHANGES"; RosterEditActions.IsEnabled=false;
         HeatGrid.SelectedItem=null;
         BuilderStatusText.Text=$"Showing {sessions.Count} saved lineups. Select a race to edit its lineup, or choose a specific round and class above.";
         if (round is { Round: >=0 } && cls is { AllClasses:false } && sessions.Count>0)

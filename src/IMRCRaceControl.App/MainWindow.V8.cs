@@ -383,15 +383,7 @@ public partial class MainWindow
             SessionRacers.Clear(); Standings.Clear(); RecentLaps.Clear(); UnknownTransponderHits.Clear();
             ResetDriverLapPanelForSession(); UpdateSessionRosterText();
         }
-        var targetIds = dialog.ReplaceClassIds.ToHashSet(StringComparer.OrdinalIgnoreCase);
-        var existing = _activeEvent.Sessions
-            .Where(s => targetIds.Contains(s.ClassId) &&
-                        ((dialog.BuiltSessionType == SessionType.Qualifying &&
-                          s.SessionType == SessionType.Qualifying &&
-                          s.Round == dialog.BuiltRound) ||
-                         (dialog.BuiltSessionType == SessionType.Race &&
-                          s.SessionType == SessionType.Race)))
-            .ToList();
+        var existing = _activeEvent.Sessions.Where(dialog.ReplacesLineup).ToList();
 
         if (!SavedRoundEditor.PreservesCompletedResults(existing, dialog.BuiltSessions))
         {
@@ -408,7 +400,7 @@ public partial class MainWindow
             }
 
             MessageBox.Show(this,
-                "That preview would replace a scope that still contains completed results. Delete the completed race(s) from the bottom list first, or leave that history unchanged.",
+                "That preview would replace completed results. Restart those races from the dashboard before changing their lineups.",
                 "Completed results remain",
                 MessageBoxButton.OK,
                 MessageBoxImage.Information);
@@ -459,22 +451,7 @@ public partial class MainWindow
         RefreshRaceDayFlow();
         await CaptureAndSaveSettingsAsync();
 
-        if (dialog.BuiltSessionType == SessionType.Qualifying)
-        {
-            var nextRound = _activeEvent.Sessions
-                .Where(s => s.SessionType == SessionType.Qualifying)
-                .Select(s => s.Round)
-                .DefaultIfEmpty(dialog.BuiltRound)
-                .Max() + 1;
-
-            FooterStatusText.Text =
-                $"Q{dialog.BuiltRound} saved. The next new qualifying round will be Q{nextRound}.";
-        }
-        else
-        {
-            FooterStatusText.Text =
-                "Mains saved/rebuilt. Lower mains remain ordered before A Main.";
-        }
+        FooterStatusText.Text = "All lineup changes saved.";
 
         if (dialog.HasDirectEventChanges)
         {

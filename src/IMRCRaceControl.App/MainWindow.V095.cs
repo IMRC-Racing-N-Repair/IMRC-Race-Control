@@ -11,6 +11,8 @@ public partial class MainWindow
         string Key,
         string DriverId,
         string SessionId,
+        string ClassId,
+        string ClassName,
         string DriverName,
         int Heat,
         int CarNumber,
@@ -105,7 +107,7 @@ public partial class MainWindow
             return;
         }
 
-        if (_loadedSession.SessionType != SessionType.Qualifying)
+        if (_loadedSession.SessionType != SessionType.Qualifying && !_loadedSession.IsCombinedRace)
         {
             ResetProjectionMovementTracking();
             ReplaceRoundProjectionRows([]);
@@ -115,21 +117,16 @@ public partial class MainWindow
             return;
         }
 
-        var roundSessions = _activeEvent.Sessions
-            .Where(s =>
-                s.SessionType == SessionType.Qualifying &&
-                s.ProgressStatus != EventSessionStatus.Skipped &&
-                s.Round == _loadedSession.Round &&
-                string.Equals(s.ClassId, _loadedSession.ClassId, StringComparison.OrdinalIgnoreCase))
-            .OrderBy(s => s.Heat)
-            .ThenBy(s => s.QueueOrder)
-            .ToList();
+        var loaded = _loadedSession;
+        var roundSessions = Core.OverallPositionScope.Sessions(_activeEvent.Sessions, loaded);
+        var liveCars = Core.OverallPositionScope.LiveCars(loaded);
+        var liveLaps = _raceEngine.Laps.ToLookup(l => l.CarNumber);
 
         if (roundSessions.Count == 0)
         {
             ResetProjectionMovementTracking();
             ReplaceRoundProjectionRows([]);
-            RoundProjectionInfoText.Text = "No qualifying heats found for this round.";
+            RoundProjectionInfoText.Text = "No races found for this round.";
             return;
         }
 
@@ -137,14 +134,11 @@ public partial class MainWindow
 
         foreach (var session in roundSessions)
         {
-            var current = string.Equals(
-                session.Id,
-                _loadedSession.Id,
-                StringComparison.OrdinalIgnoreCase);
+            var current = Core.OverallPositionScope.IsCurrent(loaded,session);
 
             foreach (var entrant in session.Entrants.OrderBy(e => e.CarNumber))
             {
-                var runtimeCar = _loadedSession.IsCombinedRace ? _loadedSession.Entrants.FirstOrDefault(e=>e.SourceSessionId==session.Id && e.SourceCarNumber==entrant.CarNumber)?.CarNumber ?? entrant.CarNumber : entrant.CarNumber;
+                var runtimeCar = liveCars.GetValueOrDefault((session.Id,entrant.CarNumber),entrant.CarNumber);
                 var laps = 0;
                 TimeSpan? elapsed = null;
                 var comparisonLaps = 0;
@@ -156,8 +150,7 @@ public partial class MainWindow
                 if (current && session.ProgressStatus != EventSessionStatus.Completed && !_recallMode)
                 {
                     var standing = Standings.FirstOrDefault(s => s.CarNumber == runtimeCar);
-                    var engineLaps = _raceEngine.Laps
-                        .Where(l => l.CarNumber == runtimeCar)
+                    var engineLaps = liveLaps[runtimeCar]
                         .OrderBy(l => l.LapNumber)
                         .ToList();
 
@@ -169,7 +162,7 @@ public partial class MainWindow
                     if (hasPerformance)
                     {
                         var raceFinished =
-                            _raceEngine.State == RaceState.Complete ||
+                            loaded.SessionType == SessionType.Race || standing?.IsFinished == true || _raceEngine.State == RaceState.Complete ||
                             session.ProgressStatus == EventSessionStatus.Completed;
 
                         paceFinish = raceFinished && elapsed.HasValue
@@ -201,7 +194,7 @@ public partial class MainWindow
                 {
                     var result = session.Results.FirstOrDefault(r => r.CarNumber == entrant.CarNumber);
                     var storedLaps = session.Laps
-                        .Where(l => l.CarNumber == runtimeCar)
+                        .Where(l => l.CarNumber == entrant.CarNumber)
                         .OrderBy(l => l.LapNumber)
                         .ToList();
 
@@ -251,6 +244,8 @@ public partial class MainWindow
                     $"{session.Id}:{entrant.DriverId}:{entrant.CarNumber}",
                     entrant.DriverId,
                     session.Id,
+                    session.ClassId,
+                    session.ClassName,
                     entrant.DisplayName,
                     session.Heat,
                     entrant.CarNumber,
@@ -274,9 +269,7 @@ public partial class MainWindow
             .ThenBy(c => c.CarNumber)
             .ToList();
 
-        var projectedPositionByKey = ranked
-            .Select((candidate, index) => new { candidate.Key, Position = index + 1 })
-            .ToDictionary(x => x.Key, x => x.Position, StringComparer.OrdinalIgnoreCase);
+        var projectedPositionByKey = Core.OverallPositionScope.Positions(ranked,c=>c.ClassId,c=>c.Key);
 
         UpdateProjectionMovement(candidates, projectedPositionByKey);
 
@@ -294,6 +287,7 @@ public partial class MainWindow
                     DriverId = c.DriverId,
                     SessionId = c.SessionId,
                     DriverName = c.DriverName,
+                    ClassName = loaded.IsCombinedRace ? c.ClassName : string.Empty,
                     PaceFinish = c.PaceFinish,
                     IsCurrentHeat = c.IsCurrentHeat,
                     MovementState = hasMovement ? movement.State : string.Empty,
@@ -303,14 +297,18 @@ public partial class MainWindow
                         : null
                 };
             })
-            .OrderBy(r => r.ProjectedPosition ?? int.MaxValue)
+            .OrderBy(r => r.ClassName,StringComparer.OrdinalIgnoreCase)
+            .ThenBy(r => r.ProjectedPosition ?? int.MaxValue)
             .ThenByDescending(r => r.IsCurrentHeat)
             .ThenBy(r => r.DriverName, StringComparer.OrdinalIgnoreCase)
             .ToList();
 
         ReplaceRoundProjectionRows(rows);
 
-        RoundProjectionInfoText.Text = roundSessions.Count > 1
+        RoundProjectionInfoText.Text = loaded.IsCombinedRace
+            ? $"{loaded.RoundLabel} • ALL COMBINED CLASSES • Positions within each class • " +
+              (loaded.SessionType == SessionType.Qualifying ? "Pace live, laps/time when finished" : "Laps/time")
+            : roundSessions.Count > 1
             ? $"{_loadedSession.ClassName} • Q{_loadedSession.Round} • {roundSessions.Count} heats • PACE while live, finished LAPS/TIME when complete"
             : $"{_loadedSession.ClassName} • Q{_loadedSession.Round} • PACE while live, finished LAPS/TIME when complete";
     }

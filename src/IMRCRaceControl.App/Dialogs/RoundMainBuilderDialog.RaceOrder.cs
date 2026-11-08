@@ -22,7 +22,7 @@ public partial class RoundMainBuilderDialog
         if(_holdingCombine || e.LeftButton!=MouseButtonState.Pressed || string.IsNullOrEmpty(_raceDragId))return;
         var point=e.GetPosition(HeatGrid);
         if(Math.Abs(point.X-_raceDragOrigin.X)<SystemParameters.MinimumHorizontalDragDistance && Math.Abs(point.Y-_raceDragOrigin.Y)<SystemParameters.MinimumVerticalDragDistance)return;
-        var source=_raceEvent.Sessions.FirstOrDefault(s=>s.Id==_raceDragId);
+        var source=PreviewSessions.FirstOrDefault(s=>s.Id==_raceDragId);
         var id=_raceDragId;_raceDragId=null;
         if(source is not null && RaceLineupOrder.Movable(source))DragDrop.DoDragDrop(HeatGrid,new DataObject("IMRC.LineupRace",id),DragDropEffects.Move);
     }
@@ -30,9 +30,9 @@ public partial class RoundMainBuilderDialog
     {
         id=e.Data.GetData("IMRC.LineupRace") as string ?? "";target=RaceAt(e.OriginalSource);
         var sourceId=id;
-        var sourceSession=_raceEvent.Sessions.FirstOrDefault(s=>s.Id==sourceId);
+        var sourceSession=PreviewSessions.FirstOrDefault(s=>s.Id==sourceId);
         var targetId=target?.SourceSessionId;
-        var targetSession=_raceEvent.Sessions.FirstOrDefault(s=>s.Id==targetId);
+        var targetSession=PreviewSessions.FirstOrDefault(s=>s.Id==targetId);
         return sourceSession is not null && targetSession is not null && RaceLineupOrder.CanMove(sourceSession,targetSession);
     }
     private void RaceDragOver(object sender,DragEventArgs e)
@@ -49,9 +49,9 @@ public partial class RoundMainBuilderDialog
     }
     private void StageRaceMove(string sourceId,string targetId)
     {
-        var source=_raceEvent.Sessions.Single(s=>s.Id==sourceId);var target=_raceEvent.Sessions.Single(s=>s.Id==targetId);
+        var source=PreviewSessions.Single(s=>s.Id==sourceId);var target=PreviewSessions.Single(s=>s.Id==targetId);
         if(!RaceLineupOrder.CanMove(source,target))return;
-        var group=_raceEvent.Sessions.Where(s=>DashboardRoundChoice.From(s)==DashboardRoundChoice.From(source) && RaceLineupOrder.Movable(s))
+        var group=PreviewSessions.Where(s=>DashboardRoundChoice.From(s)==DashboardRoundChoice.From(source) && RaceLineupOrder.Movable(s))
             .OrderBy(s=>_pendingRaceOrder.GetValueOrDefault(s.Id,s.LineupOrder??int.MaxValue)).ThenBy(s=>s.QueueOrder).ToList();
         var moving=group.Where(s=>s.Id==sourceId || GroupFor(sourceId).Length>0 && GroupFor(s.Id)==GroupFor(sourceId)).ToList();
         if(moving.Contains(target))return;
@@ -66,9 +66,9 @@ public partial class RoundMainBuilderDialog
     private List<HeatPlan> OrderOverview(List<HeatPlan> plans)
     {
         var rows=plans.Select((p,i)=>(Plan:p,Session:new EventSessionDefinition {Id=p.SourceSessionId,SessionType=p.SessionType,Round=p.Round,MainLeg=p.MainLeg,
-            QueueOrder=_raceEvent.Sessions.FirstOrDefault(s=>s.Id==p.SourceSessionId)?.QueueOrder??100000+i,
-            ProgressStatus=_raceEvent.Sessions.FirstOrDefault(s=>s.Id==p.SourceSessionId)?.ProgressStatus??EventSessionStatus.Planned,
-            LineupOrder=_pendingRaceOrder.TryGetValue(p.SourceSessionId,out var order)?order:_raceEvent.Sessions.FirstOrDefault(s=>s.Id==p.SourceSessionId)?.LineupOrder})).ToList();
+            QueueOrder=PreviewSessions.FirstOrDefault(s=>s.Id==p.SourceSessionId)?.QueueOrder??100000+i,
+            ProgressStatus=PreviewSessions.FirstOrDefault(s=>s.Id==p.SourceSessionId)?.ProgressStatus??EventSessionStatus.Planned,
+            LineupOrder=_pendingRaceOrder.TryGetValue(p.SourceSessionId,out var order)?order:PreviewSessions.FirstOrDefault(s=>s.Id==p.SourceSessionId)?.LineupOrder})).ToList();
         RaceLineupOrder.Apply(rows.Select(r=>r.Session));
         return rows.OrderBy(r=>r.Session.ScheduleStageOrder).ThenBy(r=>r.Session.ScheduleRoundOrder).ThenBy(r=>r.Session.QueueOrder).Select(r=>r.Plan).ToList();
     }

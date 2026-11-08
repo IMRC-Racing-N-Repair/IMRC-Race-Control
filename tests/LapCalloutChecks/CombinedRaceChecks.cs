@@ -25,6 +25,18 @@ internal static class CombinedRaceChecks
         var run=CombinedRaces.Run([a,b],b);
         Check(CombinedRaces.TrackCar([a,b],b,1)==3,"printed B car matches runtime number");
         Reject(()=>b.Entrants[0].TransponderId="other;a1",()=>b.Entrants[0].TransponderId="b1","duplicate transponder alias rejected");
+        var otherHeat=new EventSessionDefinition {ClassId=b.ClassId,Round=1,Heat=2};
+        var unrelated=new EventSessionDefinition {ClassId="C",Round=1};
+        var otherRound=new EventSessionDefinition {ClassId=b.ClassId,Round=2};
+        var projected=OverallPositionScope.Sessions([a,b,otherHeat,unrelated,otherRound],run);
+        Check(projected.Count==3 && projected.Contains(a) && projected.Contains(b) && projected.Contains(otherHeat),"Overall Position includes both classes and their same-round heats only");
+        Check(OverallPositionScope.IsCurrent(run,a) && OverallPositionScope.IsCurrent(run,b) && !OverallPositionScope.IsCurrent(run,otherHeat),"both combined heats receive live timing");
+        var liveCars=OverallPositionScope.LiveCars(run);
+        Check(liveCars[(a.Id,1)]==1 && liveCars[(b.Id,1)]==3,"projection maps duplicate original car numbers to different live cars");
+        var positions=OverallPositionScope.Positions(new[]{(Class:"A",Key:"a1"),(Class:"A",Key:"a2"),(Class:"B",Key:"b1")},x=>x.Class,x=>x.Key);
+        Check(positions["a1"]==1 && positions["b1"]==1 && positions["a2"]==2,"Overall Position ranks each class independently");
+        var projectionRow=new RoundProjectionRow {DriverName="Driver",ClassName=b.ClassName};
+        Check(projectionRow.DriverDisplay=="Driver • Modified","combined class label shown beside driver");
         Check(run.Id==a.Id && run.IsCombinedRace,"child selection loads same leader run");
         Check(run.Entrants.Select(e=>e.CarNumber).SequenceEqual(new[]{1,2,3,4}),"unique runtime cars");
         Check(a.Entrants.Select(e=>e.CarNumber).SequenceEqual(new[]{1,2}) && b.Entrants.Select(e=>e.CarNumber).SequenceEqual(new[]{1,2}),"original cars unchanged");

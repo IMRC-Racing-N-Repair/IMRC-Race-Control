@@ -3,6 +3,8 @@
 Keep all release history in this file. Add each new version at the top; do not create version-specific changelog files.
 
 ## 0.16.29
+- Show all participating classes in Overall Position on the dashboard, pop-out and local web board. Label each driver’s class and rank positions separately, including live and recalled combined races.
+- Keep lineup changes pending across race, class and round changes and save them together. Move the Shift-click hint below the heat buttons and ask about discarding edits only when closing.
 - Hold Shift and click saved unrun races in Rounds / Mains; release Shift to confirm a combined on-track run. Show a hand cursor, selection hint, combined parent and indented class/heat rows. Save Changes commits the grouping; right-click Separate restores independent races.
 - Run combined heats with one start and separate positions, leader gaps, fastest laps, minimum lap times, lap-target finishes and stored class results. Keep qualifying, Series scoring, records and reports tied to each original class. Restart clears the combined run together.
 - Identify combined drivers with their class name and a class-color number outline on the dashboard, pop-out and local web board; show all participating classes in the race heading. Keep live website uploads scoped to each class.

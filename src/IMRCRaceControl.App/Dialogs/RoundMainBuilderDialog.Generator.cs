@@ -26,7 +26,7 @@ public partial class RoundMainBuilderDialog
         int NextRound()
         {
             var choice = cls.SelectedItem as ClassChoice;
-            return _raceEvent.Sessions.Where(s => s.SessionType == SessionType.Qualifying &&
+            return PreviewSessions.Where(s => s.SessionType == SessionType.Qualifying &&
                 (choice is null || choice.AllClasses || s.ClassId == choice.ClassId)).Select(s => s.Round).DefaultIfEmpty(0).Max()+1;
         }
         void UpdateMode()
@@ -63,11 +63,11 @@ public partial class RoundMainBuilderDialog
             RoundText.Text = NextRound().ToString();
         }
         finally { _loadingOptions = false; }
-        _browsingSavedLineups = false; _editingExistingScope = false; _lineupSnapshot = null;
+        _overviewEditing = true; _browsingSavedLineups = false; _editingExistingScope = false; _lineupSnapshot = null;
         ClassCombo.IsEnabled = ModeCombo.IsEnabled = SortPanel.IsEnabled = true;
         BuildOptionsPanel.Visibility = Visibility.Collapsed; GenerateButton.Visibility = Visibility.Collapsed;
-        SaveButton.Content = "SAVE ROUND / MAINS";
+        SaveButton.Content = "SAVE CHANGES";
         UpdateModeSpecificControls(); GenerateFromRoster(force: true); RememberLineup();
-        BuilderStatusText.Text = $"Generated {HeatPlans.Count} race(s). Review the lineup below and SAVE ROUND / MAINS to keep it.";
+        BuilderStatusText.Text = $"Generated {HeatPlans.Count} race(s). Review the lineup below and click SAVE CHANGES when finished.";
     }
 }

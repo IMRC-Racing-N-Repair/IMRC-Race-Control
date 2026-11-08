@@ -253,7 +253,7 @@
                                                 CornerRadius="5"
                                                 Padding="5,3">
                                             <TextBlock x:Name="MovementDriverText" VerticalAlignment="Center"
-                                                       Text="{Binding DriverName}"
+                                                       Text="{Binding DriverDisplay}" TextWrapping="Wrap"
                                                        TextAlignment="Center"
                                                        FontWeight="SemiBold"/>
                                         </Border>

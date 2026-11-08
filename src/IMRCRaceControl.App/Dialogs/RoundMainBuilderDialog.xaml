@@ -142,8 +142,7 @@
                                 <RowDefinition Height="Auto"/>
                             </Grid.RowDefinitions>
 
-                            <StackPanel><TextBlock Text="ROUND / MAINS LINEUP" FontWeight="Bold" FontSize="15"/>
-                            <TextBlock Text="Hold Shift and click to combine races. Release Shift to confirm." Foreground="{DynamicResource MutedBrush}" Margin="0,3,0,0"/></StackPanel>
+                            <TextBlock Text="ROUND / MAINS LINEUP" FontWeight="Bold" FontSize="15"/>
 
                             <DataGrid x:Name="HeatGrid" SelectionMode="Extended" PreviewMouseRightButtonDown="HeatGrid_RightClick" AllowDrop="True"
                                       PreviewMouseLeftButtonDown="RaceDragStart" PreviewMouseMove="RaceDragMove"
@@ -215,7 +214,7 @@
                                 </Grid>
                             </Border>
 
-                            <WrapPanel Grid.Row="3" Margin="0,6,0,0">
+                            <StackPanel Grid.Row="3"><WrapPanel Margin="0,6,0,0">
                                 <Button x:Name="HeatUpButton" Content="HEAT UP" Click="HeatUp_Click"/>
                                 <Button x:Name="HeatDownButton" Content="HEAT DOWN" Click="HeatDown_Click"/>
                                 <Button x:Name="AddHeatButton" Content="+ EMPTY HEAT" Click="AddHeat_Click"/>
@@ -224,6 +223,8 @@
                                 <Button x:Name="AutoSortMainsButton" Content="AUTO SORT MAINS" Visibility="Collapsed"
                                         Click="AutoSortMains_Click" Background="{DynamicResource AccentDarkBrush}"/>
                             </WrapPanel>
+                                <TextBlock Text="Hold Shift and click races to combine. Release Shift to confirm." Foreground="{DynamicResource MutedBrush}" Margin="3,4,0,0" TextWrapping="Wrap"/>
+                            </StackPanel>
                         </Grid>
                     </Border>
 
@@ -350,7 +351,7 @@
                 <ColumnDefinition Width="Auto"/>
             </Grid.ColumnDefinitions>
 
-            <TextBlock Text="Select a race to view its drivers. Save lineup changes when finished. Completed races can only be changed after restarting from the dashboard."
+            <TextBlock Text="Switch races or filters freely. Edits stay pending here until you click SAVE CHANGES. Completed races stay locked."
                        Foreground="{DynamicResource MutedBrush}"
                        TextWrapping="Wrap"
                        VerticalAlignment="Center"/>

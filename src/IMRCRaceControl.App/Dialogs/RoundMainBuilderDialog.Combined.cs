@@ -11,7 +11,7 @@ public partial class RoundMainBuilderDialog
     private readonly HashSet<string> _combineSelection = new();
     private bool _holdingCombine;
     private bool HasPendingSchedule => _pendingRaceOrder.Count>0 || _pendingCombinedRaces.Count>0;
-    private string GroupFor(string id) => _pendingCombinedRaces.TryGetValue(id,out var group) ? group : _raceEvent.Sessions.FirstOrDefault(s=>s.Id==id)?.CombinedRaceId ?? "";
+    private string GroupFor(string id) => _pendingCombinedRaces.TryGetValue(id,out var group) ? group : PreviewSessions.FirstOrDefault(s=>s.Id==id)?.CombinedRaceId ?? "";
 
     private void CombineKeyDown(object sender,KeyEventArgs e)
     {
@@ -64,7 +64,7 @@ public partial class RoundMainBuilderDialog
     {
         var selected=ids.ToHashSet();
         var groups=selected.Select(GroupFor).Where(g=>g.Length>0).ToHashSet();
-        return _raceEvent.Sessions.Where(s=>selected.Contains(s.Id) || groups.Contains(GroupFor(s.Id)))
+        return PreviewSessions.Where(s=>selected.Contains(s.Id) || groups.Contains(GroupFor(s.Id)))
             .OrderBy(s=>s.QueueOrder).ToList();
     }
     private void ConfirmCombine(IEnumerable<string> ids)
@@ -97,7 +97,7 @@ public partial class RoundMainBuilderDialog
         if(HeatGrid.SelectedItem is not HeatPlan selected)return;
         var group=selected.IsCombinedHeader ? selected.CombinationId : GroupFor(selected.SourceSessionId);
         if(group.Length==0)return;
-        var members=_raceEvent.Sessions.Where(s=>GroupFor(s.Id)==group).ToList();
+        var members=PreviewSessions.Where(s=>GroupFor(s.Id)==group).ToList();
         if(members.Any(s=>!RaceLineupOrder.Movable(s))) {MessageBox.Show(this,"Restart the combined race before separating completed or running heats.","Separate races");return;}
         foreach(var m in members)_pendingCombinedRaces[m.Id]="";
         RefreshLineupOverview();SaveButton.IsEnabled=true;
@@ -113,7 +113,7 @@ public partial class RoundMainBuilderDialog
             if(group.Length==0){result.Add(plan);continue;}
             if(!seen.Add(group))continue;
             var children=plans.Where(p=>GroupFor(p.SourceSessionId)==group).ToList();
-            var allMembers=_raceEvent.Sessions.Where(s=>GroupFor(s.Id)==group).OrderBy(s=>s.QueueOrder).ToList();
+            var allMembers=PreviewSessions.Where(s=>GroupFor(s.Id)==group).OrderBy(s=>s.QueueOrder).ToList();
             var lead=allMembers.FirstOrDefault();
             result.Add(new HeatPlan {IsCombinedHeader=true,IsLocked=true,CombinationId=group,
                 ClassName=$"Race #{lead?.RaceNumber ?? plan.RaceNumber} — Combined Classes",SessionDisplay="SCORED SEPARATELY",

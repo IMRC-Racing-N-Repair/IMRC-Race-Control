@@ -30,7 +30,8 @@ public partial class RoundMainBuilderDialog
     public Func<RoundMainBuilderDialog, Task<bool>>? SaveBuilderRequested { get; set; }
     private void NewRound_Click(object sender, RoutedEventArgs e)
     {
-        if (ConfirmLeaveLineup()) OpenCompactGenerator();
+        StageCurrentLineup();
+        OpenCompactGenerator();
     }
 
     private void BeginNewRound()

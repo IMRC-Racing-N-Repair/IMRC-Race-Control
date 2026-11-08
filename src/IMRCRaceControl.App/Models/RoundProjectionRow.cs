@@ -7,6 +7,7 @@ public sealed class RoundProjectionRow : INotifyPropertyChanged
 {
     private int? _projectedPosition;
     private string _driverName = string.Empty;
+    private string _className = string.Empty;
     private string _paceFinish = "—";
     private string _movementState = string.Empty;
     private string _movementDisplay = "—";
@@ -33,8 +34,16 @@ public sealed class RoundProjectionRow : INotifyPropertyChanged
     public string DriverName
     {
         get => _driverName;
-        set => Set(ref _driverName, value ?? string.Empty);
+        set { Set(ref _driverName, value ?? string.Empty); OnPropertyChanged(nameof(DriverDisplay)); }
     }
+
+    public string ClassName
+    {
+        get => _className;
+        set { Set(ref _className,value ?? string.Empty); OnPropertyChanged(nameof(DriverDisplay)); }
+    }
+
+    public string DriverDisplay => ClassName.Length == 0 ? DriverName : $"{DriverName} • {ClassName}";
 
     public string PaceFinish
     {
@@ -65,6 +74,7 @@ public sealed class RoundProjectionRow : INotifyPropertyChanged
     {
         ProjectedPosition = source.ProjectedPosition;
         DriverName = source.DriverName;
+        ClassName = source.ClassName;
         PaceFinish = source.PaceFinish;
         MovementState = source.MovementState;
         MovementDisplay = source.MovementDisplay;

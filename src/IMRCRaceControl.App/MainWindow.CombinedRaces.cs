@@ -7,7 +7,7 @@ public partial class MainWindow
     {
         if(_activeEvent is null)return false;
         var replacements=dialog.OrderOnlySave ? new List<EventSessionDefinition>() : dialog.BuiltSessions.ToList();
-        var scoped=_activeEvent.Sessions.Where(s=>!dialog.OrderOnlySave && dialog.ReplaceClassIds.Contains(s.ClassId) && s.SessionType==dialog.BuiltSessionType && (s.SessionType==SessionType.Race || s.Round==dialog.BuiltRound)).Select(s=>s.Id).ToHashSet();
+        var scoped=_activeEvent.Sessions.Where(dialog.ReplacesLineup).Select(s=>s.Id).ToHashSet();
         var future=_activeEvent.Sessions.Where(s=>!scoped.Contains(s.Id)).Concat(replacements).Select(CombinedRaces.Clone).ToList();
         foreach(var session in future)if(dialog.PendingCombinedRaces.TryGetValue(session.Id,out var id))session.CombinedRaceId=id;
         try

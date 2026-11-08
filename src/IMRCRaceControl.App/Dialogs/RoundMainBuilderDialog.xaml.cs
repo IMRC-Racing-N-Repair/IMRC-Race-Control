@@ -51,10 +51,13 @@ public partial class RoundMainBuilderDialog : Window
     public sealed class HeatPlan
     {
         public bool IsCombinedHeader { get; init; }
+        [System.Text.Json.Serialization.JsonIgnore]
         public bool IsCombinedChild { get; set; }
+        [System.Text.Json.Serialization.JsonIgnore]
         public string CombinationId { get; set; } = "";
+        [System.Text.Json.Serialization.JsonIgnore]
         public string ClassDisplay => IsCombinedChild ? "    ↳ " + ClassName : ClassName;
-        public string SourceSessionId { get; init; } = string.Empty;
+        public string SourceSessionId { get; set; } = string.Empty;
         public bool IsLocked { get; init; }
         public string EditStatus => IsLocked ? "READ ONLY — Restart this race on the dashboard to change its lineup." : "EDITABLE";
         public string StatusDisplay { get; init; } = "PLANNED";
@@ -115,11 +118,8 @@ public partial class RoundMainBuilderDialog : Window
     public ObservableCollection<SavedSessionRow> SavedSessions { get; } = new();
 
     public IReadOnlyList<EventSessionDefinition> BuiltSessions { get; private set; } = [];
-    public IReadOnlyList<string> ReplaceClassIds { get; private set; } = [];
     public IReadOnlyCollection<string> DeletedSessionIds => _deletedSessionIds;
     public bool HasDirectEventChanges => _deletedSessionIds.Count > 0;
-    public SessionType BuiltSessionType { get; private set; } = SessionType.Qualifying;
-    public int BuiltRound { get; private set; } = 1;
 
     public RoundMainBuilderDialog(
         RaceDayEventDefinition raceEvent,
@@ -180,9 +180,8 @@ public partial class RoundMainBuilderDialog : Window
 
         Closing += (_, e) =>
         {
-            if (!IsEnabled || (DialogResult != true && (HasPendingSchedule
-                ? MessageBox.Show(this,"Discard unsaved lineup and race-order changes?","Unsaved lineup",MessageBoxButton.YesNo,MessageBoxImage.Question)!=MessageBoxResult.Yes
-                : !ConfirmLeaveLineup()))) e.Cancel = true;
+            if (!IsEnabled || (DialogResult != true && HasPendingEdits &&
+                MessageBox.Show(this,"Discard all unsaved lineup changes?","Unsaved lineup",MessageBoxButton.YesNo,MessageBoxImage.Question)!=MessageBoxResult.Yes)) e.Cancel = true;
         };
         Loaded += (_, _) =>
         {
@@ -380,7 +379,7 @@ public partial class RoundMainBuilderDialog : Window
             return;
         }
 
-        if (!ConfirmLeaveLineup()) { HeatGrid.SelectedItem=HeatPlans.FirstOrDefault(); return; }
+        StageCurrentLineup();
 
         var classChoice = (ClassCombo.ItemsSource as IEnumerable<ClassChoice>)?
             .FirstOrDefault(c => !c.AllClasses &&
@@ -398,7 +397,7 @@ public partial class RoundMainBuilderDialog : Window
             if (classChoice is not null)
                 ClassCombo.SelectedItem = classChoice;
 
-            var source = _raceEvent.Sessions.FirstOrDefault(s => s.Id == saved.SessionId);
+            var source = PreviewSessions.FirstOrDefault(s => s.Id == saved.SessionId);
             if (saved.SessionType == SessionType.Qualifying)
             {
                 RoundText.Text = saved.Round.ToString();
@@ -561,7 +560,7 @@ public partial class RoundMainBuilderDialog : Window
             return;
         }
 
-        var siblings = _raceEvent.Sessions
+        var siblings = PreviewSessions
             .Where(s =>
                 s.SessionType == SessionType.Race &&
                 string.Equals(s.ClassId, deleted.ClassId, StringComparison.OrdinalIgnoreCase) &&
@@ -596,11 +595,11 @@ public partial class RoundMainBuilderDialog : Window
 
     private void RefreshSavedBumpTargets()
     {
-        foreach (var lower in _raceEvent.Sessions.Where(s =>
+        foreach (var lower in PreviewSessions.Where(s =>
                      s.SessionType == SessionType.Race &&
                      s.BumpUpCount > 0))
         {
-            var upper = _raceEvent.Sessions
+            var upper = PreviewSessions
                 .Where(s =>
                     s.SessionType == SessionType.Race &&
                     string.Equals(s.ClassId, lower.ClassId, StringComparison.OrdinalIgnoreCase) &&
@@ -615,7 +614,7 @@ public partial class RoundMainBuilderDialog : Window
     private void NormalizeSavedQueueNumbers()
     {
         var order = 1;
-        foreach (var session in _raceEvent.Sessions
+        foreach (var session in PreviewSessions
                      .OrderBy(s => s.QueueOrder > 0 ? s.QueueOrder : int.MaxValue)
                      .ThenBy(s => s.Name, StringComparer.OrdinalIgnoreCase))
         {
@@ -632,7 +631,7 @@ public partial class RoundMainBuilderDialog : Window
             .Select(c => c.Id)
             .ToHashSet(StringComparer.OrdinalIgnoreCase);
 
-        var highestSavedRound = _raceEvent.Sessions
+        var highestSavedRound = PreviewSessions
             .Where(s => s.SessionType == SessionType.Qualifying &&
                         classIds.Contains(s.ClassId))
             .Select(s => s.Round)
@@ -660,7 +659,7 @@ public partial class RoundMainBuilderDialog : Window
             .Select(c => c.Id)
             .ToHashSet(StringComparer.OrdinalIgnoreCase);
 
-        var previous = _raceEvent.Sessions
+        var previous = PreviewSessions
             .Where(s => s.SessionType == SessionType.Qualifying &&
                         s.Round == round - 1 &&
                         selectedClassIds.Contains(s.ClassId))
@@ -681,10 +680,10 @@ public partial class RoundMainBuilderDialog : Window
 
     private void RefreshSavedSessions()
     {
-        RaceSchedule.AssignRaceNumbers(_raceEvent.Sessions);
+        RaceSchedule.AssignRaceNumbers(PreviewSessions);
         SavedSessions.Clear();
 
-        foreach (var session in _raceEvent.Sessions
+        foreach (var session in PreviewSessions
                      .OrderBy(s => s.QueueOrder > 0 ? s.QueueOrder : int.MaxValue)
                      .ThenBy(s => s.SessionType == SessionType.Qualifying ? 0 : 1)
                      .ThenBy(s => s.Round)
@@ -720,7 +719,7 @@ public partial class RoundMainBuilderDialog : Window
     {
         if (session.SessionType == SessionType.Qualifying)
         {
-            var heats = _raceEvent.Sessions
+            var heats = PreviewSessions
                 .Where(s =>
                     s.SessionType == SessionType.Qualifying &&
                     string.Equals(s.ClassId, session.ClassId, StringComparison.OrdinalIgnoreCase) &&
@@ -825,7 +824,7 @@ public partial class RoundMainBuilderDialog : Window
             .Select(c => c.Id)
             .ToHashSet(StringComparer.OrdinalIgnoreCase);
 
-        var existing = _raceEvent.Sessions
+        var existing = PreviewSessions
             .Where(s => classIds.Contains(s.ClassId) &&
                         ((CurrentMode == BuildMode.QualifyingRound &&
                           s.SessionType == SessionType.Qualifying &&
@@ -988,7 +987,7 @@ public partial class RoundMainBuilderDialog : Window
 
             HeatGrid.Items.Refresh();
             HeatGrid.SelectedItem = HeatPlans.FirstOrDefault();
-            SaveButton.IsEnabled = HeatPlans.Count > 0;
+            SaveButton.IsEnabled = HasPendingEdits;
             BuilderStatusText.Text = HeatPlans.Count == 0
                 ? "No drivers are checked into the selected class scope."
                 : CurrentMode == BuildMode.QualifyingRound
@@ -999,7 +998,7 @@ public partial class RoundMainBuilderDialog : Window
         {
             HeatPlans.Clear();
             BuilderStatusText.Text = ex.Message;
-            SaveButton.IsEnabled = false;
+            SaveButton.IsEnabled = HasPendingEdits;
         }
     }
 
@@ -1252,7 +1251,7 @@ public partial class RoundMainBuilderDialog : Window
         if (round <= 1)
             throw new InvalidOperationException("Previous Round sorting requires Q2 or later.");
 
-        var prior = _raceEvent.Sessions
+        var prior = PreviewSessions
             .Where(s => s.ClassId == classId &&
                         s.SessionType == SessionType.Qualifying &&
                         s.Round == round - 1)
@@ -1318,7 +1317,7 @@ public partial class RoundMainBuilderDialog : Window
 
     private List<string> GetCurrentQualifyingRankOrder(string classId)
     {
-        var completed = _raceEvent.Sessions
+        var completed = PreviewSessions
             .Where(s =>
                 s.SessionType == SessionType.Qualifying &&
                 string.Equals(s.ClassId, classId, StringComparison.OrdinalIgnoreCase) &&
@@ -1526,7 +1525,7 @@ public partial class RoundMainBuilderDialog : Window
         HeatUpButton.IsEnabled = HeatDownButton.IsEnabled = AddHeatButton.IsEnabled = RemoveHeatButton.IsEnabled = structureEnabled;
         AutoSortMainsButton.IsEnabled = structureEnabled;
         MainSeriesSettingsPanel.IsEnabled = structureEnabled;
-        SaveButton.IsEnabled = HasPendingSchedule || !_browsingSavedLineups && (selected is {IsLocked:false} || HeatPlans.Count==0 && _editingExistingScope);
+        SaveButton.IsEnabled = HasPendingEdits || !_browsingSavedLineups && (selected is {IsLocked:false} || HeatPlans.Count==0 && _editingExistingScope);
     }
 
     private void RefreshSelectedMainSeriesEditor(HeatPlan? selected)
@@ -1896,52 +1895,51 @@ public partial class RoundMainBuilderDialog : Window
 
     private async void Save_Click(object sender, RoutedEventArgs e)
     {
-        if (HasPendingSchedule && (_browsingSavedLineups || _lineupSnapshot==System.Text.Json.JsonSerializer.Serialize(HeatPlans)))
+        PrepareSaveBatch();
+        if (!HasPendingEdits) return;
+        if (BuiltSessions.Any(s => s.Entrants.Count > 30))
         {
-            if(SaveRequested is null)return;
-            IsEnabled=false; OrderOnlySave=true;
-            try
-            {
-                if(await SaveRequested()) { _pendingRaceOrder.Clear(); _pendingCombinedRaces.Clear(); _lineupSnapshot=null; ShowSavedLineups(); BuilderStatusText.Text="Race order saved."; }
-            }
-            catch(Exception ex) { MessageBox.Show(this,"Could not save race order: "+ex.Message,"Save lineup"); }
-            finally { OrderOnlySave=false; IsEnabled=true; }
+            MessageBox.Show(this,"A race roster is full. Split the field into another heat/main.","Rounds / mains");
             return;
         }
-        if (_browsingSavedLineups) return;
-        if (HeatPlans.Count == 0 && !_editingExistingScope)
+        if (SaveRequested is null) { DialogResult = true; return; }
+        IsEnabled = false;
+        var savedSuccessfully = false;
+        try
         {
-            MessageBox.Show(this, "Generate at least one heat/main before saving.",
-                "Rounds / mains", MessageBoxButton.OK, MessageBoxImage.Information);
-            return;
+            if (!await SaveRequested()) return;
+            savedSuccessfully = true;
+            _stagedLineups.Clear(); _pendingRaceOrder.Clear(); _pendingCombinedRaces.Clear();
+            _deletedSessionIds.Clear(); _lineupSnapshot = null;
+            InitializeSavedFilters(); ShowSavedLineups();
+            BuilderStatusText.Text = "All lineup changes saved.";
         }
-
-        if (HeatPlans.Any(h => h.Entrants.Count > 30))
+        catch (Exception ex)
         {
-            MessageBox.Show(this, "This race roster is full. Split the field into another heat/main.",
-                "Rounds / mains", MessageBoxButton.OK, MessageBoxImage.Information);
-            return;
+            MessageBox.Show(this,"Could not finish saving: " + ex.Message,"Save lineup",MessageBoxButton.OK,MessageBoxImage.Warning);
         }
+        finally { OrderOnlySave = false; IsEnabled = true; }
+        if (savedSuccessfully && CloseAfterSave) DialogResult = true;
+    }
 
-        BuiltSessionType = CurrentMode == BuildMode.QualifyingRound ? SessionType.Qualifying : SessionType.Race;
-        BuiltRound = CurrentMode == BuildMode.QualifyingRound ? CurrentRound() : 1;
-        ReplaceClassIds = SelectedClasses().Select(c => c.Id).ToList();
-
+    private List<EventSessionDefinition> BuildCurrentLineup()
+    {
         var result = new List<EventSessionDefinition>();
         foreach (var plan in HeatPlans)
         {
             if (plan.IsLocked)
             {
-                result.Add(_raceEvent.Sessions.Single(s => s.Id == plan.SourceSessionId));
+                result.Add(PreviewSessions.Single(s => s.Id == plan.SourceSessionId));
                 continue;
             }
-            var original = _raceEvent.Sessions.FirstOrDefault(s => s.Id == plan.SourceSessionId);
+            var original = PreviewSessions.FirstOrDefault(s => s.Id == plan.SourceSessionId);
+            if (plan.SourceSessionId.Length == 0) plan.SourceSessionId = Guid.NewGuid().ToString("N");
             var entrants = plan.Entrants.Select(CloneEntrant).ToList();
             Renumber(entrants);
 
             result.Add(new EventSessionDefinition
             {
-                Id = original?.Id ?? Guid.NewGuid().ToString("N"),
+                Id = plan.SourceSessionId,
                 QueueOrder = original?.QueueOrder ?? 0,
                 LineupOrder = original?.LineupOrder,
                 CombinedRaceId = original?.CombinedRaceId ?? "", CombinedRaceOrder = original?.CombinedRaceOrder ?? 0,
@@ -1986,27 +1984,7 @@ public partial class RoundMainBuilderDialog : Window
             lower.BumpTargetSessionId = upper?.Id ?? string.Empty;
         }
 
-        BuiltSessions = result;
-        if (SaveRequested is null) { DialogResult = true; return; }
-        IsEnabled = false;
-        var savedSuccessfully = false;
-        try
-        {
-            if (!await SaveRequested()) return;
-            savedSuccessfully = true;
-            _pendingRaceOrder.Clear(); _pendingCombinedRaces.Clear();
-            _deletedSessionIds.Clear();
-            _lineupSnapshot = null;
-            InitializeSavedFilters();
-            ShowSavedLineups();
-            BuilderStatusText.Text = "Changes saved. Select another round / class to continue, or CLOSE when finished.";
-        }
-        catch (Exception ex)
-        {
-            MessageBox.Show(this, "Could not finish saving: " + ex.Message, "Save lineup", MessageBoxButton.OK, MessageBoxImage.Warning);
-        }
-        finally { IsEnabled = true; }
-        if (savedSuccessfully && CloseAfterSave) DialogResult = true;
+        return result;
     }
 
     private int GetHeatIndex(HeatPlan plan)
@@ -2081,7 +2059,7 @@ public partial class RoundMainBuilderDialog : Window
     private void RefreshPreviewRaceNumbers()
     {
         // Number a detached preview. Cancelling edits must not alter saved races.
-        var existing = _raceEvent.Sessions.Select(session => new EventSessionDefinition {
+        var existing = PreviewSessions.Select(session => new EventSessionDefinition {
             ClassId=session.ClassId, ClassName=session.ClassName, SessionType=session.SessionType,
             Round=session.Round, Heat=session.Heat, MainLeg=session.MainLeg,
             QueueOrder=session.QueueOrder, RaceNumber=session.RaceNumber }).ToList();
@@ -2090,7 +2068,7 @@ public partial class RoundMainBuilderDialog : Window
             ClassId=plan.ClassId, ClassName=plan.ClassName, SessionType=plan.SessionType,
             Round=plan.Round, Heat=GetHeatIndex(plan), MainLeg=plan.MainLeg,
             QueueOrder=nextQueue+plan.Order,
-            RaceNumber=_raceEvent.Sessions.FirstOrDefault(s=>s.Id==plan.SourceSessionId)?.RaceNumber ?? 0 }).ToList();
+            RaceNumber=PreviewSessions.FirstOrDefault(s=>s.Id==plan.SourceSessionId)?.RaceNumber ?? 0 }).ToList();
         RaceSchedule.AssignRaceNumbers(existing.Concat(previews));
         for (var i=0;i<HeatPlans.Count;i++) HeatPlans[i].RaceNumber=previews[i].RaceNumber;
         RefreshLineupOverview();

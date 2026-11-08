@@ -22,7 +22,7 @@ public partial class RoundMainBuilderDialog
                 var round=SavedRoundFilter.SelectedItem as SavedRoundChoice;
                 var cls=SavedClassFilter.SelectedItem as ClassChoice;
                 var scopeClasses=SelectedClasses().Select(c=>c.Id).ToHashSet();
-                foreach(var s in _raceEvent.Sessions.Where(s=>s.SessionType is SessionType.Qualifying or SessionType.Race))
+                foreach(var s in PreviewSessions.Where(s=>s.SessionType is SessionType.Qualifying or SessionType.Race))
                 {
                     bool inScope=scopeClasses.Contains(s.ClassId) && (CurrentMode==BuildMode.Mains ? s.SessionType==SessionType.Race : s.SessionType==SessionType.Qualifying && s.Round==CurrentRound());
                     if(inScope || (round?.MainLeg is not null && s.MainLeg!=round.MainLeg) || (cls is {AllClasses:false} && cls.ClassId!=s.ClassId) ||
@@ -33,11 +33,11 @@ public partial class RoundMainBuilderDialog
                     foreach(var e in s.Entrants)plan.Entrants.Add(CloneEntrant(e));
                     list.Add(plan);
                 }
-                list=list.OrderBy(h=>_raceEvent.Sessions.FirstOrDefault(s=>s.Id==h.SourceSessionId)?.QueueOrder ?? int.MaxValue).ThenBy(h=>h.Order).ToList();
+                list=list.OrderBy(h=>PreviewSessions.FirstOrDefault(s=>s.Id==h.SourceSessionId)?.QueueOrder ?? int.MaxValue).ThenBy(h=>h.Order).ToList();
             }
             foreach(var plan in list.Where(h=>h.SessionType==SessionType.Qualifying))
             {
-                var saved=_raceEvent.Sessions.FirstOrDefault(s=>s.Id==plan.SourceSessionId);
+                var saved=PreviewSessions.FirstOrDefault(s=>s.Id==plan.SourceSessionId);
                 var heat=HeatPlans.Contains(plan) ? GetHeatIndex(plan) : saved?.Heat ?? 1;
                 var total=list.Count(h=>h.ClassId==plan.ClassId && h.Round==plan.Round && h.SessionType==SessionType.Qualifying);
                 plan.SessionDisplay=$"Q{plan.Round} • Heat {heat}/{total}";
@@ -156,7 +156,22 @@ public partial class RoundMainBuilderDialog
         dialog.MoveDriver_Click(dialog,new RoutedEventArgs());
         if(driverSource.Entrants.Count!=1 || driverTarget.Entrants.Count!=1 || driver.CarNumber!=1)throw new InvalidOperationException("Move driver button no longer works alongside drag.");
         if(System.Text.Json.JsonSerializer.Serialize(ev)!=originalEvent)throw new InvalidOperationException("Driver drop changed saved event before Save.");
-        dialog._lineupSnapshot=null;dialog.Close();
+        var firstEditedId=driverSource.SourceSessionId;
+        driverSource.Entrants[0].DriverName="First draft edit";
+        var secondEditedId=ev.Sessions.First(s=>s.Round==2 && s.ClassId==classes[0].Id).Id;
+        dialog.OpenSavedLineup(secondEditedId);
+        if(dialog.HeatPlans.Single().SourceSessionId!=secondEditedId)throw new InvalidOperationException("A pending edit blocked switching to another round/class.");
+        dialog.HeatPlans[0].Entrants[0].DriverName="Second draft edit";
+        dialog.SavedRoundFilter.SelectedItem=((IEnumerable<SavedRoundChoice>)dialog.SavedRoundFilter.ItemsSource).Single(r=>r.Round==1);
+        if(!dialog.SaveButton.IsEnabled || dialog._stagedLineups.Count!=2)throw new InvalidOperationException("A round filter discarded pending changes or disabled Save.");
+        dialog.OpenSavedLineup(firstEditedId);
+        if(dialog.HeatPlans.Single(h=>h.SourceSessionId==firstEditedId).Entrants[0].DriverName!="First draft edit")throw new InvalidOperationException("Reopening a scope did not restore its draft.");
+        dialog.PrepareSaveBatch();
+        if(dialog.OrderOnlySave || !dialog.BuiltSessions.Any(s=>s.Id==firstEditedId && s.Entrants[0].DriverName=="First draft edit") ||
+            !dialog.BuiltSessions.Any(s=>s.Id==secondEditedId && s.Entrants[0].DriverName=="Second draft edit"))throw new InvalidOperationException("One Save did not include both edited scopes.");
+        if(System.Text.Json.JsonSerializer.Serialize(ev)!=originalEvent)throw new InvalidOperationException("Staging scopes changed the saved event before Save.");
+        dialog._stagedLineups.Clear();dialog._lineupSnapshot=null;dialog.Close();
+        System.IO.File.WriteAllText(System.IO.Path.Combine(output,"Lineup-Draft-Checks.txt"),"PASS: switch class/round/filter without saving, restore prior edits, collect both scopes in one save and preserve the original event before save.");
         var combinedEvent=CombinedRaces.Clone(ev);
         foreach(var saved in combinedEvent.Sessions)saved.ProgressStatus=EventSessionStatus.Planned;
         var combinedDialog=new RoundMainBuilderDialog(combinedEvent,classes,[]);combinedDialog.Show();combinedDialog.UpdateLayout();
