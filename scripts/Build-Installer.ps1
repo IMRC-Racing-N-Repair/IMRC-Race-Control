@@ -97,10 +97,11 @@ foreach ($theme in @('Thanksgiving','Halloween','Christmas')) {
 }
 
 # Combined-race builds must include Shift multiselection, the full-width header, grouping and separation WPF smoke preview.
-if (-not (Test-Path (Join-Path $branding "Combined-Lineup.png")) -or -not (Test-Path (Join-Path $branding "Combined-Lineup-Checks.txt"))) { throw "Missing combined race lineup preview/checks" }
+foreach ($file in @("Combined-Lineup.png", "Combined-Lineup-Checks.txt", "Combined-Event-Rounds.png")) {
+    if (-not (Test-Path (Join-Path $branding $file))) { throw "Missing combined race schedule check: $file" }
+}
 
 if (-not (Test-Path (Join-Path $branding "Lineup-Draft-Checks.txt"))) { throw "Missing multi-scope lineup draft checks" }
 
 if (-not (Test-Path (Join-Path $branding "Combined-Class-Displays.png"))) { throw "Missing combined class display preview" }
 
-if (-not (Test-Path (Join-Path $branding "Combined-Event-Rounds.png"))) { throw "Missing combined event rounds preview" }

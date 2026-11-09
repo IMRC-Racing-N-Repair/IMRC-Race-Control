@@ -64,6 +64,7 @@ public partial class RoundMainBuilderDialog : Window
         public string RoundGroup => SessionType == SessionType.Qualifying ? $"QUALIFYING ROUND {Round}" : $"MAINS • ROUND {MainLeg}";
         public int Order { get; set; }
         public int RaceNumber { get; set; }
+        [System.Text.Json.Serialization.JsonIgnore]
         public string RaceNumberDisplay => IsCombinedChild ? "" : RaceNumber.ToString();
         internal IReadOnlyList<HeatPlan> CombinedChildren { get; init; } = [];
         internal int HiddenCombinedRacerCount { get; init; }
