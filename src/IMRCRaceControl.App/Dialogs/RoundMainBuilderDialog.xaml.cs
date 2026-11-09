@@ -64,6 +64,9 @@ public partial class RoundMainBuilderDialog : Window
         public string RoundGroup => SessionType == SessionType.Qualifying ? $"QUALIFYING ROUND {Round}" : $"MAINS • ROUND {MainLeg}";
         public int Order { get; set; }
         public int RaceNumber { get; set; }
+        public string RaceNumberDisplay => IsCombinedChild ? "" : RaceNumber.ToString();
+        internal IReadOnlyList<HeatPlan> CombinedChildren { get; init; } = [];
+        internal int HiddenCombinedRacerCount { get; init; }
         public string ClassId { get; init; } = string.Empty;
         public string ClassName { get; init; } = string.Empty;
         public string Name { get; set; } = string.Empty;
@@ -103,7 +106,7 @@ public partial class RoundMainBuilderDialog : Window
         }
 
         public ObservableCollection<SessionEntrant> Entrants { get; } = [];
-        public int RacerCount => Entrants.Count;
+        public int RacerCount => IsCombinedHeader ? HiddenCombinedRacerCount + CombinedChildren.Sum(h=>h.Entrants.Count) : Entrants.Count;
     }
 
     private readonly RaceDayEventDefinition _raceEvent;

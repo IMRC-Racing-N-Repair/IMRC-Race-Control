@@ -252,7 +252,7 @@ public partial class MainWindow
 
     private async void EditSelectedRound_Click(object sender, RoutedEventArgs e)
     {
-        if (PlannedSessionGrid.SelectedItem is not EventSessionDefinition selected)
+        if (SelectedPlannedSession is not EventSessionDefinition selected)
         {
             MessageBox.Show(this, "Select a saved heat or main from the event list first.", "Edit round",
                 MessageBoxButton.OK, MessageBoxImage.Information);

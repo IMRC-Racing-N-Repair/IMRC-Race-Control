@@ -111,12 +111,18 @@ public partial class RoundMainBuilderDialog
             var group=GroupFor(plan.SourceSessionId);
             plan.CombinationId=group;plan.IsCombinedChild=group.Length>0;
             if(group.Length==0){result.Add(plan);continue;}
+            var allMembers=PreviewSessions.Where(s=>GroupFor(s.Id)==group)
+                .OrderBy(s=>_pendingCombinedRaces.ContainsKey(s.Id) ? 0 : s.CombinedRaceOrder)
+                .ThenBy(s=>s.QueueOrder).ToList();
+            if(allMembers.Count<2){plan.IsCombinedChild=false;result.Add(plan);continue;}
             if(!seen.Add(group))continue;
             var children=plans.Where(p=>GroupFor(p.SourceSessionId)==group).ToList();
-            var allMembers=PreviewSessions.Where(s=>GroupFor(s.Id)==group).OrderBy(s=>s.QueueOrder).ToList();
-            var lead=allMembers.FirstOrDefault();
+            var lead=allMembers[0];
             result.Add(new HeatPlan {IsCombinedHeader=true,IsLocked=true,CombinationId=group,
-                ClassName=$"Race #{lead?.RaceNumber ?? plan.RaceNumber} — Combined Classes",SessionDisplay="SCORED SEPARATELY",
+                RaceNumber=lead.RaceNumber,
+                CombinedChildren=children,
+                HiddenCombinedRacerCount=allMembers.Where(s=>children.All(p=>p.SourceSessionId!=s.Id)).Sum(s=>s.RacerCount),
+                ClassName="Combined Classes",SessionDisplay=$"One race • {allMembers.Count} class heats",
                 SessionType=plan.SessionType,Round=plan.Round,MainLeg=plan.MainLeg,StatusDisplay="COMBINED"});
             result.AddRange(children);
         }

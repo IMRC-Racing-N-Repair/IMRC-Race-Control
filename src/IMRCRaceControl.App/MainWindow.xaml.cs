@@ -64,7 +64,7 @@ public partial class MainWindow : Window
     public ObservableCollection<EventDriverChoice> EventDriverChoices { get; } = new();
     public ObservableCollection<EventRosterRow> EventRosterRows { get; } = new();
     public ObservableCollection<DriverProfile> AvailableEventDrivers { get; } = new();
-    public ObservableCollection<EventSessionDefinition> PlannedSessions { get; } = new();
+    public ObservableCollection<EventRunRow> PlannedSessions { get; } = new();
     public ObservableCollection<EventSessionDefinition> RaceDashboardSessions { get; } = new();
     public ObservableCollection<SessionEntrant> SelectedHeatEntrants { get; } = new();
     public ObservableCollection<EventRankingEntry> EventRankings { get; } = new();
@@ -792,15 +792,19 @@ public partial class MainWindow : Window
         RefreshEventClassRows(_eventRosterClassId);
     }
 
+    private EventSessionDefinition? SelectedPlannedSession =>
+        (PlannedSessionGrid?.SelectedItem as EventRunRow)?.Session;
+
     private void RefreshPlannedSessions(string? selectSessionId = null)
     {
-        var currentId = selectSessionId ?? (PlannedSessionGrid?.SelectedItem as EventSessionDefinition)?.Id;
+        var currentId = selectSessionId ?? SelectedPlannedSession?.Id;
+        var keepHeader = selectSessionId is null && PlannedSessionGrid?.SelectedItem is EventRunRow { IsCombinedHeader: true };
 
         PlannedSessions.Clear();
         if (_activeEvent is not null)
         {
             RaceSchedule.AssignRaceNumbers(_activeEvent.Sessions);
-            foreach (var session in RaceSchedule.DisplayOrder(_activeEvent.Sessions))
+            foreach (var session in EventRunRow.Build(RaceSchedule.DisplayOrder(_activeEvent.Sessions)))
             {
                 PlannedSessions.Add(session);
             }
@@ -811,12 +815,13 @@ public partial class MainWindow : Window
 
         if (!string.IsNullOrWhiteSpace(currentId))
         {
-            var selected = PlannedSessions.FirstOrDefault(s => s.Id == currentId);
+            var selected = PlannedSessions.FirstOrDefault(s => s.IsCombinedHeader == keepHeader && s.Session.Id == currentId)
+                ?? PlannedSessions.FirstOrDefault(s => s.Session.Id == currentId);
             if (selected is not null && PlannedSessionGrid is not null)
                 PlannedSessionGrid.SelectedItem = selected;
         }
 
-        if (PlannedSessionGrid?.SelectedItem is not EventSessionDefinition)
+        if (SelectedPlannedSession is null)
             LoadSelectedHeatEditor(null);
 
         RefreshRaceDayQueue();
@@ -1258,14 +1263,14 @@ public partial class MainWindow : Window
 
     private void PlannedSessionGrid_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
-        LoadSelectedHeatEditor(PlannedSessionGrid.SelectedItem as EventSessionDefinition);
+        LoadSelectedHeatEditor(SelectedPlannedSession);
     }
 
 
     private void PlannedSessionGrid_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
     {
         _sessionDragStartPoint = e.GetPosition(null);
-        _draggedSession = FindVisualParent<DataGridRow>(e.OriginalSource as DependencyObject)?.Item as EventSessionDefinition;
+        _draggedSession = (FindVisualParent<DataGridRow>(e.OriginalSource as DependencyObject)?.Item as EventRunRow)?.Session;
         if (_draggedSession?.ProgressStatus is EventSessionStatus.Completed or EventSessionStatus.Skipped)
             _draggedSession = null;
     }
@@ -1311,7 +1316,7 @@ public partial class MainWindow : Window
     private void HeatEntrantGrid_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
     {
         if (_activeEvent?.Status == EventStatus.Completed ||
-            PlannedSessionGrid.SelectedItem is EventSessionDefinition { ProgressStatus: EventSessionStatus.Completed or EventSessionStatus.Skipped })
+            SelectedPlannedSession is EventSessionDefinition { ProgressStatus: EventSessionStatus.Completed or EventSessionStatus.Skipped })
         {
             _draggedHeatEntrant = null;
             _dragSourceHeat = null;
@@ -1320,7 +1325,7 @@ public partial class MainWindow : Window
 
         _heatDragStartPoint = e.GetPosition(null);
         _draggedHeatEntrant = FindVisualParent<DataGridRow>(e.OriginalSource as DependencyObject)?.Item as SessionEntrant;
-        _dragSourceHeat = PlannedSessionGrid.SelectedItem as EventSessionDefinition;
+        _dragSourceHeat = SelectedPlannedSession;
     }
 
     private void HeatEntrantGrid_PreviewMouseMove(object sender, MouseEventArgs e)
@@ -1344,7 +1349,7 @@ public partial class MainWindow : Window
 
     private void PlannedSessionGrid_DragOver(object sender, DragEventArgs e)
     {
-        var target = FindVisualParent<DataGridRow>(e.OriginalSource as DependencyObject)?.Item as EventSessionDefinition;
+        var target = (FindVisualParent<DataGridRow>(e.OriginalSource as DependencyObject)?.Item as EventRunRow)?.Session;
 
         if (e.Data.GetDataPresent(HeatSessionDragFormat))
         {
@@ -1377,7 +1382,7 @@ public partial class MainWindow : Window
             return;
         }
 
-        var target = FindVisualParent<DataGridRow>(e.OriginalSource as DependencyObject)?.Item as EventSessionDefinition;
+        var target = (FindVisualParent<DataGridRow>(e.OriginalSource as DependencyObject)?.Item as EventRunRow)?.Session;
 
         if (e.Data.GetDataPresent(HeatSessionDragFormat) &&
             e.Data.GetData(HeatSessionDragFormat) is EventSessionDefinition moved &&
@@ -1395,7 +1400,6 @@ public partial class MainWindow : Window
             movable.Insert(targetIndex, moved);
             ApplyRemainingQueueOrder(movable);
             RefreshPlannedSessions(moved.Id);
-            PlannedSessionGrid.SelectedItem = moved;
             await CaptureAndSaveSettingsAsync();
             FooterStatusText.Text = $"Moved {moved.Name} in the race-day run order.";
             return;
@@ -1432,14 +1436,13 @@ public partial class MainWindow : Window
         RefreshPlannedSessions(targetId);
         RefreshRaceDayQueue();
         LoadSelectedHeatEditor(target);
-        PlannedSessionGrid.SelectedItem = target;
         await CaptureAndSaveSettingsAsync();
         FooterStatusText.Text = $"{DisplayName(entrant)} moved to {target.ClassName} Q{target.Round} Heat {target.Heat}.";
     }
 
     private void HeatEntrantGrid_DragOver(object sender, DragEventArgs e)
     {
-        var selectedHeat = PlannedSessionGrid.SelectedItem as EventSessionDefinition;
+        var selectedHeat = SelectedPlannedSession;
         e.Effects = selectedHeat is not null &&
                     selectedHeat == _dragSourceHeat &&
                     e.Data.GetDataPresent(HeatEntrantDragFormat)
@@ -1462,7 +1465,7 @@ public partial class MainWindow : Window
             return;
         }
 
-        var heat = PlannedSessionGrid.SelectedItem as EventSessionDefinition;
+        var heat = SelectedPlannedSession;
         if (heat is null ||
             heat != _dragSourceHeat ||
             e.Data.GetData(HeatEntrantDragFormat) is not SessionEntrant entrant)
@@ -1524,7 +1527,7 @@ public partial class MainWindow : Window
 
     private async Task MoveSelectedHeatEntrantAsync(int offset)
     {
-        var heat = PlannedSessionGrid.SelectedItem as EventSessionDefinition;
+        var heat = SelectedPlannedSession;
         var entrant = HeatEntrantGrid.SelectedItem as SessionEntrant;
         if (heat is null || entrant is null)
             return;
@@ -1618,7 +1621,7 @@ public partial class MainWindow : Window
 
     private void LoadSelectedSession_Click(object sender, RoutedEventArgs e)
     {
-        if (PlannedSessionGrid.SelectedItem is not EventSessionDefinition session)
+        if (SelectedPlannedSession is not EventSessionDefinition session)
         {
             MessageBox.Show(this, "Select a qualification heat first.", "Load heat",
                 MessageBoxButton.OK, MessageBoxImage.Information);

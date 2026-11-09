@@ -512,7 +512,7 @@ public partial class MainWindow
 
     private async Task MoveSelectedHeatQueueAsync(int offset)
     {
-        if (_activeEvent?.Status != EventStatus.Active || PlannedSessionGrid.SelectedItem is not EventSessionDefinition selected)
+        if (_activeEvent?.Status != EventStatus.Active || SelectedPlannedSession is not EventSessionDefinition selected)
             return;
         if (selected.ProgressStatus is EventSessionStatus.Completed or EventSessionStatus.Skipped)
             return;

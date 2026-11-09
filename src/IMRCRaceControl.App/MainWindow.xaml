@@ -1099,6 +1099,7 @@
                                 <DataGrid x:Name="PlannedSessionGrid" Grid.Row="1"
                                           ItemsSource="{Binding PlannedSessions}"
                                           AutoGenerateColumns="False" IsReadOnly="True" CanUserAddRows="False"
+                                          RowStyle="{StaticResource CombinedRunRowStyle}"
                                           SelectionChanged="PlannedSessionGrid_SelectionChanged"
                                           Sorting="PlannedSessionGrid_Sorting"
                                           Loaded="PlannedSessionGrid_Loaded"
@@ -1127,7 +1128,7 @@
                                                         <StackPanel Orientation="Horizontal">
                                                             <TextBlock Text="{Binding Name}" FontSize="13" FontWeight="Bold"
                                                                        Foreground="{DynamicResource TextBrush}"/>
-                                                            <TextBlock Text="{Binding ItemCount, StringFormat='  •  Races: {0}'}"
+                                                            <TextBlock Text="{Binding Items[0].RoundRaceCount, StringFormat='  •  Races: {0}'}"
                                                                        Margin="8,0,0,0" VerticalAlignment="Center"
                                                                        Foreground="{DynamicResource MutedBrush}"/>
                                                         </StackPanel>
@@ -1138,10 +1139,10 @@
                                     </DataGrid.GroupStyle>
 
                                     <DataGrid.Columns>
-                                        <DataGridTextColumn Header="#" Binding="{Binding RaceNumber}" Width="45"/>
+                                        <DataGridTextColumn Header="#" SortMemberPath="RaceNumber" Binding="{Binding RaceNumberDisplay}" Width="45"/>
                                         <DataGridTextColumn Header="STATUS" Binding="{Binding StatusDisplay}" Width="85"/>
                                         <DataGridTextColumn Header="TYPE" Binding="{Binding TypeDisplay}" Width="85"/>
-                                        <DataGridTextColumn x:Name="EventSessionClassColumn" Header="CLASS" Binding="{Binding ClassName}" Width="1.2*"/>
+                                        <DataGridTextColumn x:Name="EventSessionClassColumn" Header="CLASS" Binding="{Binding ClassDisplay}" Width="1.2*"/>
                                         <DataGridTextColumn Header="ROUND" Binding="{Binding RoundLabel}" Width="65"/>
                                         <DataGridTextColumn Header="HEAT / MAIN" Binding="{Binding HeatMainDisplay}" Width="82"/>
                                         <DataGridTextColumn Header="RUN" Binding="{Binding MainRunDisplay}" Width="58"/>

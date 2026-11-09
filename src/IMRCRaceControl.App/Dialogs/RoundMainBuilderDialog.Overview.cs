@@ -192,9 +192,21 @@ public partial class RoundMainBuilderDialog
         if(combinedDialog.EntrantGrid.Items.Count!=1)throw new InvalidOperationException("Combined child does not show its own editable roster.");
         if(combinedDialog.HeatGrid.Items.Cast<HeatPlan>().Count(h=>h.IsCombinedChild)!=2)throw new InvalidOperationException("Selecting combined child hid its partner.");
         combinedDialog.UpdateLayout();
+        MainWindow.CheckCompactRunRow(combinedDialog.HeatGrid,
+            item => item is HeatPlan {IsCombinedHeader:true},
+            item => item is HeatPlan {IsCombinedHeader:false,IsCombinedChild:false});
         var combinedBitmap=new System.Windows.Media.Imaging.RenderTargetBitmap((int)Math.Ceiling(combinedDialog.ActualWidth),(int)Math.Ceiling(combinedDialog.ActualHeight),96,96,System.Windows.Media.PixelFormats.Pbgra32);combinedBitmap.Render(combinedDialog);
         var combinedEncoder=new System.Windows.Media.Imaging.PngBitmapEncoder();combinedEncoder.Frames.Add(System.Windows.Media.Imaging.BitmapFrame.Create(combinedBitmap));
         using(var file=System.IO.File.Create(System.IO.Path.Combine(output,"Combined-Lineup.png")))combinedEncoder.Save(file);
+        var scheduleFixture=CombinedRaces.Clone(combinedEvent);
+        var scheduledMembers=scheduleFixture.Sessions.Where(s=>s.Round==2).ToList();
+        for(var i=0;i<scheduledMembers.Count;i++)
+        {
+            scheduledMembers[i].CombinedRaceId="preview-combined";
+            scheduledMembers[i].CombinedRaceOrder=i;
+            scheduledMembers[i].ProgressStatus=EventSessionStatus.Loaded;
+        }
+        MainWindow.ExportEventRunsPreview(output,scheduleFixture);
         combinedDialog.SeparateCombined_Click(combinedDialog,new RoutedEventArgs());
         if(combinedDialog.HeatGrid.Items.Count!=6 || combinedDialog.HeatGrid.Items.Cast<HeatPlan>().Any(h=>h.IsCombinedHeader || h.IsCombinedChild))throw new InvalidOperationException("Separate did not restore independent race rows.");
         combinedDialog._pendingCombinedRaces.Clear();combinedDialog._lineupSnapshot=null;combinedDialog.Close();
