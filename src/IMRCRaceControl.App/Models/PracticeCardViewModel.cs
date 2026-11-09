@@ -18,12 +18,20 @@ public sealed class PracticeCardViewModel : INotifyPropertyChanged
     public string TransponderId { get; init; } = string.Empty;
     public DateTimeOffset StartedAt { get; init; }
 
-    public void ResolveDriver(string id, string name)
+    public string? ClassName { get; private set; }
+    public string TransponderDisplay => string.IsNullOrWhiteSpace(ClassName)
+        ? $"Transponder: {TransponderId}"
+        : $"Transponder: {TransponderId} • {ClassName}";
+
+    public void ResolveDriver(string id, string name, string? className = null)
     {
         DriverId = id;
         DriverName = name;
+        ClassName = className;
         OnPropertyChanged(nameof(DriverId));
         OnPropertyChanged(nameof(DriverName));
+        OnPropertyChanged(nameof(ClassName));
+        OnPropertyChanged(nameof(TransponderDisplay));
     }
 
     public DateTimeOffset LastCrossingAt

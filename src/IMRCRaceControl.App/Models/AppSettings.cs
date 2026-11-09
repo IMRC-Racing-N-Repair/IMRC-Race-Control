@@ -45,6 +45,7 @@ public sealed class AppSettings
     public string LastConnectionType { get; set; } = "USB / Serial (COM)";
     public string LastComPort { get; set; } = string.Empty;
     public int LastBaudRate { get; set; } = 115200;
+    public int? LastTrackmateBaudRate { get; set; }
     public string LastDataBits { get; set; } = "8";
     public string LastParity { get; set; } = "None";
     public string LastStopBits { get; set; } = "1";

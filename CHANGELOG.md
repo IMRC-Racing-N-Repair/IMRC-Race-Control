@@ -2,6 +2,10 @@
 
 Keep all release history in this file. Add each new version at the top; do not create version-specific changelog files.
 
+## 0.16.30
+- Default Trackmate USB/Serial to 115200 baud and remember any manually selected Trackmate rate separately. I-Lap keeps its 9600 baud preset.
+- Right-click an unknown Practice driver to assign the transponder to a driver and class without losing recorded laps. Rental assignments last for the current Practice session.
+
 ## 0.16.29
 - Add a read-only LiveTime roster import in Saved Race Data. Preview active drivers, classes and transponder assignments, flag conflicts and back up Race Control before adding records. Show source history counts separately.
 - Show combined runs as one compact race row with indented classes in the event schedule and Rounds / Mains. Count each combined run as one race in its round.

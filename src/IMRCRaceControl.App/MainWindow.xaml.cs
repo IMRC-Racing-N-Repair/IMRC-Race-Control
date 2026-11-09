@@ -202,7 +202,8 @@ public partial class MainWindow : Window
         OpenStintHostText.Text = _settings.OpenStintHost;
         OpenStintPortText.Text = _settings.OpenStintPort.ToString();
         SelectComboByText(ConnectionTypeCombo, _settings.LastConnectionType);
-        BaudCombo.Text = _settings.LastBaudRate.ToString();
+        BaudCombo.Text = (TrackmateProtocol.IsProfile(SelectedText(ConnectionTypeCombo))
+            ? PreferredTrackmateBaudRate() : _settings.LastBaudRate).ToString();
         SelectComboByText(DataBitsCombo, _settings.LastDataBits);
         SelectComboByText(ParityCombo, _settings.LastParity);
         SelectComboByText(StopBitsCombo, _settings.LastStopBits);
@@ -237,7 +238,13 @@ public partial class MainWindow : Window
             _settings.LastConnectionType = SelectedText(ConnectionTypeCombo);
             _settings.LastComPort = PortCombo.SelectedItem?.ToString() ?? _settings.LastComPort;
             if (int.TryParse(EditableComboText(BaudCombo), out var baud) && baud > 0)
-                _settings.LastBaudRate = baud;
+            {
+                if (TrackmateProtocol.IsProfile(_settings.LastConnectionType))
+                    _settings.LastTrackmateBaudRate = baud;
+                else if (_settings.LastConnectionType.StartsWith("USB", StringComparison.OrdinalIgnoreCase) ||
+                         _settings.LastConnectionType.StartsWith("I-Lap", StringComparison.OrdinalIgnoreCase))
+                    _settings.LastBaudRate = baud;
+            }
             _settings.LastDataBits = SelectedText(DataBitsCombo);
             _settings.LastParity = SelectedText(ParityCombo);
             _settings.LastStopBits = SelectedText(StopBitsCombo);
@@ -2638,17 +2645,33 @@ public partial class MainWindow : Window
     // Decoder / connection console
     // -----------------------------
 
+    private int PreferredTrackmateBaudRate() => TrackmateProtocol.ResolveBaudRate(
+        _settings.LastTrackmateBaudRate,
+        TrackmateProtocol.IsProfile(_settings.LastConnectionType) ? _settings.LastBaudRate : null);
+
     private void ConnectionTypeCombo_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
         if (!IsLoaded)
             return;
-        if (SelectedText(ConnectionTypeCombo).StartsWith("I-Lap", StringComparison.Ordinal) || SelectedText(ConnectionTypeCombo).StartsWith("Trackmate", StringComparison.Ordinal))
+
+        var wasTrackmate = e.RemovedItems.OfType<ComboBoxItem>()
+            .Any(item => TrackmateProtocol.IsProfile(item.Content?.ToString() ?? string.Empty));
+        if (wasTrackmate && int.TryParse(EditableComboText(BaudCombo), out var previousBaud) && previousBaud > 0)
+            _settings.LastTrackmateBaudRate = previousBaud;
+
+        var mode = SelectedText(ConnectionTypeCombo);
+        var isTrackmate = TrackmateProtocol.IsProfile(mode);
+        if (isTrackmate || mode.StartsWith("I-Lap", StringComparison.Ordinal))
         {
-            BaudCombo.Text = "9600";
+            BaudCombo.Text = isTrackmate ? PreferredTrackmateBaudRate().ToString() : "9600";
             SelectComboByText(DataBitsCombo, "8");
             SelectComboByText(ParityCombo, "None");
             SelectComboByText(StopBitsCombo, "1");
             SelectComboByText(HandshakeCombo, "None");
+        }
+        else if (wasTrackmate)
+        {
+            BaudCombo.Text = _settings.LastBaudRate.ToString();
         }
         UpdateConnectionPanelVisibility();
     }

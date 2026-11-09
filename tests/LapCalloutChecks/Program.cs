@@ -40,6 +40,27 @@ void Equal<T>(T expected, T actual, string label)
         throw new Exception($"{label}: expected {expected}, got {actual}");
     checks++;
 }
+// Simulate decoder hits before and after the operator assigns an unknown card.
+var practiceCards = new List<PracticeCardViewModel>();
+var practiceStart = new DateTimeOffset(2026, 11, 9, 18, 0, 0, TimeSpan.Zero);
+var practiceDriver = new DriverProfile { FirstName = "Test", LastName = "Racer" };
+var unknownPractice = PracticeTracker.Record(practiceCards, null, " 987654 ", "decoder", practiceStart);
+Equal(true, unknownPractice.Created, "Unassigned tag starts its own practice card");
+Equal("Unknown driver", unknownPractice.Card.DriverName, "Unassigned tag shows Unknown driver");
+Equal("987654", unknownPractice.Card.TransponderId, "Unknown card shows the actual transponder");
+Equal(false, unknownPractice.LapAdded, "First unknown crossing starts timing");
+var unknownLap = PracticeTracker.Record(practiceCards, null, "987654", "decoder", practiceStart.AddSeconds(6));
+Equal(TimeSpan.FromSeconds(6), unknownLap.Card.Laps.Single().LapTime, "Unknown card records laps before assignment");
+var originalStint = unknownLap.Card.StintId;
+PracticeTracker.Record(practiceCards, practiceDriver, "123456", "decoder", practiceStart.AddSeconds(7), "Other class");
+unknownLap.Card.ResolveDriver(practiceDriver.Id, practiceDriver.DisplayName, "Sportsman");
+var assignedLap = PracticeTracker.Record(practiceCards, practiceDriver, "987654", "decoder", practiceStart.AddSeconds(12), "Sportsman");
+Equal(originalStint, assignedLap.Card.StintId, "Assigned card retains its original stint");
+Equal(practiceDriver.DisplayName, assignedLap.Card.DriverName, "Assigned card shows selected driver");
+Equal("Sportsman", assignedLap.Card.ClassName, "Assigned card shows selected class");
+Equal(2, assignedLap.Card.LapCount, "Assigned card keeps previous lap and adds next decoder hit");
+Equal(0, practiceCards.Single(c => c.TransponderId == "123456").LapCount, "Same driver's other transponder has independent timing");
+
 // Completed race exports must stay scoped to saved race cars, including zero-lap drivers.
 var exportRace = new EventSessionDefinition { ProgressStatus=EventSessionStatus.Completed, ClassName="Stock", RaceNumber=2,
     Entrants=[new() { CarNumber=1,DriverName="Alex, \"Ace\"" },new() { CarNumber=2,DriverName="Alex, \"Ace\"" },new() { CarNumber=3,DriverName="No laps" }],
@@ -373,6 +394,13 @@ if (args.Contains("--isolated-database"))
     var loaded = (await new RaceControlDatabaseService().LoadApplicationStateAsync())!;
     Equal(true, loaded.LapAnnouncementsTenthsOnly, "SQLite setting reload");
     Equal("Yoh shee", loaded.Drivers[0].PhoneticName, "SQLite phonetic reload");
+
+    var practiceHistory = new PracticeHistoryService();
+    await practiceHistory.SaveStintAsync(assignedLap.Card, practiceStart.AddSeconds(15));
+    var savedPractice = (await practiceHistory.LoadRecentStintsAsync(driverId: practiceDriver.Id)).Single();
+    Equal(originalStint, savedPractice.StintId, "Assigned practice stint is saved under the selected driver");
+    var savedPracticeLaps = await practiceHistory.LoadLapsAsync(savedPractice.StintId);
+    Equal(2, savedPracticeLaps.Count, "History includes laps recorded before and after assignment");
 }
 // Separate dashboard switches and selected voice survive upgrade and save/reload.
 var preferences = new AppSettings { LapAnnouncementsEnabled = true };

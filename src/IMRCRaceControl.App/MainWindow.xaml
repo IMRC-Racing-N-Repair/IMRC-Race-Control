@@ -691,7 +691,7 @@
                                     <CheckBox x:Name="PracticeLapCalloutsCheck" Content="LAP CALLOUTS"
                                               Click="PracticeLapCallouts_Click" Margin="0,5,0,5"
                                               ToolTip="Turn practice lap announcements on or off. The first crossing can still announce the driver's name."/>
-                                    <TextBlock Text="While Practice is active, race sessions cannot be started. Driver cards appear only after the first detected crossing."
+                                    <TextBlock Text="While Practice is active, race sessions cannot be started. Right-click an Unknown driver card to assign its transponder."
                                                Foreground="{DynamicResource MutedBrush}"
                                                TextWrapping="Wrap"/>
                                 </StackPanel>
@@ -718,6 +718,7 @@
                                 <Grid Margin="4">
                                     <ItemsControl x:Name="PracticeCardsControl"
                                                   ItemsSource="{Binding VisiblePracticeCards}"
+                                                  PreviewMouseRightButtonUp="PracticeCards_PreviewMouseRightButtonUp"
                                                   HorizontalContentAlignment="Stretch"
                                                   VerticalContentAlignment="Stretch">
                                         <ItemsControl.ItemsPanel>
@@ -1643,7 +1644,7 @@
                                               IsEnabled="False"
                                               IsChecked="True"
                                               Margin="0,5,0,5"/>
-                                    <TextBlock Text="I-Lap and Trackmate preset 9600 baud, 8-N-1 with no flow control and send their own startup commands. For Trackmate RC/Iridium, select its COM port and close other timing software first. OpenStint uses its running decoder service."
+                                    <TextBlock Text="Trackmate defaults to 115200 baud and I-Lap to 9600. Both preset 8-N-1 with no flow control and send their own startup commands. For Trackmate RC/Iridium, select its COM port and close other timing software first. OpenStint uses its running decoder service."
                                                TextWrapping="Wrap"
                                                Foreground="{DynamicResource MutedBrush}"
                                                FontSize="12"/>

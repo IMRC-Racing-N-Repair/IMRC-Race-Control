@@ -856,7 +856,8 @@
                                                                                FontWeight="Bold"
                                                                                TextTrimming="CharacterEllipsis"
                                                                                Foreground="{DynamicResource DashboardTextBrush}"/></Border>
-                                                                    <TextBlock Text="{Binding TransponderId, StringFormat='Transponder: {0}'}"
+                                                                    <TextBlock Text="{Binding TransponderDisplay}"
+                                                                               ToolTip="{Binding TransponderDisplay}"
                                                                                FontSize="10"
                                                                                Foreground="{DynamicResource MutedBrush}"
                                                                                TextTrimming="CharacterEllipsis"/>
