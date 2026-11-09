@@ -4,6 +4,19 @@ using IMRCRaceControl.Models;
 using IMRCRaceControl.Services;
 
 
+if (args is ["--inspect-livetime-backup", var backup])
+{
+    var source = LiveTimeBackupReader.Read(backup);
+    Console.WriteLine($"LiveTime schema {source.SchemaVersion}; {source.Drivers.Count} active drivers, {source.Classes.Count} active classes, {source.Events} events, {source.Races} races, {source.Laps} laps.");
+    return;
+}
+
+if (args.Contains("--livetime-import-only"))
+{
+    Console.WriteLine($"PASS: {LiveTimeImportChecks.Run()} LiveTime import checks.");
+    return;
+}
+
 if (args.Contains("--online-data-only"))
 {
     Console.WriteLine($"PASS: {await OnlineDataChecks.Run()} online upload budget and results-only checks.");
@@ -555,6 +568,7 @@ Equal(1,orderA.RaceNumber,"Moving race does not rename heat/race number");
 var savedOrder=JsonSerializer.Deserialize<EventSessionDefinition>(JsonSerializer.Serialize(orderA))!;
 Equal(2,savedOrder.LineupOrder,"Manual lineup order persists");
 checks += CombinedRaceChecks.Run();
+checks += LiveTimeImportChecks.Run();
 checks += TrackRecordsChecks.Run();
 checks += LapFinishChecks.Run();
 checks += EligibilityPrintChecks.Run();

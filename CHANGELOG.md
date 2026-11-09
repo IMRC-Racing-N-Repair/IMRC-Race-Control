@@ -3,6 +3,7 @@
 Keep all release history in this file. Add each new version at the top; do not create version-specific changelog files.
 
 ## 0.16.29
+- Add a read-only LiveTime roster import in Saved Race Data. Preview active drivers, classes and transponder assignments, flag conflicts and back up Race Control before adding records. Show source history counts separately.
 - Show combined runs as one compact race row with indented classes in the event schedule and Rounds / Mains. Count each combined run as one race in its round.
 - Separate combined classes into labeled sections in the race table and Overall Position. Mark driver names with their class color so the names stay on one line.
 - Show all participating classes in Overall Position on the dashboard, pop-out and local web board. Rank positions separately, including live and recalled combined races.
