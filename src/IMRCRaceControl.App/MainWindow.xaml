@@ -250,6 +250,7 @@
                                 </DataGrid.ColumnHeaderStyle>
                                 <DataGrid.CellStyle><Style TargetType="DataGridCell" BasedOn="{StaticResource SharedDashboardCellStyle}"/></DataGrid.CellStyle>
                                 <DataGrid.RowStyle><Style TargetType="DataGridRow" BasedOn="{StaticResource SharedDashboardRowStyle}"><Setter Property="MinHeight" Value="56"/></Style></DataGrid.RowStyle>
+                                <DataGrid.GroupStyle><StaticResource ResourceKey="RaceClassGroupStyle"/></DataGrid.GroupStyle>
                                 <DataGrid.Columns>
                                     <DataGridTemplateColumn Header="POS" Width="64" CanUserReorder="False" CellTemplate="{StaticResource RacePositionTemplate}"/>
                                     <DataGridTemplateColumn Header="#" Width="54" CanUserReorder="False" CellTemplate="{StaticResource RaceCarNumberTemplate}"/>
@@ -519,6 +520,7 @@
                                                         </Style.Triggers>
                                                     </Style>
                                                 </DataGrid.RowStyle>
+                                                <DataGrid.GroupStyle><StaticResource ResourceKey="RaceClassGroupStyle"/></DataGrid.GroupStyle>
                                                 <DataGrid.Columns>
                                                     <DataGridTextColumn Header="POS" Binding="{Binding ProjectedPositionDisplay}" Width="54"/>
 
@@ -529,10 +531,12 @@
                                                                         Background="Transparent"
                                                                         CornerRadius="5"
                                                                         Padding="5,3">
-                                                                    <TextBlock x:Name="MovementDriverText"
-                                                                               Text="{Binding DriverDisplay}" TextWrapping="Wrap"
+                                                                    <Border Style="{StaticResource ClassDriverAccent}">
+                                                                        <TextBlock x:Name="MovementDriverText"
+                                                                               Text="{Binding DriverName}" TextTrimming="CharacterEllipsis" ToolTip="{Binding DriverName}"
                                                                                TextAlignment="Center"
                                                                                FontWeight="SemiBold"/>
+                                                                    </Border>
                                                                 </Border>
                                                                 <DataTemplate.Triggers>
                                                                     <MultiDataTrigger>

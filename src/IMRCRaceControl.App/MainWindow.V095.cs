@@ -273,6 +273,8 @@ public partial class MainWindow
 
         UpdateProjectionMovement(candidates, projectedPositionByKey);
 
+        var classColors = candidates.Select(c=>c.ClassId).Distinct()
+            .ToDictionary(id=>id,ColorFor);
         var rows = candidates
             .Select(c =>
             {
@@ -288,6 +290,7 @@ public partial class MainWindow
                     SessionId = c.SessionId,
                     DriverName = c.DriverName,
                     ClassName = loaded.IsCombinedRace ? c.ClassName : string.Empty,
+                    ClassColor = loaded.IsCombinedRace ? classColors[c.ClassId] : "#808080",
                     PaceFinish = c.PaceFinish,
                     IsCurrentHeat = c.IsCurrentHeat,
                     MovementState = hasMovement ? movement.State : string.Empty,

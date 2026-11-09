@@ -233,6 +233,7 @@ public partial class RentalTransponderView
         EventRegistrationView.ExportPreview(output);
         TrackRecordsView.ExportPreview(output);
         IMRCRaceControl.Dialogs.RoundMainBuilderDialog.ExportOverviewPreview(output);
+        SpectatorDashboardWindow.ExportClassSectionsPreview(output);
         File.WriteAllText(Path.Combine(output, "Transponder-UI-Checks.txt"), "PASS: themed page loads; duplicate input rejected visibly; manual addition; selected label; three actual-use events retained through week five.\n");
     }
 }

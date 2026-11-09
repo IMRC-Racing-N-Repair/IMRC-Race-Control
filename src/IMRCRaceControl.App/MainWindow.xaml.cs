@@ -83,6 +83,8 @@ public partial class MainWindow : Window
         _database = database;
         _startupWarning = startupWarning;
         InitializeComponent();
+        RaceClassSections.Attach(Standings);
+        RaceClassSections.Attach(RoundProjectionRows);
         DataContext = this;
         InitializePracticeSeriesInfrastructure();
 

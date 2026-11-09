@@ -20,6 +20,8 @@ public partial class MainWindow
         // Deep copies prevent later timing, practice and highlight updates changing the results.
         var rows = JsonSerializer.Deserialize<ObservableCollection<StandingRow>>(JsonSerializer.Serialize(Standings))!;
         var positions = JsonSerializer.Deserialize<ObservableCollection<RoundProjectionRow>>(JsonSerializer.Serialize(RoundProjectionRows))!;
+        Services.RaceClassSections.Attach(rows);
+        Services.RaceClassSections.Attach(positions);
         _finishedSpectatorFrame = new(SpectatorRaceHeader, SpectatorRaceSubheader, SpectatorEventText,
             SpectatorMasterClock, SpectatorRaceState, SpectatorFastestText, SpectatorProjectionText,
             rows, positions, BuildWebSnapshot());

@@ -729,14 +729,40 @@
             </Border>
             <DataTemplate.Triggers><DataTrigger Binding="{Binding ShowClass}" Value="True"><Setter TargetName="ClassOutline" Property="BorderBrush" Value="{Binding ClassColor}"/></DataTrigger></DataTemplate.Triggers>
         </DataTemplate>
+        <Style x:Key="ClassDriverAccent" TargetType="Border">
+            <Setter Property="BorderBrush" Value="{Binding ClassColor}"/>
+            <Setter Property="BorderThickness" Value="4,0,0,0"/>
+            <Setter Property="Padding" Value="4,0,4,0"/>
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding ClassGroupName}" Value="">
+                    <Setter Property="BorderThickness" Value="0"/>
+                    <Setter Property="Padding" Value="0"/>
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
+        <GroupStyle x:Key="RaceClassGroupStyle">
+            <GroupStyle.HeaderTemplate>
+                <DataTemplate>
+                    <Border x:Name="ClassSectionHeading" BorderBrush="{Binding Items[0].ClassColor}"
+                            BorderThickness="4,0,0,0" Padding="9,5" Background="{DynamicResource DashboardPanelBrush}">
+                        <TextBlock Text="{Binding Name}" FontSize="13" FontWeight="Bold"
+                                   Foreground="{DynamicResource DashboardTextBrush}" TextTrimming="CharacterEllipsis"/>
+                    </Border>
+                    <DataTemplate.Triggers>
+                        <DataTrigger Binding="{Binding Name}" Value="">
+                            <Setter TargetName="ClassSectionHeading" Property="Visibility" Value="Collapsed"/>
+                        </DataTrigger>
+                    </DataTemplate.Triggers>
+                </DataTemplate>
+            </GroupStyle.HeaderTemplate>
+            <GroupStyle.Panel><ItemsPanelTemplate><DataGridRowsPresenter/></ItemsPanelTemplate></GroupStyle.Panel>
+        </GroupStyle>
         <DataTemplate x:Key="RaceDriverNameTemplate">
             <Border Style="{StaticResource RaceDriverBorderStyle}">
-                <StackPanel VerticalAlignment="Center">
-                    <TextBlock Text="{Binding DriverName}" FontWeight="Bold" TextAlignment="Center" TextTrimming="CharacterEllipsis"/>
-                    <TextBlock Text="{Binding ClassName}" FontSize="10" TextAlignment="Center" TextTrimming="CharacterEllipsis">
-                        <TextBlock.Style><Style TargetType="TextBlock"><Setter Property="Visibility" Value="Collapsed"/><Style.Triggers><DataTrigger Binding="{Binding ShowClass}" Value="True"><Setter Property="Visibility" Value="Visible"/></DataTrigger></Style.Triggers></Style></TextBlock.Style>
-                    </TextBlock>
-                </StackPanel>
+                <Border Style="{StaticResource ClassDriverAccent}">
+                    <TextBlock Text="{Binding DriverName}" FontWeight="Bold" TextAlignment="Center"
+                               TextTrimming="CharacterEllipsis" ToolTip="{Binding DriverName}"/>
+                </Border>
             </Border>
         </DataTemplate>
         <Style x:Key="SharedDashboardCellStyle" TargetType="DataGridCell">
