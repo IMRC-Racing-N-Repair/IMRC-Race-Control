@@ -122,7 +122,7 @@ public partial class RoundMainBuilderDialog
                 RaceNumber=lead.RaceNumber,
                 CombinedChildren=children,
                 HiddenCombinedRacerCount=allMembers.Where(s=>children.All(p=>p.SourceSessionId!=s.Id)).Sum(s=>s.RacerCount),
-                ClassName="Combined Classes",SessionDisplay=$"One race • {allMembers.Count} class heats",
+                ClassName="Combined Classes",SessionDisplay=$"One race • {allMembers.Count} heats",
                 SessionType=plan.SessionType,Round=plan.Round,MainLeg=plan.MainLeg,StatusDisplay="COMBINED"});
             result.AddRange(children);
         }

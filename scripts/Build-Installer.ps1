@@ -97,6 +97,7 @@ foreach ($theme in @('Thanksgiving','Halloween','Christmas')) {
 }
 
 # Combined-race builds must include Shift multiselection, the full-width header, grouping and separation WPF smoke preview.
+# Require previews of the compact lineup editor and the event schedule.
 foreach ($file in @("Combined-Lineup.png", "Combined-Lineup-Checks.txt", "Combined-Event-Rounds.png")) {
     if (-not (Test-Path (Join-Path $branding $file))) { throw "Missing combined race schedule check: $file" }
 }

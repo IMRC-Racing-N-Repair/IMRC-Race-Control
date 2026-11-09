@@ -162,11 +162,11 @@
                                 <DataGrid.ContextMenu><ContextMenu><ContextMenu.Resources><Style TargetType="MenuItem"><Style.Triggers><DataTrigger Binding="{Binding PlacementTarget.SelectedItem.IsLocked, RelativeSource={RelativeSource AncestorType=ContextMenu}}" Value="True"><Setter Property="IsEnabled" Value="False"/></DataTrigger></Style.Triggers></Style></ContextMenu.Resources><MenuItem Style="{x:Null}" Header="Separate combined races" Click="SeparateCombined_Click"/><Separator/><MenuItem Header="Add heat / lower main for this class" Click="AddHeat_Click"/><MenuItem Header="Remove this heat / main…" Click="RemoveHeat_Click"/></ContextMenu></DataGrid.ContextMenu>
                                 <DataGrid.Columns>
                                     <DataGridTextColumn Header="#" Binding="{Binding RaceNumberDisplay}" Width="30" MinWidth="30"/>
-                                    <DataGridTemplateColumn Header="CLASS" Width="1.05*" MinWidth="85"><DataGridTemplateColumn.CellTemplate><DataTemplate><TextBlock Text="{Binding ClassDisplay}" TextTrimming="CharacterEllipsis" ToolTip="{Binding ClassName}" VerticalAlignment="Center"/></DataTemplate></DataGridTemplateColumn.CellTemplate></DataGridTemplateColumn>
-                                    <DataGridTextColumn Header="SESSION" Binding="{Binding SessionDisplay}" Width="1.25*" MinWidth="130"/>
-                                    <DataGridTextColumn Header="STATUS" Binding="{Binding StatusDisplay}" Width="100"/>
-                                    <DataGridTextColumn Header="RACERS" Binding="{Binding RacerCount}" Width="58"/>
-                                    <DataGridTextColumn Header="RULE" Binding="{Binding MainRuleDisplay}" Width="1.65*" MinWidth="155"/>
+                                    <DataGridTemplateColumn Header="CLASS" Width="1.7*" MinWidth="145"><DataGridTemplateColumn.CellTemplate><DataTemplate><TextBlock Text="{Binding ClassDisplay}" TextTrimming="CharacterEllipsis" ToolTip="{Binding ClassName}" VerticalAlignment="Center"/></DataTemplate></DataGridTemplateColumn.CellTemplate></DataGridTemplateColumn>
+                                    <DataGridTextColumn Header="SESSION" Binding="{Binding SessionDisplay}" Width="1.35*" MinWidth="120"/>
+                                    <DataGridTextColumn Header="STATUS" Binding="{Binding StatusDisplay}" Width="80"/>
+                                    <DataGridTextColumn Header="RACERS" Binding="{Binding RacerCount}" Width="52"/>
+                                    <DataGridTextColumn Header="RULE" Binding="{Binding MainRuleDisplay}" Width="0.95*" MinWidth="65"/>
                                 </DataGrid.Columns>
                             </DataGrid>
 
@@ -336,7 +336,7 @@
                         <DataGridTextColumn Header="CLASS" Binding="{Binding ClassName}" Width="0.95*" MinWidth="95"/>
                         <DataGridTextColumn Header="RACE" Binding="{Binding SessionDisplay}" Width="1.05*" MinWidth="105"/>
                         <DataGridTextColumn Header="STATUS" Binding="{Binding Status}" Width="76" MinWidth="72"/>
-                        <DataGridTextColumn Header="RACERS" Binding="{Binding RacerCount}" Width="58" MinWidth="56"/>
+                        <DataGridTextColumn Header="RACERS" Binding="{Binding RacerCount}" Width="52" MinWidth="56"/>
                         <DataGridTextColumn Header="SORT" Binding="{Binding SortDisplay}" Width="100" MinWidth="90"/>
                         <DataGridTextColumn Header="DRIVERS / RESULT" Binding="{Binding DriverSummary}" Width="2.2*" MinWidth="190"/>
                     </DataGrid.Columns>
