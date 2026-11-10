@@ -1,4 +1,8 @@
 using System.IO;
+using System.Runtime.InteropServices;
+using System.Security.Cryptography;
+using System.Text;
+using System.Windows.Input;
 using System.Windows;
 using System.Windows.Controls;
 using Microsoft.Win32;
@@ -21,7 +25,7 @@ public partial class MainWindow
         panel.Children.Add(new TextBlock {Text="IMPORT LIVETIME DATA",FontSize=22,FontWeight=FontWeights.Bold});
         panel.Children.Add(new TextBlock
         {
-            Text="Choose roster categories and events to import. Preview the changes before saving. Existing events and personal transponders are kept.",
+            Text="Open your LiveTime database or backup, then choose which roster data and events to import. Nothing is saved until you click Import Selected.",
             TextWrapping=TextWrapping.Wrap,Margin=new Thickness(0,8,0,12)
         });
 
@@ -30,13 +34,31 @@ public partial class MainWindow
         List<RaceDayEventDefinition> eventPlan=[];
         LiveTimeRosterPlan? plan=null;
         var choices=new WrapPanel();
-        var select=new Button {Content="CHOOSE LIVETIME BACKUP OR IMPORT COPY…"};
-        var reference=new Button {Content="OPTIONAL REFERENCE BACKUP…"};
+        var select=new Button {Content="CHOOSE LIVETIME DATABASE…"};
+        var reference=new Button {Content="REFERENCE FOR OLDER BACKUPS…"};
         choices.Children.Add(select);choices.Children.Add(reference);panel.Children.Add(choices);
         var sourceLabel=new TextBlock {Text="No backup selected.",TextWrapping=TextWrapping.Wrap,Margin=new Thickness(0,9,0,4)};
         var status=new TextBlock {TextWrapping=TextWrapping.Wrap,Margin=new Thickness(0,4,0,8)};
         var issues=new ListBox {MaxHeight=145,Visibility=Visibility.Collapsed};
         panel.Children.Add(sourceLabel);
+        var unlockPanel = new StackPanel { Visibility = Visibility.Collapsed, Margin = new Thickness(0, 8, 0, 4) };
+        var passwordBox = new PasswordBox { MaxLength = 512, MinWidth = 260, HorizontalAlignment = HorizontalAlignment.Stretch };
+        unlockPanel.Children.Add(new Label { Content = "Backup password or _unlock key", Target = passwordBox });
+        var unlockRow = new DockPanel { LastChildFill = true };
+        var unlock = new Button { Content = "UNLOCK & PREVIEW", Margin = new Thickness(8, 0, 0, 0) };
+        DockPanel.SetDock(unlock, Dock.Right);
+        unlockRow.Children.Add(unlock);
+        unlockRow.Children.Add(passwordBox);
+        unlockPanel.Children.Add(unlockRow);
+        var unlockFile = new Button { Content = "CHOOSE UNLOCK KEY FILE…", HorizontalAlignment = HorizontalAlignment.Left,
+            Margin = new Thickness(0, 5, 0, 0) };
+        unlockPanel.Children.Add(unlockFile);
+        unlockPanel.Children.Add(new TextBlock
+        {
+            Text = "Race Control does not save your password or create a decrypted copy on disk.",
+            TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 4, 0, 0)
+        });
+        panel.Children.Add(unlockPanel);
         var categories = new WrapPanel { Margin = new Thickness(0, 8, 0, 4) };
         var toggles = new (CheckBox Control, LiveTimeRosterSelection Option)[]
         {
@@ -76,11 +98,11 @@ public partial class MainWindow
         var busy=false;
         void SetBusy(bool value)
         {
-            busy=value;select.IsEnabled=reference.IsEnabled=close.IsEnabled=!value;
+            busy=value;select.IsEnabled=reference.IsEnabled=close.IsEnabled=unlock.IsEnabled=unlockFile.IsEnabled=passwordBox.IsEnabled=!value;
             categories.IsEnabled=historyOptions.IsEnabled=!value && source is not null;
             commit.IsEnabled=!value && (plan?.HasChanges==true || eventPlan.Count>0);
         }
-        dialog.Closing+=(_,e)=>{if(busy)e.Cancel=true;};
+        dialog.Closing+=(_,e)=>{if(busy)e.Cancel=true;else passwordBox.Clear();};
 
         string? Pick(string title)
         {
@@ -135,23 +157,93 @@ public partial class MainWindow
         includeLaps.Checked += (_, _) => UpdatePreview();
         includeLaps.Unchecked += (_, _) => UpdatePreview();
 
-        async Task PreviewAsync()
+        async Task PreviewAsync(byte[]? password = null)
         {
-            if(sourcePath is null)return;
+            if(sourcePath is not { } path)return;
             source=null;plan=null;eventPlan=[];SetBusy(true);RefreshAvailableEvents();issues.Visibility=Visibility.Collapsed;
-            status.Text="Reading backup…";
+            if (password is null)
+            {
+                unlockPanel.Visibility = Visibility.Collapsed;
+                passwordBox.Clear();
+            }
+            status.Text=password is null ? "Reading backup…" : "Unlocking and reading backup…";
             sourceLabel.Text=Path.GetFileName(sourcePath)+(referencePath is null ? "" : $" • Reference: {Path.GetFileName(referencePath)}");
             try
             {
-                source=await Task.Run(()=>LiveTimeBackupReader.ReadImport(sourcePath,referencePath));
+                source=await Task.Run(()=>password is null
+                    ? LiveTimeBackupReader.ReadImport(path,referencePath)
+                    : LiveTimeBackupReader.ReadEncryptedImport(path,password));
+                unlockPanel.Visibility = Visibility.Collapsed;
                 RefreshAvailableEvents();
                 UpdatePreview();
             }
+            catch (LiveTimeBackupPasswordRequiredException ex)
+            {
+                unlockPanel.Visibility = Visibility.Visible;
+                status.Text = ex.Message;
+            }
             catch(Exception ex) {status.Text=ex.Message;}
-            finally {SetBusy(false);}
+            finally
+            {
+                SetBusy(false);
+                if (unlockPanel.Visibility == Visibility.Visible) passwordBox.Focus();
+            }
         }
 
-        select.Click+=async (_,_)=>{if(Pick("Select a LiveTime database or backup") is { } path){sourcePath=path;await PreviewAsync();}};
+        async Task UnlockAsync()
+        {
+            if (busy || sourcePath is null) return;
+            using var secure = passwordBox.SecurePassword;
+            if (secure.Length == 0) { status.Text = "Enter the backup password or unlock key."; return; }
+            var pointer = Marshal.SecureStringToGlobalAllocUnicode(secure);
+            var characters = new char[secure.Length];
+            byte[]? key = null;
+            try
+            {
+                Marshal.Copy(pointer, characters, 0, characters.Length);
+                key = Encoding.UTF8.GetBytes(characters);
+            }
+            finally
+            {
+                Array.Clear(characters);
+                Marshal.ZeroFreeGlobalAllocUnicode(pointer);
+                passwordBox.Clear();
+            }
+            try { await PreviewAsync(key); }
+            finally { if (key is not null) CryptographicOperations.ZeroMemory(key); }
+        }
+        unlock.Click += async (_, _) => await UnlockAsync();
+        unlockFile.Click += async (_, _) =>
+        {
+            if (busy || sourcePath is null) return;
+            var picker = new OpenFileDialog { Title = "Choose the unlock key for this backup",
+                Filter = "LiveTime unlock key (*.livetime-key)|*.livetime-key|All files (*.*)|*.*" };
+            if (picker.ShowDialog(dialog) != true) return;
+            var key = new byte[99];
+            try
+            {
+                using (var file = File.OpenRead(picker.FileName))
+                {
+                    if (file.Length != key.Length)
+                        throw new InvalidDataException("Choose a valid LiveTime unlock key file.");
+                    file.ReadExactly(key);
+                }
+                if (key[0] != (byte)'x' || key[1] != (byte)'\'' || key[^1] != (byte)'\'' ||
+                    key.Skip(2).Take(96).Any(c => !Uri.IsHexDigit((char)c)))
+                    throw new InvalidDataException("Choose a valid LiveTime unlock key file.");
+                passwordBox.Clear();
+                await PreviewAsync(key);
+            }
+            catch (Exception ex) when (ex is IOException or InvalidDataException or UnauthorizedAccessException) { status.Text = ex.Message; }
+            finally { CryptographicOperations.ZeroMemory(key); }
+        };
+        passwordBox.KeyDown += async (_, e) =>
+        {
+            if (e.Key != Key.Enter) return;
+            e.Handled = true;
+            await UnlockAsync();
+        };
+        select.Click+=async (_,_)=>{if(Pick("Select a LiveTime database or backup") is { } path){sourcePath=path;referencePath=null;await PreviewAsync();}};
         reference.Click+=async (_,_)=>{if(Pick("Select an older backup from the same LiveTime installation") is { } path){referencePath=path;await PreviewAsync();}};
         commit.Click+=async (_,_) =>
         {

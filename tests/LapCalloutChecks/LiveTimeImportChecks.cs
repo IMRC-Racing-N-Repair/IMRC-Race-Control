@@ -1,4 +1,6 @@
 using System.Security.Cryptography;
+using System.Runtime.InteropServices;
+using System.Text;
 using IMRCRaceControl.Models;
 using IMRCRaceControl.Services;
 using Microsoft.Data.Sqlite;
@@ -28,6 +30,37 @@ internal static class LiveTimeImportChecks
             Check(plain.Entries.First(e=>e.DriverId==1).Transponders=="1234567;2345678","keeps primary and additional transponders");
             Check(plain.Events==1 && plain.Laps==2 && plain.PracticeLaps==1,"reports history without importing it");
             Check(original.SequenceEqual(File.ReadAllBytes(fixture)),"plain database remains unchanged");
+
+            var encrypted = Path.Combine(folder, "encrypted # fixture.db");
+            var password = "sample import password"u8.ToArray();
+            CreateSqlCipherFixture(encrypted, password);
+            var encryptedBytes = File.ReadAllBytes(encrypted);
+            var needsPassword = false;
+            try { LiveTimeBackupReader.ReadImport(encrypted); }
+            catch (LiveTimeBackupPasswordRequiredException) { needsPassword = true; }
+            Check(needsPassword, "encrypted .db prompts for its key");
+            var unlocked = LiveTimeBackupReader.ReadEncryptedImport(encrypted, password);
+            Check(unlocked.Roster.Drivers.SequenceEqual(plain.Drivers) && unlocked.Roster.Entries.SequenceEqual(plain.Entries),
+                "original encrypted .db opens directly with its password");
+            var salt = encryptedBytes.AsSpan(0, 16);
+            var raw = Rfc2898DeriveBytes.Pbkdf2(password, salt, 256000, HashAlgorithmName.SHA512, 32);
+            var scopedKey = Encoding.ASCII.GetBytes("x'" + Convert.ToHexString(raw) + Convert.ToHexString(salt) + "'");
+            Check(LiveTimeBackupReader.ReadEncryptedImport(encrypted, scopedKey).Roster.Entries.SequenceEqual(plain.Entries),
+                "database-specific raw key opens the same encrypted backup");
+            var wrongPassword = false;
+            try { LiveTimeBackupReader.ReadEncryptedImport(encrypted, "incorrect"u8.ToArray()); }
+            catch (InvalidDataException) { wrongPassword = true; }
+            Check(wrongPassword, "wrong password rejects the backup");
+            var tampered = Path.Combine(folder, "tampered.db");
+            var altered = encryptedBytes.ToArray();
+            altered[altered.Length - 1000] ^= 0xff;
+            File.WriteAllBytes(tampered, altered);
+            var badPage = false;
+            try { LiveTimeBackupReader.ReadEncryptedImport(tampered, password); }
+            catch (InvalidDataException) { badPage = true; }
+            Check(badPage, "page authentication rejects a corrupted encrypted backup");
+            Check(encryptedBytes.SequenceEqual(File.ReadAllBytes(encrypted)) && !File.Exists(encrypted+"-wal") &&
+                !File.Exists(encrypted+"-shm") && !File.Exists(encrypted+"-journal"), "opening a backup never changes it or creates sidecars");
 
             var codedPath=Path.Combine(folder,"coded.db");
             var codedRef=Path.Combine(folder,"coded-reference.db");
@@ -135,8 +168,48 @@ internal static class LiveTimeImportChecks
         using var db=new SqliteConnection(new SqliteConnectionStringBuilder{DataSource=file,Pooling=false}.ToString());
         db.Open();
         using var command=db.CreateCommand();
-        command.CommandText="""
-            PRAGMA page_size=1024;
+        command.CommandText="PRAGMA page_size=1024;"+FixtureSql;
+        command.ExecuteNonQuery();
+        if(freePages)
+        {
+            command.CommandText="PRAGMA secure_delete=ON; CREATE TABLE Spare(Data BLOB); INSERT INTO Spare VALUES (zeroblob(30000)); DROP TABLE Spare;";
+            command.ExecuteNonQuery();
+        }
+    }
+
+    private static void CreateSqlCipherFixture(string path, byte[] password)
+    {
+        var result = NativeOpen(path, out var db, 6, IntPtr.Zero);
+        try
+        {
+            var cipher = NativeIndex("sqlcipher");
+            if (result != 0 || cipher <= 0 || NativeConfig(db, "cipher", cipher) != cipher ||
+                NativeConfigMode(db, "sqlcipher", "legacy", 4) != 4 ||
+                NativeKey(db, password, password.Length) != 0 ||
+                NativeExec(db, FixtureSql, IntPtr.Zero, IntPtr.Zero, IntPtr.Zero) != 0)
+                throw new InvalidOperationException("Could not create the synthetic SQLCipher backup.");
+        }
+        finally { if (db != IntPtr.Zero) NativeClose(db); }
+    }
+
+    private const string CipherLib = "sqlite3mc";
+    [DllImport(CipherLib, EntryPoint = "sqlite3_open_v2", CallingConvention = CallingConvention.Cdecl)]
+    private static extern int NativeOpen([MarshalAs(UnmanagedType.LPUTF8Str)] string path, out IntPtr db, int flags, IntPtr vfs);
+    [DllImport(CipherLib, EntryPoint = "sqlite3_close_v2", CallingConvention = CallingConvention.Cdecl)]
+    private static extern int NativeClose(IntPtr db);
+    [DllImport(CipherLib, EntryPoint = "sqlite3mc_cipher_index", CallingConvention = CallingConvention.Cdecl)]
+    private static extern int NativeIndex([MarshalAs(UnmanagedType.LPUTF8Str)] string name);
+    [DllImport(CipherLib, EntryPoint = "sqlite3mc_config", CallingConvention = CallingConvention.Cdecl)]
+    private static extern int NativeConfig(IntPtr db, [MarshalAs(UnmanagedType.LPUTF8Str)] string name, int value);
+    [DllImport(CipherLib, EntryPoint = "sqlite3mc_config_cipher", CallingConvention = CallingConvention.Cdecl)]
+    private static extern int NativeConfigMode(IntPtr db, [MarshalAs(UnmanagedType.LPUTF8Str)] string cipher,
+        [MarshalAs(UnmanagedType.LPUTF8Str)] string name, int value);
+    [DllImport(CipherLib, EntryPoint = "sqlite3_key", CallingConvention = CallingConvention.Cdecl)]
+    private static extern int NativeKey(IntPtr db, byte[] key, int length);
+    [DllImport(CipherLib, EntryPoint = "sqlite3_exec", CallingConvention = CallingConvention.Cdecl)]
+    private static extern int NativeExec(IntPtr db, [MarshalAs(UnmanagedType.LPUTF8Str)] string sql, IntPtr callback, IntPtr arg, IntPtr error);
+
+    private const string FixtureSql = """
             CREATE TABLE SystemVersion ([Database] INTEGER);
             INSERT INTO SystemVersion VALUES (193);
             CREATE TABLE Driver (LID INTEGER PRIMARY KEY, GUID TEXT, IsActive INTEGER, FirstName TEXT, LastName TEXT, NickName TEXT, PhoneticName TEXT);
@@ -158,11 +231,5 @@ internal static class LiveTimeImportChecks
             CREATE TABLE PracticeLap (LID INTEGER PRIMARY KEY);
             INSERT INTO PracticeLap VALUES (1);
             """;
-        command.ExecuteNonQuery();
-        if(freePages)
-        {
-            command.CommandText="PRAGMA secure_delete=ON; CREATE TABLE Spare(Data BLOB); INSERT INTO Spare VALUES (zeroblob(30000)); DROP TABLE Spare;";
-            command.ExecuteNonQuery();
-        }
-    }
+
 }

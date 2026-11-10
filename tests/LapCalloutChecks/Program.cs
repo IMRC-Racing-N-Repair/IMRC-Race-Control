@@ -11,9 +11,16 @@ if (args is ["--inspect-livetime-backup", var backup])
     return;
 }
 
-if (args is ["--verify-livetime-import-copy", var archivePath])
+if (args is ["--verify-livetime-import-copy", _] or ["--verify-livetime-encrypted", _, _])
 {
-    var source = LiveTimeBackupReader.ReadImport(archivePath);
+    LiveTimeImportSource source;
+    if (args.Length == 3)
+    {
+        var password = File.ReadAllBytes(args[2]);
+        try { source = LiveTimeBackupReader.ReadEncryptedImport(args[1], password); }
+        finally { System.Security.Cryptography.CryptographicOperations.ZeroMemory(password); }
+    }
+    else source = LiveTimeBackupReader.ReadImport(args[1]);
     var roster = LiveTimeRosterMerge.Preview(source.Roster, [], [], []);
     var ids = source.History.Select(e => e.SourceId).ToList();
     var one = LiveTimeHistoryMerge.Preview(source, ids.Take(1), [], roster, includeLaps:false);

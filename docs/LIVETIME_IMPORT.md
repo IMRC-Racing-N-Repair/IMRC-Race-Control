@@ -22,23 +22,18 @@ Practice history, rental inventory, series, and LiveTime account/settings data
 are outside this import. Class timing settings other than the available minimum
 lap time use Race Control defaults; check them before using a class for racing.
 
-## Open encrypted LiveTime backups
+## Open original LiveTime backups
 
-The app reads plain SQLite backups directly. It can also read the legacy 1 KiB
-page format, verified against schema 193; if necessary, provide an older backup
-from the same installation as a reference. Older schemas support roster import.
+Choose the original `.db` in Race Control. For a SQLCipher 4 backup, enter the
+backup password or select **Choose Unlock Key File** to open a database-specific
+`.livetime-key` file. Race Control previews the data in memory and does not save
+the password, key, or a decrypted copy. Choose a standalone backup without a
+pending journal. Encrypted backups up to 256 MiB are supported.
 
-For SQLCipher backups (verified against schema 325), create a portable import
-copy using a valid backup password. The exporter keeps only the columns used
-for import, opens the source read-only, and does not save the password:
+Plain SQLite and portable import copies also work. For the legacy 1 KiB page
+format, verified against schema 193, you can provide an older backup from the
+same installation as a reference. Older schemas support roster import.
 
-```sh
-python -m pip install apsw-sqlite3mc
-python scripts/Export-LiveTimeImport.py LiveTime-backup.db LiveTime-import.sqlite
-```
-
-Enter the backup password when prompted, then choose the resulting
-`LiveTime-import.sqlite` in Race Control. Keep this portable copy private: it
-includes names, transponder numbers, and race records. No account credentials,
-contact information, photos, raw decoder traffic, or device configuration are
-copied. Neither the backup nor a legacy reference is modified.
+For encrypted backups, a valid backup password or matching key is required.
+Keep any unlock key private alongside its backup. Neither the original backup
+nor the legacy reference is modified.

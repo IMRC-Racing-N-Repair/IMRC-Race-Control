@@ -21,16 +21,18 @@ public static partial class LiveTimeBackupReader
     private static ReadOnlySpan<byte> Header => "SQLite format 3\0"u8;
 
     public static LiveTimeRoster Read(string path, string? referencePath = null) =>
-        ReadFile(path, referencePath, ReadRoster);
+        ReadFile(path, referencePath, ReadRoster, promptForPassword: false);
 
     public static LiveTimeImportSource ReadImport(string path, string? referencePath = null) =>
-        ReadFile(path, referencePath, db =>
-        {
-            var roster = ReadRoster(db);
-            return new LiveTimeImportSource(roster, roster.SchemaVersion == 325 ? ReadRaceHistory(db) : []);
-        });
+        ReadFile(path, referencePath, ReadImportSource);
 
-    private static T ReadFile<T>(string path, string? referencePath, Func<SqliteConnection,T> read) where T : class
+    private static LiveTimeImportSource ReadImportSource(SqliteConnection db)
+    {
+        var roster = ReadRoster(db);
+        return new LiveTimeImportSource(roster, roster.SchemaVersion == 325 ? ReadRaceHistory(db) : []);
+    }
+
+    private static T ReadFile<T>(string path, string? referencePath, Func<SqliteConnection,T> read, bool promptForPassword = true) where T : class
     {
         if (IsPlainDatabase(path))
         {
@@ -58,8 +60,10 @@ public static partial class LiveTimeBackupReader
                 finally { CryptographicOperations.ZeroMemory(reference); }
             }
 
-            throw new InvalidDataException("This backup could not be opened directly. " +
-                "For a SQLCipher backup, choose a LiveTime import copy created by the exporter. For an older backup, try a matching reference.");
+            if (promptForPassword && CouldBeSqlCipher(encoded.Length))
+                throw new LiveTimeBackupPasswordRequiredException();
+
+            throw new InvalidDataException("This backup could not be opened. For an older backup, try a matching reference.");
         }
         finally { CryptographicOperations.ZeroMemory(encoded); }
     }
