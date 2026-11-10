@@ -64,7 +64,11 @@
                       Margin="2" Background="{DynamicResource DashboardBackgroundBrush}"
                       HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
                     <Border Background="{DynamicResource HoneycombPatternBrush}" Opacity="0" IsHitTestVisible="False"/>
-                    <Grid Margin="2" HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
+                    <TextBlock x:Name="RaceNoEventMessage" Text="No Event has started"
+                               HorizontalAlignment="Center" VerticalAlignment="Center"
+                               Foreground="{DynamicResource DashboardTextBrush}" FontSize="22" FontWeight="SemiBold"/>
+                    <Grid x:Name="RaceDashboardContent" Visibility="Collapsed" Margin="2"
+                          HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
                         <Grid.RowDefinitions>
                             <RowDefinition Height="Auto"/>
                             <RowDefinition Height="Auto"/>
@@ -1945,7 +1949,20 @@
         </Border>
     </Grid>
     <Border Grid.Row="1" Background="{DynamicResource PanelBrush}">
-    <Border.Style><Style TargetType="Border"><Setter Property="Visibility" Value="Collapsed"/><Style.Triggers><DataTrigger Binding="{Binding ElementName=RaceTab, Path=IsSelected}" Value="True"><Setter Property="Visibility" Value="Visible"/></DataTrigger></Style.Triggers></Style></Border.Style>
+        <Border.Style>
+            <Style TargetType="Border">
+                <Setter Property="Visibility" Value="Collapsed"/>
+                <Style.Triggers>
+                    <MultiDataTrigger>
+                        <MultiDataTrigger.Conditions>
+                            <Condition Binding="{Binding ElementName=RaceTab, Path=IsSelected}" Value="True"/>
+                            <Condition Binding="{Binding ElementName=RaceDashboardContent, Path=Visibility}" Value="Visible"/>
+                        </MultiDataTrigger.Conditions>
+                        <Setter Property="Visibility" Value="Visible"/>
+                    </MultiDataTrigger>
+                </Style.Triggers>
+            </Style>
+        </Border.Style>
 <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="8,3">
  <Button Content="−" Width="30" MinWidth="30" Padding="4" Click="DashboardZoomOut_Click" ToolTip="Zoom out"/>
  <CheckBox x:Name="DashboardHeaderZoom" Content="Include header" VerticalAlignment="Center" Click="DashboardHeaderZoom_Click" Margin="0,0,10,0"/>

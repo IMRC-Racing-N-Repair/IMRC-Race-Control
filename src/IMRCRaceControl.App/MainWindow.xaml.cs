@@ -155,18 +155,13 @@ public partial class MainWindow : Window
         RebuildSessionQueueOrder();
         RefreshRaceDayFlow();
 
-        if (_activeEvent is null)
-        {
-            MainTabs.SelectedItem = EventTab;
-            HeaderMessageText.Text = "Create a race-day event to unlock the Race Dashboard.";
-        }
-        else
+        if (_activeEvent is not null)
         {
             UpdateRaceDefaultsFromClass();
             HeaderMessageText.Text = $"Event ready: {_activeEvent.Name}";
+            RefreshRaceUi(DateTimeOffset.Now);
         }
 
-        RefreshRaceUi(DateTimeOffset.Now);
         FooterStatusText.Text = _activeEvent is null
             ? "Create a race-day event first. Then add classes, drivers, and build rounds or mains."
             : "Event ready. Build rounds/mains in Event Setup or run the current heat.";
@@ -757,9 +752,6 @@ public partial class MainWindow : Window
         UpdateRaceDashboardAvailability();
         RebuildSessionQueueOrder();
         RefreshRaceDayFlow();
-
-        if (_activeEvent is null)
-            MainTabs.SelectedItem = EventTab;
     }
 
     private void LoadEventToEditor(RaceDayEventDefinition? ev)
@@ -801,7 +793,9 @@ public partial class MainWindow : Window
     private void UpdateRaceDashboardAvailability()
     {
         var available = _activeEvent is not null;
-        RaceTab.IsEnabled = available && !_practiceActive;
+        RaceTab.IsEnabled = !_practiceActive;
+        RaceDashboardContent.Visibility = available ? Visibility.Visible : Visibility.Collapsed;
+        RaceNoEventMessage.Visibility = available ? Visibility.Collapsed : Visibility.Visible;
 
         if (!available)
         {
@@ -810,7 +804,7 @@ public partial class MainWindow : Window
             if (!_practiceActive)
             {
                 HeaderRaceStateText.Text = "NO EVENT";
-                HeaderMessageText.Text = "Create a race-day event to unlock the Race Dashboard.";
+                HeaderMessageText.Text = "Create a race-day event in the Event tab.";
             }
         }
         else
@@ -1046,9 +1040,6 @@ public partial class MainWindow : Window
         UpdateRaceDashboardAvailability();
         RebuildSessionQueueOrder();
         RefreshRaceDayFlow();
-
-        if (_activeEvent is null)
-            MainTabs.SelectedItem = EventTab;
 
         await CaptureAndSaveSettingsAsync();
     }
@@ -2423,7 +2414,7 @@ public partial class MainWindow : Window
 
     private void Window_PreviewKeyDown(object sender, KeyEventArgs e)
     {
-        if (e.IsRepeat || MainTabs.SelectedItem != RaceTab || IsEditingText())
+        if (e.IsRepeat || _activeEvent is null || MainTabs.SelectedItem != RaceTab || IsEditingText())
             return;
 
         var key = e.Key == Key.System ? e.SystemKey : e.Key;
