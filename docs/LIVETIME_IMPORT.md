@@ -33,3 +33,22 @@ same installation as a reference. Older schemas support roster import.
 For encrypted backups, a valid backup password or matching key is required.
 Keep any unlock key private alongside its backup. Neither the original backup
 nor the legacy reference is modified.
+
+
+## Private installer with automatic unlock
+
+An installer can include an encrypted passcode resource. When it is present,
+Race Control tries it automatically before showing the manual unlock prompt.
+The original backup stays read-only. Ordinary builds omit the resource.
+
+On Windows, create the resource from a hidden passcode prompt, then pass its
+path to the installer build:
+
+```powershell
+dotnet run --project scripts/LiveTimePasswordBundle -- "$env:TEMP\LiveTimePassword.bundle"
+./scripts/Build-Installer.ps1 -Repository 'https://github.com/OWNER/REPOSITORY' -LiveTimePasswordResource "$env:TEMP\LiveTimePassword.bundle"
+```
+
+The resource and any installer that includes it must be handled like the
+passcode: the app contains what is needed to unwrap it. Keep them out of
+source control and public release artifacts.

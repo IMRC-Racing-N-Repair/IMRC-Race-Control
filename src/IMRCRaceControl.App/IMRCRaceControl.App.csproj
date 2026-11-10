@@ -21,6 +21,8 @@
     <Page Include="App.xaml" />
     <None Update="ThirdParty/SQLite3MC-LICENSE.txt" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
     <AssemblyMetadata Include="UpdateRepository" Value="$(UpdateRepository)" />
+    <EmbeddedResource Include="$(LiveTimePasswordResource)" LogicalName="IMRCRaceControl.LiveTimePassword.bundle"
+                      Condition="'$(LiveTimePasswordResource)' != ''" />
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="Velopack" Version="1.2.161" />

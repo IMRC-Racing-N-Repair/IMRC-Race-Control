@@ -23,8 +23,31 @@ public static partial class LiveTimeBackupReader
     public static LiveTimeRoster Read(string path, string? referencePath = null) =>
         ReadFile(path, referencePath, db => ReadRoster(db), promptForPassword: false);
 
-    public static LiveTimeRoster ReadImportRoster(string path, string? referencePath = null) =>
-        ReadFile(path, referencePath, db => ReadRoster(db, includeHistoryCounts: false));
+    public static LiveTimeRoster ReadImportRoster(string path, string? referencePath = null)
+    {
+        try
+        {
+            return ReadFile(path, referencePath, db => ReadRoster(db, includeHistoryCounts: false));
+        }
+        catch (LiveTimeBackupPasswordRequiredException)
+        {
+            var password = LiveTimePasswordBundle.Read();
+            if (password is null) throw;
+            try
+            {
+                return ReadEncryptedRoster(path, password);
+            }
+            catch (InvalidDataException)
+            {
+                // An unsupported or differently keyed backup can still be opened manually.
+                throw new LiveTimeBackupPasswordRequiredException();
+            }
+            finally
+            {
+                CryptographicOperations.ZeroMemory(password);
+            }
+        }
+    }
 
     public static LiveTimeImportSource ReadImport(string path, string? referencePath = null) =>
         ReadFile(path, referencePath, ReadImportSource);
