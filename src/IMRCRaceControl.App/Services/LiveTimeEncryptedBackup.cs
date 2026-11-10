@@ -1,6 +1,7 @@
 using System.IO;
 using System.Runtime.InteropServices;
 using System.Security.Cryptography;
+using Microsoft.Data.Sqlite;
 
 namespace IMRCRaceControl.Services;
 
@@ -12,7 +13,13 @@ public sealed class LiveTimeBackupPasswordRequiredException : IOException
 
 public static partial class LiveTimeBackupReader
 {
-    public static LiveTimeImportSource ReadEncryptedImport(string path, byte[] password)
+    public static LiveTimeImportSource ReadEncryptedImport(string path, byte[] password) =>
+        ReadEncrypted(path, password, ReadImportSource);
+
+    public static LiveTimeRoster ReadEncryptedRoster(string path, byte[] password) =>
+        ReadEncrypted(path, password, db => ReadRoster(db, includeHistoryCounts: false));
+
+    private static T ReadEncrypted<T>(string path, byte[] password, Func<SqliteConnection, T> read)
     {
         ArgumentNullException.ThrowIfNull(password);
         if (password.Length == 0)
@@ -55,7 +62,7 @@ public static partial class LiveTimeBackupReader
                     if (!bytes.AsSpan().StartsWith(Header))
                         throw new InvalidDataException("The backup did not contain a readable LiveTime database.");
                     using var db = OpenInMemory(bytes);
-                    return ReadImportSource(db);
+                    return read(db);
                 }
                 finally
                 {

@@ -21,7 +21,10 @@ public static partial class LiveTimeBackupReader
     private static ReadOnlySpan<byte> Header => "SQLite format 3\0"u8;
 
     public static LiveTimeRoster Read(string path, string? referencePath = null) =>
-        ReadFile(path, referencePath, ReadRoster, promptForPassword: false);
+        ReadFile(path, referencePath, db => ReadRoster(db), promptForPassword: false);
+
+    public static LiveTimeRoster ReadImportRoster(string path, string? referencePath = null) =>
+        ReadFile(path, referencePath, db => ReadRoster(db, includeHistoryCounts: false));
 
     public static LiveTimeImportSource ReadImport(string path, string? referencePath = null) =>
         ReadFile(path, referencePath, ReadImportSource);
@@ -167,7 +170,7 @@ public static partial class LiveTimeBackupReader
     private static extern int SqliteDeserialize(IntPtr db, [MarshalAs(UnmanagedType.LPUTF8Str)] string schema,
         IntPtr memory, long size, long capacity, uint flags);
 
-    private static LiveTimeRoster ReadRoster(SqliteConnection db)
+    private static LiveTimeRoster ReadRoster(SqliteConnection db, bool includeHistoryCounts = true)
     {
         using var cmd = db.CreateCommand();
         cmd.CommandText = "PRAGMA trusted_schema=OFF; PRAGMA query_only=ON;";
@@ -213,7 +216,7 @@ public static partial class LiveTimeBackupReader
 
         long Count(string table)
         {
-            if (!tables.Contains(table)) return 0;
+            if (!includeHistoryCounts || !tables.Contains(table)) return 0;
             cmd.CommandText = $"SELECT count(*) FROM [{table}]";
             return Convert.ToInt64(cmd.ExecuteScalar());
         }

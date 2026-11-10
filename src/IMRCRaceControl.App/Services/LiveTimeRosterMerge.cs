@@ -35,6 +35,15 @@ public static class LiveTimeRosterMerge
 {
     private static readonly StringComparer IgnoreCase = StringComparer.OrdinalIgnoreCase;
 
+    public static int CountPersonalTransponders(LiveTimeRoster source)
+    {
+        var rentals = source.RentalNumbers.Select(NormalizeTag).ToHashSet(IgnoreCase);
+        return source.Entries.SelectMany(entry => Tags(entry.Transponders))
+            .Where(tag => !rentals.Contains(tag))
+            .Distinct(IgnoreCase)
+            .Count();
+    }
+
     public static LiveTimeRosterPlan Preview(LiveTimeRoster source, IReadOnlyList<DriverProfile> drivers,
         IReadOnlyList<ClassDefinition> classes, IReadOnlyList<DriverClassAssignment> assignments,
         IEnumerable<string>? rentalNumbers = null, LiveTimeRosterSelection selection = LiveTimeRosterSelection.All, bool resolveForHistory = false)

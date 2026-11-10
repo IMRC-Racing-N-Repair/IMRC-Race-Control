@@ -36,9 +36,23 @@ internal static class LiveTimeImportChecks
             CreateSqlCipherFixture(encrypted, password);
             var encryptedBytes = File.ReadAllBytes(encrypted);
             var needsPassword = false;
-            try { LiveTimeBackupReader.ReadImport(encrypted); }
+            try { LiveTimeBackupReader.ReadImportRoster(encrypted); }
             catch (LiveTimeBackupPasswordRequiredException) { needsPassword = true; }
             Check(needsPassword, "encrypted .db prompts for its key");
+            var plainRoster = LiveTimeBackupReader.ReadImportRoster(fixture);
+            var encryptedRoster = LiveTimeBackupReader.ReadEncryptedRoster(encrypted, password);
+            Check(plainRoster.Drivers.SequenceEqual(encryptedRoster.Drivers) &&
+                plainRoster.Classes.SequenceEqual(encryptedRoster.Classes) &&
+                plainRoster.Entries.SequenceEqual(encryptedRoster.Entries) &&
+                plainRoster.Events == 0 && encryptedRoster.Laps == 0,
+                "both import paths supply the same roster without reading race history");
+            var countsRoster = encryptedRoster with
+            {
+                Entries = [.. encryptedRoster.Entries, new(1, 2, "01234567")],
+                RentalNumbers = ["03456789"]
+            };
+            Check(LiveTimeRosterMerge.CountPersonalTransponders(countsRoster) == 2,
+                "category count deduplicates personal transponders and excludes known rentals");
             var unlocked = LiveTimeBackupReader.ReadEncryptedImport(encrypted, password);
             Check(unlocked.Roster.Drivers.SequenceEqual(plain.Drivers) && unlocked.Roster.Entries.SequenceEqual(plain.Entries),
                 "original encrypted .db opens directly with its password");

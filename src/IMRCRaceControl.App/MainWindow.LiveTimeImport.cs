@@ -5,6 +5,8 @@ using System.Text;
 using System.Windows.Input;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Controls.Primitives;
+using System.Windows.Automation;
 using Microsoft.Win32;
 using IMRCRaceControl.Services;
 using IMRCRaceControl.Models;
@@ -17,7 +19,7 @@ public partial class MainWindow
     {
         var dialog=new Window
         {
-            Owner=owner,Title="Import LiveTime data",Width=760,SizeToContent=SizeToContent.Height,MaxHeight=SystemParameters.WorkArea.Height*0.90,
+            Owner=owner,Title="Import LiveTime data",Width=Math.Min(700, SystemParameters.WorkArea.Width * 0.95),SizeToContent=SizeToContent.Height,MaxHeight=SystemParameters.WorkArea.Height*0.90,
             WindowStartupLocation=WindowStartupLocation.CenterOwner
         };
         var panel=new StackPanel {Margin=new Thickness(20)};
@@ -25,13 +27,12 @@ public partial class MainWindow
         panel.Children.Add(new TextBlock {Text="IMPORT LIVETIME DATA",FontSize=22,FontWeight=FontWeights.Bold});
         panel.Children.Add(new TextBlock
         {
-            Text="Open your LiveTime database or backup, then choose which roster data and events to import. Nothing is saved until you click Import Selected.",
+            Text="Open a LiveTime backup, then select the categories you want to import. The buttons show how many records are in the backup.",
             TextWrapping=TextWrapping.Wrap,Margin=new Thickness(0,8,0,12)
         });
 
         string? sourcePath=null, referencePath=null;
-        LiveTimeImportSource? source=null;
-        List<RaceDayEventDefinition> eventPlan=[];
+        LiveTimeRoster? source=null;
         LiveTimeRosterPlan? plan=null;
         var choices=new WrapPanel();
         var select=new Button {Content="CHOOSE LIVETIME DATABASE…"};
@@ -39,7 +40,6 @@ public partial class MainWindow
         choices.Children.Add(select);choices.Children.Add(reference);panel.Children.Add(choices);
         var sourceLabel=new TextBlock {Text="No backup selected.",TextWrapping=TextWrapping.Wrap,Margin=new Thickness(0,9,0,4)};
         var status=new TextBlock {TextWrapping=TextWrapping.Wrap,Margin=new Thickness(0,4,0,8)};
-        var issues=new ListBox {MaxHeight=145,Visibility=Visibility.Collapsed};
         panel.Children.Add(sourceLabel);
         var unlockPanel = new StackPanel { Visibility = Visibility.Collapsed, Margin = new Thickness(0, 8, 0, 4) };
         var passwordBox = new PasswordBox { MaxLength = 512, MinWidth = 260, HorizontalAlignment = HorizontalAlignment.Stretch };
@@ -59,38 +59,46 @@ public partial class MainWindow
             TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 4, 0, 0)
         });
         panel.Children.Add(unlockPanel);
-        var categories = new WrapPanel { Margin = new Thickness(0, 8, 0, 4) };
-        var toggles = new (CheckBox Control, LiveTimeRosterSelection Option)[]
+        var categories = new WrapPanel { Margin = new Thickness(0, 8, 0, 4), IsEnabled = false };
+        var toggles = new[]
         {
-            (new CheckBox { Content = "Drivers" }, LiveTimeRosterSelection.Drivers),
-            (new CheckBox { Content = "Classes" }, LiveTimeRosterSelection.Classes),
-            (new CheckBox { Content = "Driver–class assignments" }, LiveTimeRosterSelection.ClassAssignments),
-            (new CheckBox { Content = "Personal transponders" }, LiveTimeRosterSelection.Transponders)
+            AddCategory("Drivers", LiveTimeRosterSelection.Drivers),
+            AddCategory("Classes", LiveTimeRosterSelection.Classes),
+            AddCategory("Class assignments", LiveTimeRosterSelection.ClassAssignments),
+            AddCategory("Personal transponders", LiveTimeRosterSelection.Transponders)
         };
-        foreach (var (control, _) in toggles)
-        {
-            control.Margin = new Thickness(0, 0, 14, 4);
-            control.IsChecked = true;
-            categories.Children.Add(control);
-        }
-        categories.IsEnabled = false;
         panel.Children.Add(categories);
-        var historyOptions = new StackPanel { Visibility = Visibility.Collapsed, Margin = new Thickness(0, 8, 0, 4) };
-        var eventActions = new WrapPanel();
-        eventActions.Children.Add(new TextBlock { Text = "COMPLETED RACES BY EVENT", FontWeight = FontWeights.Bold, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(0, 0, 12, 0) });
-        var selectAll = new Button { Content = "SELECT ALL" };
-        var clearEvents = new Button { Content = "CLEAR" };
-        eventActions.Children.Add(selectAll);
-        eventActions.Children.Add(clearEvents);
-        historyOptions.Children.Add(eventActions);
-        historyOptions.Children.Add(new TextBlock { Text = "Click events to select or deselect them. Finishing results are included with each selected event.", TextWrapping = TextWrapping.Wrap });
-        var eventList = new ListBox { SelectionMode = SelectionMode.Multiple, DisplayMemberPath = nameof(LiveTimeEventHistory.Label), MaxHeight = 165 };
-        historyOptions.Children.Add(eventList);
-        var includeLaps = new CheckBox { Content = "Include individual scored laps", Margin = new Thickness(0, 5, 0, 0), IsChecked = true };
-        historyOptions.Children.Add(includeLaps);
-        panel.Children.Add(historyOptions);
         panel.Children.Add(status);
-        panel.Children.Add(issues);
+
+        (ToggleButton Control, TextBlock Count, string Label, LiveTimeRosterSelection Option) AddCategory(
+            string label, LiveTimeRosterSelection option)
+        {
+            var count = new TextBlock { Text = "—", FontSize = 21, FontWeight = FontWeights.Bold,
+                TextAlignment = TextAlignment.Center };
+            var content = new StackPanel();
+            content.Children.Add(count);
+            content.Children.Add(new TextBlock { Text = label, TextAlignment = TextAlignment.Center });
+            var button = new ToggleButton { Content = content, IsEnabled = false };
+            button.SetResourceReference(FrameworkElement.StyleProperty, "ImportCategoryButtonStyle");
+            AutomationProperties.SetName(button, label);
+            categories.Children.Add(button);
+            return (button, count, label, option);
+        }
+
+        void SetCategoryCounts(LiveTimeRoster? roster)
+        {
+            int[] counts = roster is null ? [] : [
+                roster.Drivers.Count, roster.Classes.Count, roster.Entries.Count,
+                LiveTimeRosterMerge.CountPersonalTransponders(roster)];
+            for (var i = 0; i < toggles.Length; i++)
+            {
+                var (control, count, label, _) = toggles[i];
+                count.Text = roster is null ? "—" : counts[i].ToString("N0");
+                control.IsEnabled = roster is not null && counts[i] > 0;
+                control.IsChecked = roster is not null && counts[i] > 0;
+                AutomationProperties.SetName(control, roster is null ? label : $"{label}: {count.Text} in backup");
+            }
+        }
         var actions=new StackPanel {Orientation=Orientation.Horizontal,HorizontalAlignment=HorizontalAlignment.Right,Margin=new Thickness(0,12,0,0)};
         var commit=new Button {Content="IMPORT SELECTED",IsEnabled=false};
         var close=new Button {Content="CLOSE",IsCancel=true};
@@ -99,8 +107,8 @@ public partial class MainWindow
         void SetBusy(bool value)
         {
             busy=value;select.IsEnabled=reference.IsEnabled=close.IsEnabled=unlock.IsEnabled=unlockFile.IsEnabled=passwordBox.IsEnabled=!value;
-            categories.IsEnabled=historyOptions.IsEnabled=!value && source is not null;
-            commit.IsEnabled=!value && (plan?.HasChanges==true || eventPlan.Count>0);
+            categories.IsEnabled=!value && source is not null;
+            commit.IsEnabled=!value && plan?.HasChanges==true;
         }
         dialog.Closing+=(_,e)=>{if(busy)e.Cancel=true;else passwordBox.Clear();};
 
@@ -112,55 +120,31 @@ public partial class MainWindow
 
         void UpdatePreview()
         {
-            if (source is null) return;
-            var roster = source.Roster;
-            var chosen = eventList.SelectedItems.Cast<LiveTimeEventHistory>().Select(e => e.SourceId).ToList();
+            if (busy || source is null) return;
             var selection = toggles.Where(t => t.Control.IsChecked == true)
                 .Aggregate(LiveTimeRosterSelection.None, (selected, toggle) => selected | toggle.Option);
-            plan = LiveTimeRosterMerge.Preview(roster, Drivers.ToList(), Classes.ToList(), _driverAssignments.ToList(),
-                _settings.RentalTransponders.Inventory.Select(t => t.Number), selection, chosen.Count > 0);
-            eventPlan = LiveTimeHistoryMerge.Preview(source, chosen, Events.ToList(), plan, includeLaps.IsChecked == true);
-            var newTags = plan.Assignments.Count(a => a.TransponderId.Length > 0);
-            status.Text = $"Source: {roster.Drivers.Count} active drivers • {roster.Classes.Count} active classes • {roster.Entries.Count} driver–class assignments\n"+
-                $"Add {plan.Drivers.Count} drivers, {plan.Classes.Count} classes and {plan.Assignments.Count} assignments ({newTags} with transponders). Fill transponders on {plan.TagFills.Count} existing assignments.\n"+
-                $"History in this backup: {roster.Events} events, {roster.Races} races, {roster.Laps} race laps, {roster.PracticeLaps} practice laps and {roster.Rentals} rentals.";
-            if (source.History.Count > 0)
-                status.Text += $"\nSelected: {eventPlan.Count} new events, {eventPlan.Sum(e => e.Sessions.Count)} completed races and {eventPlan.Sum(e => e.Sessions.Sum(r => r.Laps.Count)):N0} scored laps.";
+            plan = LiveTimeRosterMerge.Preview(source, Drivers.ToList(), Classes.ToList(), _driverAssignments.ToList(),
+                _settings.RentalTransponders.Inventory.Select(t => t.Number), selection);
+            status.Text = selection == LiveTimeRosterSelection.None ? "Select the categories to import." :
+                plan.HasChanges ? "Ready to import. Existing records will be kept." :
+                "No new records to import with this selection.";
             if (plan.SkippedMissingAssignments > 0)
-                status.Text += $"\nSkipped {plan.SkippedMissingAssignments} assignments without a matching driver, class or existing assignment. Select the missing categories to include them.";
-            if (!plan.HasChanges && eventPlan.Count == 0)
-                status.Text += selection == LiveTimeRosterSelection.None && chosen.Count == 0 ? "\nChoose categories or events to import." : "\nNo new records to import with this selection.";
+                status.Text += $" {plan.SkippedMissingAssignments:N0} assignments are missing a matching driver, class or existing assignment.";
             if (plan.Issues.Count > 0)
-                status.Text += $"\n{plan.Issues.Count} conflicts or skipped items:";
-            issues.ItemsSource = plan.Issues.Take(200).ToList();
-            issues.Visibility = plan.Issues.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
-            commit.IsEnabled = !busy && (plan.HasChanges || eventPlan.Count > 0);
+                status.Text += $" {plan.Issues.Count:N0} conflicts or skipped items.";
+            commit.IsEnabled = plan.HasChanges;
         }
 
-        foreach (var (control, _) in toggles)
+        foreach (var (control, _, _, _) in toggles)
         {
             control.Checked += (_, _) => UpdatePreview();
             control.Unchecked += (_, _) => UpdatePreview();
         }
 
-        void RefreshAvailableEvents()
-        {
-            var imported = Events.Select(e => e.Id).ToHashSet(StringComparer.OrdinalIgnoreCase);
-            var available = source?.History.Where(e => !imported.Contains(LiveTimeHistoryMerge.EventId(e.SourceId))).ToList() ?? [];
-            eventList.ItemsSource = available;
-            historyOptions.Visibility = available.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
-        }
-
-        selectAll.Click += (_, _) => eventList.SelectAll();
-        clearEvents.Click += (_, _) => eventList.UnselectAll();
-        eventList.SelectionChanged += (_, _) => UpdatePreview();
-        includeLaps.Checked += (_, _) => UpdatePreview();
-        includeLaps.Unchecked += (_, _) => UpdatePreview();
-
         async Task PreviewAsync(byte[]? password = null)
         {
             if(sourcePath is not { } path)return;
-            source=null;plan=null;eventPlan=[];SetBusy(true);RefreshAvailableEvents();issues.Visibility=Visibility.Collapsed;
+            source=null;plan=null;SetBusy(true);SetCategoryCounts(null);
             if (password is null)
             {
                 unlockPanel.Visibility = Visibility.Collapsed;
@@ -171,11 +155,10 @@ public partial class MainWindow
             try
             {
                 source=await Task.Run(()=>password is null
-                    ? LiveTimeBackupReader.ReadImport(path,referencePath)
-                    : LiveTimeBackupReader.ReadEncryptedImport(path,password));
+                    ? LiveTimeBackupReader.ReadImportRoster(path,referencePath)
+                    : LiveTimeBackupReader.ReadEncryptedRoster(path,password));
                 unlockPanel.Visibility = Visibility.Collapsed;
-                RefreshAvailableEvents();
-                UpdatePreview();
+                SetCategoryCounts(source);
             }
             catch (LiveTimeBackupPasswordRequiredException ex)
             {
@@ -186,6 +169,7 @@ public partial class MainWindow
             finally
             {
                 SetBusy(false);
+                if (source is not null) UpdatePreview();
                 if (unlockPanel.Visibility == Visibility.Visible) passwordBox.Focus();
             }
         }
@@ -247,8 +231,7 @@ public partial class MainWindow
         reference.Click+=async (_,_)=>{if(Pick("Select an older backup from the same LiveTime installation") is { } path){referencePath=path;await PreviewAsync();}};
         commit.Click+=async (_,_) =>
         {
-            if(plan is not { } additions || (!additions.HasChanges && eventPlan.Count == 0) || !ApplicationUpdateAllowed)return;
-            var importedEvents = eventPlan;
+            if(plan is not { HasChanges: true } additions || !ApplicationUpdateAllowed)return;
             SetBusy(true);
             var applied=false;
             var updated = new List<(DriverClassAssignment Assignment, string PreviousTags)>();
@@ -268,7 +251,6 @@ public partial class MainWindow
                     updated.Add((assignment, assignment.TransponderId));
                     assignment.TransponderId = fill.Transponders;
                 }
-                foreach (var ev in importedEvents) Events.Add(ev);
                 await CaptureAndSaveSettingsAsync(true);
             }
             catch(Exception ex)
@@ -279,8 +261,6 @@ public partial class MainWindow
                     foreach(var cls in additions.Classes)Classes.Remove(cls);
                     foreach(var assignment in additions.Assignments)_driverAssignments.Remove(assignment);
                     foreach (var (assignment, previous) in updated) assignment.TransponderId = previous;
-                    foreach (var ev in importedEvents) Events.Remove(ev);
-                    _settings.Events=Events.ToList();
                     _settings.Drivers=Drivers.ToList();_settings.Classes=Classes.ToList();
                     _settings.DriverClassAssignments=_driverAssignments.ToList();
                 }
@@ -290,9 +270,8 @@ public partial class MainWindow
             finally {SetBusy(false);}
             RefreshAssignmentRows();
             RefreshEventSetupCollections();
-            RefreshAvailableEvents();
             UpdatePreview();
-            status.Text=$"Imported {additions.Drivers.Count} drivers, {additions.Classes.Count} classes and {additions.Assignments.Count} assignments. Filled transponders on {additions.TagFills.Count} existing assignments. Imported {importedEvents.Count} events and {importedEvents.Sum(e => e.Sessions.Count)} completed races.";
+            status.Text=$"Imported {additions.Drivers.Count} drivers, {additions.Classes.Count} classes and {additions.Assignments.Count} assignments. Filled transponders on {additions.TagFills.Count} existing assignments.";
             FooterStatusText.Text="Selected LiveTime data imported.";
         };
         dialog.ShowDialog();
