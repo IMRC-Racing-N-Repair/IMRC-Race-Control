@@ -11,6 +11,35 @@ if (args is ["--inspect-livetime-backup", var backup])
     return;
 }
 
+if (args is ["--verify-livetime-import-copy", var archivePath])
+{
+    var source = LiveTimeBackupReader.ReadImport(archivePath);
+    var roster = LiveTimeRosterMerge.Preview(source.Roster, [], [], []);
+    var ids = source.History.Select(e => e.SourceId).ToList();
+    var one = LiveTimeHistoryMerge.Preview(source, ids.Take(1), [], roster, includeLaps:false);
+    var all = LiveTimeHistoryMerge.Preview(source, ids, [], roster, includeLaps:true);
+    var repeat = LiveTimeHistoryMerge.Preview(source, ids, all, roster, includeLaps:true);
+    if (one.Count != 1 || one[0].Sessions.Any(r => r.Results.Count == 0 || r.Laps.Count != 0)
+        || all.Count != source.History.Count || repeat.Count != 0
+        || all.Sum(e => e.Sessions.Count) != source.History.Sum(e => e.RaceCount)
+        || all.Sum(e => e.Sessions.Sum(r => r.Laps.Count)) != source.History.Sum(e => e.LapCount))
+        throw new Exception("The import did not preserve the expected selected events and results.");
+    var db = new RaceControlDatabaseService();
+    if (!db.DatabasePath.StartsWith("/tmp/imrc-callout-test-data/", StringComparison.Ordinal))
+        throw new Exception("Run the import verification with the isolated test database.");
+    await db.SaveApplicationStateAsync(new AppSettings { Drivers=roster.Drivers, Classes=roster.Classes,
+        DriverClassAssignments=roster.Assignments, Events=all });
+    var loaded = await db.LoadApplicationStateAsync() ?? throw new Exception("Could not reload imported events.");
+    var laps = all.Sum(e => e.Sessions.Sum(r => r.Laps.Count));
+    if (loaded.Events.Count != all.Count || loaded.Events.Sum(e => e.Sessions.Sum(r => r.Laps.Count)) != laps
+        || loaded.Events.Sum(e => e.Sessions.Sum(r => r.Results.Count)) != all.Sum(e => e.Sessions.Sum(r => r.Results.Count)))
+        throw new Exception("Database round trip did not preserve race results and laps.");
+    Console.WriteLine($"PASS: {source.Roster.Drivers.Count} active drivers; {source.Roster.Classes.Count} classes; " +
+        $"{all.Count} selected events, {all.Sum(e=>e.Sessions.Count)} completed races, {laps} scored laps. " +
+        "Verified one-event/results-only selection, duplicate protection and database reload.");
+    return;
+}
+
 if (args.Contains("--livetime-import-only"))
 {
     Console.WriteLine($"PASS: {LiveTimeImportChecks.Run()} LiveTime import checks.");

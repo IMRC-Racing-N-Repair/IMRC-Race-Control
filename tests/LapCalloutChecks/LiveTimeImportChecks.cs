@@ -67,11 +67,57 @@ internal static class LiveTimeImportChecks
             Check(plan.Assignments.Single().TransponderId=="" && plan.Issues.Count==2,"flags the conflict and skips rental transponder");
             var clean=LiveTimeRosterMerge.Preview(decoded,[],[],[]);
             var again=LiveTimeRosterMerge.Preview(decoded,clean.Drivers,clean.Classes,clean.Assignments);
+            var driversOnly = LiveTimeRosterMerge.Preview(decoded, [], [], [], selection: LiveTimeRosterSelection.Drivers);
+            Check(driversOnly.Drivers.Count == 2 && driversOnly.Classes.Count == 0 && driversOnly.Assignments.Count == 0,
+                "drivers-only selection cannot add classes or assignments");
+            var classesOnly = LiveTimeRosterMerge.Preview(decoded, [], [], [], selection: LiveTimeRosterSelection.Classes);
+            Check(classesOnly.Classes.Count == 1 && classesOnly.Drivers.Count == 0 && classesOnly.Assignments.Count == 0,
+                "classes-only selection cannot add drivers or assignments");
+            var membershipsOnly = LiveTimeRosterMerge.Preview(decoded, clean.Drivers, clean.Classes, [],
+                selection: LiveTimeRosterSelection.ClassAssignments);
+            Check(membershipsOnly.Assignments.Count == 2 && membershipsOnly.Assignments.All(a => a.TransponderId == ""),
+                "class memberships can be imported without tag numbers");
+            var missing = LiveTimeRosterMerge.Preview(decoded, [], [], [],
+                selection: LiveTimeRosterSelection.ClassAssignments | LiveTimeRosterSelection.Transponders);
+            Check(!missing.HasChanges && missing.SkippedMissingAssignments == 2,
+                "assignment selection cannot silently create unselected drivers or classes");
+            var tagsOnly = LiveTimeRosterMerge.Preview(decoded, clean.Drivers, clean.Classes, membershipsOnly.Assignments,
+                selection: LiveTimeRosterSelection.Transponders);
+            Check(tagsOnly.Assignments.Count == 0 && tagsOnly.TagFills.Count == 2 &&
+                membershipsOnly.Assignments.All(a => a.TransponderId == ""),
+                "tags-only preview fills blank assignments without creating or mutating records");
+            var tagsMissingAssignment = LiveTimeRosterMerge.Preview(decoded, clean.Drivers, clean.Classes, [],
+                selection: LiveTimeRosterSelection.Transponders);
+            Check(!tagsMissingAssignment.HasChanges && tagsMissingAssignment.SkippedMissingAssignments == 2,
+                "tags-only selection does not create missing class memberships");
+            var tagsAlreadyAssigned = LiveTimeRosterMerge.Preview(decoded, [existingDriver], [existingClass], [existingEntry],
+                selection: LiveTimeRosterSelection.Transponders);
+            Check(!tagsAlreadyAssigned.HasChanges && existingEntry.TransponderId == "1234567",
+                "tags-only selection preserves existing personal transponders");
+            Check(!LiveTimeRosterMerge.Preview(decoded, [], [], [], selection: LiveTimeRosterSelection.None).HasChanges,
+                "no selected category results in no writes");
             Check(clean.Classes.Single().MinimumLapSeconds==3.5 && !again.HasChanges,"class minimum lap time and repeat import are stable");
             var sourceRental=LiveTimeRosterMerge.Preview(decoded with { RentalNumbers=["3456789"] },[],[],[]);
             Check(sourceRental.Assignments.Any(a=>a.TransponderId=="") && sourceRental.Issues.Count==1,"does not convert source rentals to personal tags");
             var sameName=LiveTimeRosterMerge.Preview(decoded,[existingDriver],[],[]);
             Check(sameName.Drivers.Count==1 && sameName.Issues.Count==1,"does not match on name alone");
+            var raceAt = DateTimeOffset.Parse("2025-08-03T12:00:00Z");
+            var sourceEvent = new LiveTimeEventHistory(1, Guid.NewGuid(), "Event A", raceAt, raceAt.AddHours(4),
+                [new(1, Guid.NewGuid(), 1, "Main", 2, 1, 2, 1, 1, "A", 1, 1, 2, 1, 300, 0, 3.5, raceAt, raceAt.AddMinutes(5),
+                    [new(1, 1, 1, 2, 1, 5.5, 5.5, 5.5, 0, 0, 0, false, true, false, "1234567",
+                        [new(1, 1, 5.5, 5.5, raceAt.AddSeconds(5.5))])])]);
+            var otherEvent = sourceEvent with { SourceId = Guid.NewGuid(), Name = "Event B" };
+            var archive = new LiveTimeImportSource(decoded, [sourceEvent, otherEvent]);
+            var justOne = LiveTimeHistoryMerge.Preview(archive, [sourceEvent.SourceId], [], clean, includeLaps:true);
+            var race = justOne.Single().Sessions.Single();
+            Check(justOne[0].Name=="Event A" && race.ProgressStatus==EventSessionStatus.Completed &&
+                race.Results.Single().Position==2 && race.Results[0].Status=="DNF" && race.Laps.Single().LapTime.TotalSeconds==5.5,
+                "selected completed event retains source position, status and lap time");
+            var summaries = LiveTimeHistoryMerge.Preview(archive, [otherEvent.SourceId], [], clean, includeLaps:false);
+            Check(summaries.Single().Sessions.Single().Results.Count==1 && summaries[0].Sessions[0].Laps.Count==0,
+                "results-only history selection excludes individual laps");
+            Check(LiveTimeHistoryMerge.Preview(archive, [sourceEvent.SourceId], justOne, clean, includeLaps:true).Count==0,
+                "events already imported are not overwritten or duplicated");
             return checks;
         }
         finally {Directory.Delete(folder,true);}

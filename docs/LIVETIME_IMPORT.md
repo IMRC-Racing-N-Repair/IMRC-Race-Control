@@ -1,22 +1,44 @@
-# Import a LiveTime roster
+# Import LiveTime data
 
-In IMRC Race Control, open **Saved Race Data → Import LiveTime Roster** and choose
-a backup created in LiveTime's **Data** section. The preview counts active
-drivers, classes, assignments, and any history in the source. Click **Import
-Roster** to add the previewed records. Race Control backs up its current database
-before applying the import.
+Open **Saved Race Data → Import LiveTime Data** and choose a readable LiveTime
+backup or a portable import copy. The preview shows what's in the source and
+what the current selection will add.
 
-The import adds names, nicknames, phonetic names, classes, minimum lap times
-where present, and personal transponders assigned by class. Existing class
-settings and driver assignments are kept. A racer with the same name is matched
-only if there is a unique transponder match; conflicting and rental transponders
-are listed separately. Review the resulting class settings before racing.
+- Select **Drivers**, **Classes**, **Driver–class assignments**, and **Personal
+  transponders** independently. Assignments need a matching driver and class.
+  Choosing only transponders fills blank tags on existing assignments. Existing
+  nonblank tags, class settings, and rental inventory are kept.
+- For schema 325, select individual events or use **Select all**. Each selected
+  event includes its completed qualifying races and mains with their saved
+  finishing positions and totals. Leave **Include individual scored laps**
+  checked for lap-by-lap history. Invalid laps and other timing records are
+  excluded. Event history can be imported without adding to the Drivers or
+  Classes lists; the event retains its historical display names.
+- Review the counts, then click **Import Selected**. Race Control backs up its
+  database before saving. Already imported events are skipped, so include laps
+  when you first import an event if you want to keep its lap history.
 
-The reader supports recognizable LiveTime SQLite databases and the legacy
-1 KiB page format verified against schema 193. If a legacy backup cannot be
-read on its own, choose an older readable backup from the same installation
-as the optional reference. Reference matching is checked before any roster
-records are shown. Neither source file is changed.
+Practice history, rental inventory, series, and LiveTime account/settings data
+are outside this import. Class timing settings other than the available minimum
+lap time use Race Control defaults; check them before using a class for racing.
 
-Race results, individual laps, practice history, and rental inventory are
-counted in the preview but are outside this roster import.
+## Open encrypted LiveTime backups
+
+The app reads plain SQLite backups directly. It can also read the legacy 1 KiB
+page format, verified against schema 193; if necessary, provide an older backup
+from the same installation as a reference. Older schemas support roster import.
+
+For SQLCipher backups (verified against schema 325), create a portable import
+copy using a valid backup password. The exporter keeps only the columns used
+for import, opens the source read-only, and does not save the password:
+
+```sh
+python -m pip install apsw-sqlite3mc
+python scripts/Export-LiveTimeImport.py LiveTime-backup.db LiveTime-import.sqlite
+```
+
+Enter the backup password when prompted, then choose the resulting
+`LiveTime-import.sqlite` in Race Control. Keep this portable copy private: it
+includes names, transponder numbers, and race records. No account credentials,
+contact information, photos, raw decoder traffic, or device configuration are
+copied. Neither the backup nor a legacy reference is modified.

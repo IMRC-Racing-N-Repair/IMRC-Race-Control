@@ -35,7 +35,7 @@ public partial class MainWindow
             try { await CaptureAndSaveSettingsAsync(true); await DataProtectionService.QueueRestoreAsync(picker.FileName,ApplicationDataPaths.BackupDirectory); MessageBox.Show(dialog,"Restore queued. Close and reopen Race Control to apply it.","Database restore"); }
             catch(Exception ex) { MessageBox.Show(dialog,ex.Message,"Database was not restored"); }
         };
-        var liveTime = new Button { Content="IMPORT LIVETIME ROSTER…" };
+        var liveTime = new Button { Content="IMPORT LIVETIME DATA…" };
         liveTime.Click += (_,_) => OpenLiveTimeImport(dialog);
         actions.Children.Add(backup); actions.Children.Add(open); actions.Children.Add(restore); actions.Children.Add(liveTime); panel.Children.Add(actions);
         panel.Children.Add(new TextBlock { Text="If an older repair already removed the old database, a surviving database or backup is needed to recover those records. An installer cannot recreate deleted results.",TextWrapping=TextWrapping.Wrap,Margin=new Thickness(0,12,0,0) });

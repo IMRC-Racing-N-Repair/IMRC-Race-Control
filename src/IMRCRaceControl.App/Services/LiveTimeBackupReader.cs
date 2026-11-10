@@ -14,13 +14,23 @@ public sealed record LiveTimeRoster(int SchemaVersion, List<LiveTimeDriver> Driv
     public List<string> RentalNumbers { get; init; } = [];
 }
 
-public static class LiveTimeBackupReader
+public static partial class LiveTimeBackupReader
 {
     private const int LegacyPageSize = 1024;
     private const int MaxEncodedBytes = 256 * 1024 * 1024;
     private static ReadOnlySpan<byte> Header => "SQLite format 3\0"u8;
 
-    public static LiveTimeRoster Read(string path, string? referencePath = null)
+    public static LiveTimeRoster Read(string path, string? referencePath = null) =>
+        ReadFile(path, referencePath, ReadRoster);
+
+    public static LiveTimeImportSource ReadImport(string path, string? referencePath = null) =>
+        ReadFile(path, referencePath, db =>
+        {
+            var roster = ReadRoster(db);
+            return new LiveTimeImportSource(roster, roster.SchemaVersion == 325 ? ReadRaceHistory(db) : []);
+        });
+
+    private static T ReadFile<T>(string path, string? referencePath, Func<SqliteConnection,T> read) where T : class
     {
         if (IsPlainDatabase(path))
         {
@@ -28,13 +38,13 @@ public static class LiveTimeBackupReader
             using var db = new SqliteConnection(new SqliteConnectionStringBuilder
                 { DataSource = path, Mode = SqliteOpenMode.ReadOnly, Pooling = false }.ToString());
             db.Open();
-            return ReadRoster(db);
+            return read(db);
         }
 
         var encoded = ReadEncoded(path);
         try
         {
-            if (TryReadEncoded(encoded, encoded, out var roster))
+            if (TryReadEncoded(encoded, encoded, read, out var roster))
                 return roster!;
 
             if (!string.IsNullOrWhiteSpace(referencePath))
@@ -42,14 +52,14 @@ public static class LiveTimeBackupReader
                 var reference = ReadEncoded(referencePath);
                 try
                 {
-                    if (TryReadEncoded(encoded, reference, out roster))
+                    if (TryReadEncoded(encoded, reference, read, out roster))
                         return roster!;
                 }
                 finally { CryptographicOperations.ZeroMemory(reference); }
             }
 
-            throw new InvalidDataException("This backup could not be opened as a supported LiveTime database. " +
-                "Try a matching older backup as the reference, or use a readable LiveTime database copy.");
+            throw new InvalidDataException("This backup could not be opened directly. " +
+                "For a SQLCipher backup, choose a LiveTime import copy created by the exporter. For an older backup, try a matching reference.");
         }
         finally { CryptographicOperations.ZeroMemory(encoded); }
     }
@@ -76,7 +86,7 @@ public static class LiveTimeBackupReader
     // Repeated unused pages supply candidates. No vendor/user password or recovered
     // mask is stored. A candidate is accepted only after full SQLite integrity and
     // LiveTime schema checks; this does not assume newer backups use the same layout.
-    private static bool TryReadEncoded(byte[] encoded, byte[] reference, out LiveTimeRoster? roster)
+    private static bool TryReadEncoded<T>(byte[] encoded, byte[] reference, Func<SqliteConnection,T> read, out T? roster) where T : class
     {
         roster = null;
         var signatures = new Dictionary<ulong, (int Offset, int Count)>();
@@ -102,7 +112,7 @@ public static class LiveTimeBackupReader
                 decoded = new byte[encoded.Length];
                 for (var i = 0; i < encoded.Length; i++) decoded[i] = (byte)(encoded[i] ^ mask[i % LegacyPageSize]);
                 using var db = OpenInMemory(decoded);
-                roster = ReadRoster(db);
+                roster = read(db);
                 return true;
             }
             catch (SqliteException) { }
