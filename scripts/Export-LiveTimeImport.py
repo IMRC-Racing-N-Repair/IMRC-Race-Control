@@ -16,6 +16,10 @@ FIELDS = {
     "Driver": "LID GUID IsActive FirstName LastName NickName PhoneticName",
     "RaceClass": "LID GUID IsActive Name Color",
     "RaceClassDefaultSetting": "LID RaceClassLID MinimumLapTimeSeconds",
+    "EventRaceClassSetting": ("LID EventLID RaceClassLID MinimumLapTimeSeconds QualifyingStartTypeID "
+                             "QualifyingLengthTypeID QualifyingLengthSeconds QualifyingLengthLaps "
+                             "QualifyingNumberOfDriversPerRace MainStartTypeID MainLengthTypeID "
+                             "MainDefaultMainLengthSeconds MainDefaultMainLengthLaps MainDefaultNumberOfDrivers"),
     "DriverRaceClassTransponder": "LID DriverLID RaceClassLID IsPrimary TransponderNumber",
     "DriverRaceClassCarInformation": "LID DriverLID RaceClassLID",
     "Event": "LID GUID Name IsActive StartDateTime EndDateTime",
@@ -32,7 +36,7 @@ FIELDS = {
     "PracticeLap": "LID",  # count only
     "TransponderRental": "LID TransponderNumber",  # exclude known rentals from personal tag import
 }
-OPTIONAL = {"PracticeLap", "TransponderRental", "DriverRaceClassCarInformation", "RaceClassDefaultSetting"}
+OPTIONAL = {"PracticeLap", "TransponderRental", "DriverRaceClassCarInformation", "RaceClassDefaultSetting", "EventRaceClassSetting"}
 
 
 def export(source, target):

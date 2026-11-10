@@ -1316,7 +1316,7 @@
                         </Grid.ColumnDefinitions>
 
                         <DataGrid x:Name="ClassGrid" ItemsSource="{Binding Classes}" AutoGenerateColumns="False"
-                                  IsReadOnly="True" CanUserAddRows="False"
+                                  IsReadOnly="True" CanUserAddRows="False" SelectionMode="Extended" SelectionUnit="FullRow"
                                   SelectionChanged="ClassGrid_SelectionChanged">
                             <DataGrid.Columns>
                                 <DataGridTextColumn Header="CLASS" Binding="{Binding Name}" Width="1.15*"/>
@@ -1355,7 +1355,8 @@
 
                                 <WrapPanel>
                                     <Button Content="EDIT CLASS" Click="EditClass_Click"/>
-                                    <Button Content="DELETE CLASS" Click="DeleteClass_Click" Background="{DynamicResource AccentDarkBrush}"/>
+                                    <Button Content="DELETE SELECTED" Click="DeleteClass_Click" Background="{DynamicResource AccentDarkBrush}"
+                                            ToolTip="Hold Ctrl and click to select multiple classes."/>
                                 </WrapPanel>
                             </StackPanel>
                         </Border>
@@ -1405,7 +1406,7 @@
                             </Border>
 
                             <ListBox x:Name="DriverGrid" Grid.Row="1"
-                                     ItemsSource="{Binding Drivers}"
+                                     ItemsSource="{Binding Drivers}" SelectionMode="Extended"
                                      SelectionChanged="DriverGrid_SelectionChanged">
                                 <ListBox.ItemTemplate>
                                     <DataTemplate>
@@ -1461,7 +1462,8 @@
 
                                 <WrapPanel>
                                     <Button Content="EDIT DRIVER" Click="EditDriver_Click"/>
-                                    <Button Content="DELETE DRIVER" Click="DeleteDriver_Click" Background="{DynamicResource AccentDarkBrush}"/>
+                                    <Button Content="DELETE SELECTED" Click="DeleteDriver_Click" Background="{DynamicResource AccentDarkBrush}"
+                                            ToolTip="Hold Ctrl and click to select multiple drivers."/>
                                 </WrapPanel>
                             </StackPanel>
                         </Border>

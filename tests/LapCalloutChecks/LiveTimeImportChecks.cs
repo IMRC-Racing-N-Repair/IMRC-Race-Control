@@ -28,8 +28,29 @@ internal static class LiveTimeImportChecks
             var plain=LiveTimeBackupReader.Read(fixture);
             Check(plain.SchemaVersion==193 && plain.Drivers.Count==2 && plain.Classes.Count==1,"recognizes active roster");
             Check(plain.Entries.First(e=>e.DriverId==1).Transponders=="1234567;2345678","keeps primary and additional transponders");
-            Check(plain.Events==1 && plain.Laps==2 && plain.PracticeLaps==1,"reports history without importing it");
+            Check(plain.Events==2 && plain.Laps==2 && plain.PracticeLaps==1,"reports history without importing it");
             Check(original.SequenceEqual(File.ReadAllBytes(fixture)),"plain database remains unchanged");
+
+            var sourceClass = plain.Classes.Single();
+            Check(sourceClass.Timing is { QualSeconds: 240, MainFormat: 2, MainLaps: 60, MainCapacity: 8 },
+                "uses settings from the latest event for each class");
+            var setupClass = new ClassDefinition { Name = sourceClass.Name, MinimumLapSeconds = 5 };
+            var settings = LiveTimeRosterMerge.Preview(plain, [], [setupClass], [],
+                selection: LiveTimeRosterSelection.ClassSettings);
+            var change = settings.ClassUpdates.Single();
+            Check(setupClass.MinimumLapSeconds == 5 && setupClass.RaceMinutes == 5,
+                "preview does not modify an existing class");
+            change.After.ApplyTo(setupClass);
+            Check(setupClass.MinimumLapSeconds == 3.5 && setupClass.RaceMinutes == 4 &&
+                setupClass.MainRaceFormat == RaceFormat.Laps && setupClass.MainTargetLaps == 60 &&
+                setupClass.MaxRacersPerHeat == 10 && setupClass.MainRules[0].MaxRacers == 8 &&
+                setupClass.QualStartStyle == StartStyle.IndividualCrossing && setupClass.RaceStartStyle == StartStyle.Tone,
+                "applies independently stored qualifying and mains settings");
+            Check(!LiveTimeRosterMerge.Preview(plain, [], [setupClass], [],
+                selection: LiveTimeRosterSelection.ClassSettings).HasChanges, "reimporting the same settings is a no-op");
+            change.Before.ApplyTo(setupClass);
+            Check(setupClass.MinimumLapSeconds == 5 && setupClass.MainRaceFormat is null && setupClass.MainRules[0].MaxRacers == 19,
+                "settings snapshot can restore the original class after a failed save");
 
             var encrypted = Path.Combine(folder, "encrypted # fixture.db");
             var password = "sample import password"u8.ToArray();
@@ -168,7 +189,10 @@ internal static class LiveTimeImportChecks
                     [new(1, 1, 1, 2, 1, 5.5, 5.5, 5.5, 0, 0, 0, false, true, false, "1234567",
                         [new(1, 1, 5.5, 5.5, raceAt.AddSeconds(5.5))])])]);
             var otherEvent = sourceEvent with { SourceId = Guid.NewGuid(), Name = "Event B" };
-            var archive = new LiveTimeImportSource(decoded, [sourceEvent, otherEvent]);
+            var emptyEvent = sourceEvent with { SourceId = Guid.NewGuid(), Name = "Event with no races", Races = [] };
+            var archive = new LiveTimeImportSource(decoded, [sourceEvent, otherEvent, emptyEvent]);
+            Check(LiveTimeHistoryMerge.Preview(archive, [emptyEvent.SourceId], [], clean, includeLaps:true)
+                .Single().Sessions.Count == 0, "preserves closed events that have no completed races");
             var justOne = LiveTimeHistoryMerge.Preview(archive, [sourceEvent.SourceId], [], clean, includeLaps:true);
             var race = justOne.Single().Sessions.Single();
             Check(justOne[0].Name=="Event A" && race.ProgressStatus==EventSessionStatus.Completed &&
@@ -250,8 +274,14 @@ internal static class LiveTimeImportChecks
             INSERT INTO RaceClassDefaultSetting VALUES (1,1,3.5);
             CREATE TABLE DriverRaceClassTransponder (LID INTEGER PRIMARY KEY, DriverLID INTEGER, RaceClassLID INTEGER, IsPrimary INTEGER, TransponderNumber INTEGER);
             INSERT INTO DriverRaceClassTransponder VALUES (1,1,1,0,2345678),(2,1,1,1,1234567),(3,2,1,1,3456789);
-            CREATE TABLE Event (LID INTEGER PRIMARY KEY);
-            INSERT INTO Event VALUES (1);
+            CREATE TABLE Event (LID INTEGER PRIMARY KEY, IsActive INTEGER, StartDateTime TEXT);
+            INSERT INTO Event VALUES (1,1,'2025-01-03'),(2,1,'2025-02-04');
+            CREATE TABLE EventRaceClassSetting (LID INTEGER PRIMARY KEY, EventLID INTEGER, RaceClassLID INTEGER,
+                MinimumLapTimeSeconds REAL, QualifyingStartTypeID INTEGER, QualifyingLengthTypeID INTEGER,
+                QualifyingLengthSeconds INTEGER, QualifyingLengthLaps INTEGER, QualifyingNumberOfDriversPerRace INTEGER,
+                MainStartTypeID INTEGER, MainLengthTypeID INTEGER, MainDefaultMainLengthSeconds INTEGER,
+                MainDefaultMainLengthLaps INTEGER, MainDefaultNumberOfDrivers INTEGER);
+            INSERT INTO EventRaceClassSetting VALUES (1,2,1,4,1,1,240,50,10,2,2,300,60,8),(2,1,1,2,2,1,300,50,9,2,1,300,50,10);
             CREATE TABLE Race (LID INTEGER PRIMARY KEY);
             INSERT INTO Race VALUES (1);
             CREATE TABLE RaceLap (LID INTEGER PRIMARY KEY);

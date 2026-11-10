@@ -6,7 +6,12 @@ using Microsoft.Data.Sqlite;
 namespace IMRCRaceControl.Services;
 
 public sealed record LiveTimeDriver(long LocalId, Guid SourceId, string FirstName, string LastName, string Nickname, string PhoneticName);
-public sealed record LiveTimeClass(long LocalId, Guid SourceId, string Name, string Color, double? MinimumLapSeconds);
+public sealed record LiveTimeClass(long LocalId, Guid SourceId, string Name, string Color, double? MinimumLapSeconds)
+{
+    public LiveTimeClassTiming? Timing { get; init; }
+}
+public sealed record LiveTimeClassTiming(double? MinimumLap, int QualStart, int QualFormat, int QualSeconds,
+    int QualLaps, int HeatCapacity, int MainStart, int MainFormat, int MainSeconds, int MainLaps, int MainCapacity);
 public sealed record LiveTimeClassEntry(long DriverId, long ClassId, string Transponders);
 public sealed record LiveTimeRoster(int SchemaVersion, List<LiveTimeDriver> Drivers, List<LiveTimeClass> Classes,
     List<LiveTimeClassEntry> Entries, long Events, long Races, long Laps, long PracticeLaps, long Rentals)
@@ -23,11 +28,18 @@ public static partial class LiveTimeBackupReader
     public static LiveTimeRoster Read(string path, string? referencePath = null) =>
         ReadFile(path, referencePath, db => ReadRoster(db), promptForPassword: false);
 
-    public static LiveTimeRoster ReadImportRoster(string path, string? referencePath = null)
+    public static LiveTimeRoster ReadImportRoster(string path, string? referencePath = null) =>
+        ReadWithBundledPassword(path, referencePath, db => ReadRoster(db, includeHistoryCounts: false));
+
+    public static LiveTimeImportSource ReadImport(string path, string? referencePath = null) =>
+        ReadWithBundledPassword(path, referencePath, ReadImportSource);
+
+    private static T ReadWithBundledPassword<T>(string path, string? referencePath, Func<SqliteConnection, T> read)
+        where T : class
     {
         try
         {
-            return ReadFile(path, referencePath, db => ReadRoster(db, includeHistoryCounts: false));
+            return ReadFile(path, referencePath, read);
         }
         catch (LiveTimeBackupPasswordRequiredException)
         {
@@ -35,7 +47,7 @@ public static partial class LiveTimeBackupReader
             if (password is null) throw;
             try
             {
-                return ReadEncryptedRoster(path, password);
+                return ReadEncrypted(path, password, read);
             }
             catch (InvalidDataException)
             {
@@ -49,13 +61,21 @@ public static partial class LiveTimeBackupReader
         }
     }
 
-    public static LiveTimeImportSource ReadImport(string path, string? referencePath = null) =>
-        ReadFile(path, referencePath, ReadImportSource);
-
     private static LiveTimeImportSource ReadImportSource(SqliteConnection db)
     {
         var roster = ReadRoster(db);
-        return new LiveTimeImportSource(roster, roster.SchemaVersion == 325 ? ReadRaceHistory(db) : []);
+        if (roster.SchemaVersion != 325)
+            return new LiveTimeImportSource(roster, []);
+        var history = ReadRaceHistory(db);
+        if (history.Count == 0)
+            return new LiveTimeImportSource(roster, history);
+        return new LiveTimeImportSource(roster, history)
+        {
+            HistoryDrivers = Read(db, "SELECT LID,GUID,FirstName,LastName,NickName,PhoneticName FROM Driver WHERE IsActive=0",
+                r => new LiveTimeDriver(r.GetInt64(0), GuidValue(r,1), TextValue(r,2), TextValue(r,3), TextValue(r,4), TextValue(r,5))),
+            HistoryClasses = Read(db, "SELECT LID,GUID,Name,Color FROM RaceClass WHERE IsActive=0",
+                r => new LiveTimeClass(r.GetInt64(0), GuidValue(r,1), TextValue(r,2), TextValue(r,3), null))
+        };
     }
 
     private static T ReadFile<T>(string path, string? referencePath, Func<SqliteConnection,T> read, bool promptForPassword = true) where T : class
@@ -226,6 +246,23 @@ public static partial class LiveTimeBackupReader
                 r => (Id:r.GetInt64(0), Seconds:r.IsDBNull(1) ? (double?)null : r.GetDouble(1)))
                 .GroupBy(x=>x.Id).ToDictionary(g=>g.Key,g=>g.Last().Seconds);
             classes = classes.Select(c=>c with {MinimumLapSeconds=minimums.GetValueOrDefault(c.LocalId)}).ToList();
+        }
+
+        if (tables.Contains("EventRaceClassSetting"))
+        {
+            var settings = Read(db, """
+                SELECT s.RaceClassLID,s.MinimumLapTimeSeconds,s.QualifyingStartTypeID,s.QualifyingLengthTypeID,
+                    s.QualifyingLengthSeconds,s.QualifyingLengthLaps,s.QualifyingNumberOfDriversPerRace,
+                    s.MainStartTypeID,s.MainLengthTypeID,s.MainDefaultMainLengthSeconds,s.MainDefaultMainLengthLaps,
+                    s.MainDefaultNumberOfDrivers
+                FROM EventRaceClassSetting s JOIN Event e ON e.LID=s.EventLID
+                WHERE e.IsActive=1
+                ORDER BY julianday(e.StartDateTime),e.LID,s.LID
+                """, r => (Class:r.GetInt64(0), Timing:new LiveTimeClassTiming(
+                    r.IsDBNull(1) ? null : Number(r,1), Int(r,2), Int(r,3), Int(r,4), Int(r,5), Int(r,6),
+                    Int(r,7), Int(r,8), Int(r,9), Int(r,10), Int(r,11))))
+                .GroupBy(row => row.Class).ToDictionary(g => g.Key, g => g.Last().Timing);
+            classes = classes.Select(c => c with { Timing = settings.GetValueOrDefault(c.LocalId) }).ToList();
         }
 
         var tags = Read(db, "SELECT DriverLID,RaceClassLID,TransponderNumber FROM DriverRaceClassTransponder ORDER BY IsPrimary DESC,LID",

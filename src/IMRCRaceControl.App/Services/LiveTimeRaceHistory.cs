@@ -5,7 +5,11 @@ using Microsoft.Data.Sqlite;
 
 namespace IMRCRaceControl.Services;
 
-public sealed record LiveTimeImportSource(LiveTimeRoster Roster, IReadOnlyList<LiveTimeEventHistory> History);
+public sealed record LiveTimeImportSource(LiveTimeRoster Roster, IReadOnlyList<LiveTimeEventHistory> History)
+{
+    public IReadOnlyList<LiveTimeDriver> HistoryDrivers { get; init; } = [];
+    public IReadOnlyList<LiveTimeClass> HistoryClasses { get; init; } = [];
+}
 public sealed record LiveTimeEventHistory(long LocalId, Guid SourceId, string Name, DateTimeOffset Date,
     DateTimeOffset? End, List<LiveTimeRaceHistory> Races)
 {
@@ -46,8 +50,6 @@ public static partial class LiveTimeBackupReader
                     Int(r,5), Int(r,6), Int(r,7), Int(r,8), Int(r,9), TextValue(r,10), Int(r,11), Int(r,12),
                     Int(r,13), Int(r,14), Int(r,15), Int(r,16), r.IsDBNull(17) ? null : Number(r,17),
                     Epoch(Long(r,18)), Epoch(Long(r,19)), [])));
-        if (races.Count == 0) return [];
-
         const string raceIds = "SELECT r.LID " + raceScope;
         var entryScope = $"FROM RaceEntry x WHERE x.RaceLID IN ({raceIds})";
         var tagLookup = Read(db, $"SELECT t.RaceEntryLID,t.TransponderNumber FROM RaceTransponder t " +
@@ -80,7 +82,7 @@ public static partial class LiveTimeBackupReader
         return Read(db, "SELECT LID,GUID,Name,StartDateTime,EndDateTime FROM Event WHERE IsActive=1",
                 r => new LiveTimeEventHistory(r.GetInt64(0),GuidValue(r,1),TextValue(r,2),Date(TextValue(r,3)) ?? DateTimeOffset.UnixEpoch,
                     Date(TextValue(r,4)),byEvent[r.GetInt64(0)].ToList()))
-            .Where(e => e.SourceId != Guid.Empty && e.Date > DateTimeOffset.UnixEpoch && e.Races.Count > 0)
+            .Where(e => e.SourceId != Guid.Empty && e.Date > DateTimeOffset.UnixEpoch && (e.Races.Count > 0 || e.End.HasValue))
             .OrderByDescending(e => e.Date).ToList();
     }
 
@@ -103,8 +105,8 @@ public static class LiveTimeHistoryMerge
     {
         var selection = chosen.ToHashSet();
         var eventIds = existing.Select(e => e.Id).ToHashSet(StringComparer.OrdinalIgnoreCase);
-        var drivers = source.Roster.Drivers.ToDictionary(d => d.LocalId);
-        var classes = source.Roster.Classes.ToDictionary(c => c.LocalId);
+        var drivers = source.Roster.Drivers.Concat(source.HistoryDrivers).ToDictionary(d => d.LocalId);
+        var classes = source.Roster.Classes.Concat(source.HistoryClasses).ToDictionary(c => c.LocalId);
         var output = new List<RaceDayEventDefinition>();
         foreach (var history in source.History.Where(h => selection.Contains(h.SourceId)))
         {
@@ -113,7 +115,7 @@ public static class LiveTimeHistoryMerge
             {
                 Id=EventId(history.SourceId), Name=string.IsNullOrWhiteSpace(history.Name) ? "LiveTime event" : history.Name,
                 EventDate=history.Date.Date, CreatedAt=history.Date,
-                CompletedAt=history.End ?? history.Races.Max(r => r.Finished), Status=EventStatus.Completed
+                CompletedAt=history.End ?? history.Races.Select(r => r.Finished).DefaultIfEmpty().Max(), Status=EventStatus.Completed
             };
             var sessionIds = new HashSet<Guid>();
             foreach (var race in history.Races.OrderBy(r => r.RoundOrder).ThenBy(r => r.Order).ThenBy(r => r.LocalId))
@@ -173,7 +175,7 @@ public static class LiveTimeHistoryMerge
                 if (!ev.ClassIds.Contains(classId)) ev.ClassIds.Add(classId);
                 ev.Sessions.Add(session);
             }
-            if (ev.Sessions.Count>0) output.Add(ev);
+            if (ev.Sessions.Count > 0 || (history.Races.Count == 0 && history.End.HasValue)) output.Add(ev);
         }
         return output;
     }

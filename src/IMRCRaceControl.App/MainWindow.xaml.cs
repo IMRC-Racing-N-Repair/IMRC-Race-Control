@@ -302,7 +302,7 @@ public partial class MainWindow : Window
 
     private void ClassGrid_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
-        _editingClass = ClassGrid.SelectedItem as ClassDefinition;
+        _editingClass = ClassGrid.SelectedItems.Count == 1 ? ClassGrid.SelectedItem as ClassDefinition : null;
         UpdateClassDetail(_editingClass);
     }
 
@@ -323,10 +323,10 @@ public partial class MainWindow : Window
 
     private async void EditClass_Click(object sender, RoutedEventArgs e)
     {
-        var selected = ClassGrid.SelectedItem as ClassDefinition ?? _editingClass;
+        var selected = ClassGrid.SelectedItems.Count == 1 ? ClassGrid.SelectedItem as ClassDefinition : null;
         if (selected is null)
         {
-            FooterStatusText.Text = "Select a class to edit.";
+            FooterStatusText.Text = "Select one class to edit.";
             return;
         }
 
@@ -346,35 +346,46 @@ public partial class MainWindow : Window
 
     private async void DeleteClass_Click(object sender, RoutedEventArgs e)
     {
-        if (ClassGrid.SelectedItem is not ClassDefinition selected)
+        var selected = ClassGrid.SelectedItems.OfType<ClassDefinition>().ToList();
+        if (selected.Count == 0 || !ApplicationUpdateAllowed)
             return;
-        if (Classes.Count <= 1)
+        if (selected.Count >= Classes.Count)
         {
             MessageBox.Show(this, "At least one class must remain.", "Class setup", MessageBoxButton.OK, MessageBoxImage.Information);
             return;
         }
 
-        if (MessageBox.Show(this, $"Delete class '{selected.Name}' and its driver assignments/planned sessions?", "Delete class",
-                MessageBoxButton.YesNo, MessageBoxImage.Warning) != MessageBoxResult.Yes)
+        var description = selected.Count == 1 ? $"class '{selected[0].Name}'" : $"{selected.Count} classes";
+        if (MessageBox.Show(this, $"Delete {description}, their driver assignments, and unrun sessions? Completed race history will be kept.", "Delete classes",
+                MessageBoxButton.YesNo, MessageBoxImage.Warning, MessageBoxResult.No) != MessageBoxResult.Yes)
             return;
 
-        foreach (var assignment in _driverAssignments.Where(a => a.ClassId == selected.Id).ToList())
+        var ids = selected.Select(c => c.Id).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var loadedId = _loadedSession is { ProgressStatus: EventSessionStatus.Planned or EventSessionStatus.Loaded } loaded &&
+            (ids.Contains(loaded.ClassId) || loaded.CombinedMembers.Any(m => ids.Contains(m.ClassId))) ? loaded.Id : null;
+        foreach (var assignment in _driverAssignments.Where(a => ids.Contains(a.ClassId)).ToList())
             _driverAssignments.Remove(assignment);
-        foreach (var ev in Events)
+        foreach (var ev in Events.Where(e => e.Status == EventStatus.Active))
         {
-            ev.ClassIds.RemoveAll(id => id == selected.Id);
-            ev.DriverAssignments.RemoveAll(a => a.ClassId == selected.Id);
-            ev.Sessions.RemoveAll(s => s.ClassId == selected.Id);
+            ev.Sessions.RemoveAll(s => ids.Contains(s.ClassId) && s.ProgressStatus is EventSessionStatus.Planned or EventSessionStatus.Loaded);
+            foreach (var group in ev.Sessions.Where(s => !string.IsNullOrEmpty(s.CombinedRaceId)).GroupBy(s => s.CombinedRaceId))
+                if (group.Count() == 1 && group.Single().ProgressStatus is EventSessionStatus.Planned or EventSessionStatus.Loaded)
+                    group.Single().CombinedRaceId = "";
+            var historical = ev.Sessions.Select(s => s.ClassId).ToHashSet(StringComparer.OrdinalIgnoreCase);
+            ev.ClassIds.RemoveAll(id => ids.Contains(id) && !historical.Contains(id));
+            ev.DriverAssignments.RemoveAll(a => ids.Contains(a.ClassId));
         }
-        Classes.Remove(selected);
+        foreach (var item in selected) Classes.Remove(item);
         _editingClass = null;
-        RaceClassCombo.SelectedItem = Classes.FirstOrDefault();
+        if (RaceClassCombo.SelectedItem is null)
+            RaceClassCombo.SelectedItem = Classes.FirstOrDefault();
+        RefreshLoadedAfterRosterDeletion(loadedId);
         UpdateClassDetail(null);
         RefreshAssignmentRows();
         RefreshEventClassChoices();
         RefreshPlannedSessions();
         await CaptureAndSaveSettingsAsync();
-        FooterStatusText.Text = $"Class '{selected.Name}' deleted.";
+        FooterStatusText.Text = $"Deleted {description}.";
     }
 
     // -----------------------------
@@ -383,7 +394,7 @@ public partial class MainWindow : Window
 
     private void DriverGrid_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
-        if (DriverGrid.SelectedItem is not DriverProfile selected)
+        if (DriverGrid.SelectedItems.Count != 1 || DriverGrid.SelectedItem is not DriverProfile selected)
         {
             _editingDriver = null;
             UpdateDriverProfileDetail(null);
@@ -422,10 +433,10 @@ public partial class MainWindow : Window
 
     private async void EditDriver_Click(object sender, RoutedEventArgs e)
     {
-        var driver = _editingDriver ?? DriverGrid.SelectedItem as DriverProfile;
+        var driver = DriverGrid.SelectedItems.Count == 1 ? DriverGrid.SelectedItem as DriverProfile : null;
         if (driver is null)
         {
-            FooterStatusText.Text = "Select a driver to edit.";
+            FooterStatusText.Text = "Select one driver to edit.";
             return;
         }
 
@@ -442,28 +453,37 @@ public partial class MainWindow : Window
 
     private async void DeleteDriver_Click(object sender, RoutedEventArgs e)
     {
-        var selected = _editingDriver ?? DriverGrid.SelectedItem as DriverProfile;
-        if (selected is null)
+        var selected = DriverGrid.SelectedItems.OfType<DriverProfile>().ToList();
+        if (selected.Count == 0 || !ApplicationUpdateAllowed)
             return;
 
+        var description = selected.Count == 1 ? $"driver '{selected[0].DisplayName}'" : $"{selected.Count} drivers";
         if (MessageBox.Show(this,
-                $"Delete driver '{selected.DisplayName}' and all of their class/transponder assignments?",
-                "Delete driver",
-                MessageBoxButton.YesNo,
-                MessageBoxImage.Warning) != MessageBoxResult.Yes)
+                $"Delete {description} and remove their assignments and entries in unrun races? Completed race history will be kept.",
+                "Delete drivers", MessageBoxButton.YesNo, MessageBoxImage.Warning, MessageBoxResult.No) != MessageBoxResult.Yes)
             return;
 
-        foreach (var assignment in _driverAssignments.Where(a => a.DriverId == selected.Id).ToList())
+        var ids = selected.Select(d => d.Id).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var loadedId = _loadedSession is { ProgressStatus: EventSessionStatus.Planned or EventSessionStatus.Loaded } loaded &&
+            loaded.Entrants.Any(e => ids.Contains(e.DriverId)) ? loaded.Id : null;
+        foreach (var assignment in _driverAssignments.Where(a => ids.Contains(a.DriverId)).ToList())
             _driverAssignments.Remove(assignment);
 
-        foreach (var ev in Events)
+        foreach (var ev in Events.Where(e => e.Status == EventStatus.Active))
         {
-            ev.DriverAssignments.RemoveAll(a => a.DriverId == selected.Id);
-            foreach (var session in ev.Sessions)
-                session.Entrants.RemoveAll(ent => ent.DriverId == selected.Id);
+            ev.DriverAssignments.RemoveAll(a => ids.Contains(a.DriverId));
+            foreach (var session in ev.Sessions.Where(s => s.ProgressStatus is EventSessionStatus.Planned or EventSessionStatus.Loaded))
+                session.Entrants.RemoveAll(ent => ids.Contains(ent.DriverId));
         }
 
-        Drivers.Remove(selected);
+        foreach (var item in selected) Drivers.Remove(item);
+        RefreshLoadedAfterRosterDeletion(loadedId);
+        if (_loadedSession is null)
+        {
+            foreach (var racer in SessionRacers.Where(r => ids.Contains(r.DriverId)).ToList())
+                SessionRacers.Remove(racer);
+            UpdateSessionRosterText();
+        }
         _editingDriver = null;
         DriverGrid.SelectedItem = null;
         UpdateDriverProfileDetail(null);
@@ -475,7 +495,21 @@ public partial class MainWindow : Window
         RefreshPlannedSessions();
 
         await CaptureAndSaveSettingsAsync();
-        FooterStatusText.Text = $"Driver '{selected.DisplayName}' deleted.";
+        FooterStatusText.Text = $"Deleted {description}.";
+    }
+
+    private void RefreshLoadedAfterRosterDeletion(string? loadedId)
+    {
+        if (loadedId is null) return;
+        var replacement = GetQueueSessions().FirstOrDefault(s => s.Id == loadedId);
+        _loadedSession = null;
+        if (replacement is not null)
+        {
+            LoadSessionIntoRaceControl(replacement, saveSettings: false);
+            return;
+        }
+        SessionRacers.Clear();
+        UpdateSessionRosterText();
     }
 
     private void NewAssignment_Click(object sender, RoutedEventArgs e)

@@ -13,9 +13,18 @@ are in the backup. Click a button to include or exclude that category.
 - Click **Import Selected** when ready. Race Control backs up its database
   before saving.
 
-Race results, lap history, rental inventory, series, and LiveTime account data
-are outside this import. Class timing settings other than the available minimum
-lap time use Race Control defaults; check them before using a class for racing.
+Enable **Events & races** to import historical events, completed qualifying heats
+and mains, finishing results, and scored laps from schema 325. Expand **Choose
+events** to select individual events. Events already imported are skipped.
+
+Enable **Class settings** to apply supported settings to new or matching
+classes. Minimum lap time comes from the class default when present. Qualifying
+and main start style, timed/lap format, length, and capacities come from the most
+recent active event with settings for that class. Existing custom main rules
+are retained. Review the imported settings before using them for a new race.
+
+Practice history, rental inventory, series, account data, and LiveTime-specific
+options such as audio, flags, bump-up and multi-main scoring are outside this import.
 
 ## Open original LiveTime backups
 
