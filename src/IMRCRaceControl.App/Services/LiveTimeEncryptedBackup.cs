@@ -19,41 +19,51 @@ public static partial class LiveTimeBackupReader
     public static LiveTimeRoster ReadEncryptedRoster(string path, byte[] password) =>
         ReadEncrypted(path, password, db => ReadRoster(db, includeHistoryCounts: false));
 
-    private static T ReadEncrypted<T>(string path, byte[] password, Func<SqliteConnection, T> read)
+    private static T ReadEncrypted<T>(string path, byte[] password, Func<SqliteConnection, T> read) where T : class
     {
         ArgumentNullException.ThrowIfNull(password);
         if (password.Length == 0)
             throw new InvalidDataException("Enter the backup password or unlock key.");
 
         var fullPath = Path.GetFullPath(path);
-        if (!CouldBeSqlCipher(new FileInfo(fullPath).Length))
+        var length = new FileInfo(fullPath).Length;
+        if (!CouldBeEncryptedBackup(length))
             throw new InvalidDataException("This file is not a supported encrypted LiveTime backup.");
         if (File.Exists(fullPath + "-wal") || File.Exists(fullPath + "-journal"))
             throw new InvalidDataException("Choose a standalone LiveTime backup without a pending journal.");
 
-        // Use a separate read-only cipher engine so the normal Race Control
-        // database provider stays unchanged. No decrypted file is created.
+        // Use a separate, read-only connection for each attempt. No decrypted
+        // file is created and the main Race Control database provider is unchanged.
         var uri = new Uri(fullPath).AbsoluteUri + "?mode=ro&immutable=1";
+        var unlocked = (CouldBeSqlCipher(length)
+                ? TryReadEncrypted(uri, password, "sqlcipher", "legacy", 4, 4096, read)
+                : null)
+            ?? TryReadEncrypted(uri, password, "rc4", "legacy_page_size", 0, 512, read);
+        return unlocked ?? throw new InvalidDataException(
+            "Could not unlock this backup. Check that the password or unlock key matches this file and that the backup is intact.");
+    }
+
+    private static T? TryReadEncrypted<T>(string uri, byte[] password, string cipherName, string option,
+        int value, int minimumBytes, Func<SqliteConnection, T> read) where T : class
+    {
         var result = CipherOpen(uri, out var connection, 0x01 | 0x40 | 0x40000, IntPtr.Zero);
         try
         {
             if (result != 0)
                 throw new InvalidDataException("Could not open the LiveTime backup. Check that the file is readable.");
-            var cipher = CipherIndex("sqlcipher");
+            var cipher = CipherIndex(cipherName);
             if (cipher <= 0 || CipherConfig(connection, "cipher", cipher) != cipher ||
-                CipherConfigMode(connection, "sqlcipher", "legacy", 4) != 4)
-                throw new InvalidOperationException("The SQLCipher reader is not available.");
-            if (CipherKey(connection, password, password.Length) != 0)
-                throw new InvalidDataException("Could not unlock the backup. Check its password or unlock key.");
-
-            if (CipherExec(connection, "PRAGMA trusted_schema=OFF; PRAGMA query_only=ON; PRAGMA temp_store=MEMORY;",
+                CipherConfigMode(connection, cipherName, option, value) != value)
+                throw new InvalidOperationException($"The {cipherName} reader is not available.");
+            if (CipherKey(connection, password, password.Length) != 0 ||
+                CipherExec(connection, "PRAGMA trusted_schema=OFF; PRAGMA query_only=ON; PRAGMA temp_store=MEMORY;",
                     IntPtr.Zero, IntPtr.Zero, IntPtr.Zero) != 0 || !CheckEncryptedIntegrity(connection))
-                throw new InvalidDataException("Could not unlock this backup. Check that the password or unlock key matches this file and that the backup is intact.");
+                return null;
 
             var memory = CipherSerialize(connection, "main", out var size, 0);
             try
             {
-                if (memory == IntPtr.Zero || size < 4096 || size > MaxEncodedBytes)
+                if (memory == IntPtr.Zero || size < minimumBytes || size > MaxEncodedBytes)
                     throw new InvalidDataException("The decrypted backup exceeds the supported size or could not fit in memory.");
                 var bytes = new byte[(int)size];
                 try
@@ -75,11 +85,14 @@ public static partial class LiveTimeBackupReader
         finally { if (connection != IntPtr.Zero) CipherClose(connection); }
     }
 
+    private static bool CouldBeEncryptedBackup(long size) =>
+        size >= 512 && size <= MaxEncodedBytes && size % 512 == 0;
+
     private static bool CouldBeSqlCipher(long size) => size >= 4096 && size <= MaxEncodedBytes && size % 4096 == 0;
 
     private static bool CheckEncryptedIntegrity(IntPtr connection)
     {
-        // Authenticate pages in the source, before serialization can copy them.
+        // Verify the source before serialization. SQLCipher also authenticates its pages.
         var prepared = CipherPrepare(connection, "PRAGMA integrity_check(1);", -1, out var statement, IntPtr.Zero);
         try
         {

@@ -19,9 +19,10 @@ lap time use Race Control defaults; check them before using a class for racing.
 
 ## Open original LiveTime backups
 
-Choose the original `.db` in Race Control. For a SQLCipher 4 backup, enter the
-backup password or select **Choose Unlock Key File** to open a database-specific
-`.livetime-key` file. Race Control previews the data in memory and does not save
+Choose the original `.db` in Race Control. Race Control supports both
+System.Data.SQLite RC4 and SQLCipher 4 backups. Enter the backup password when
+prompted. For a SQLCipher backup you can also select **Choose Unlock Key File**
+to open a matching `.livetime-key` file. Race Control previews the data in memory and does not save
 the password, key, or a decrypted copy. Choose a standalone backup without a
 pending journal. Encrypted backups up to 256 MiB are supported.
 

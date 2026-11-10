@@ -46,6 +46,10 @@ public static partial class LiveTimeBackupReader
             return read(db);
         }
 
+        var length = new FileInfo(path).Length;
+        if (promptForPassword && length % LegacyPageSize != 0 && CouldBeEncryptedBackup(length))
+            throw new LiveTimeBackupPasswordRequiredException();
+
         var encoded = ReadEncoded(path);
         try
         {
@@ -63,7 +67,7 @@ public static partial class LiveTimeBackupReader
                 finally { CryptographicOperations.ZeroMemory(reference); }
             }
 
-            if (promptForPassword && CouldBeSqlCipher(encoded.Length))
+            if (promptForPassword && CouldBeEncryptedBackup(encoded.Length))
                 throw new LiveTimeBackupPasswordRequiredException();
 
             throw new InvalidDataException("This backup could not be opened. For an older backup, try a matching reference.");

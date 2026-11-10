@@ -33,7 +33,7 @@ internal static class LiveTimeImportChecks
 
             var encrypted = Path.Combine(folder, "encrypted # fixture.db");
             var password = "sample import password"u8.ToArray();
-            CreateSqlCipherFixture(encrypted, password);
+            CreateEncryptedFixture(encrypted, password, "sqlcipher", "legacy", 4);
             var encryptedBytes = File.ReadAllBytes(encrypted);
             var needsPassword = false;
             try { LiveTimeBackupReader.ReadImportRoster(encrypted); }
@@ -75,6 +75,20 @@ internal static class LiveTimeImportChecks
             Check(badPage, "page authentication rejects a corrupted encrypted backup");
             Check(encryptedBytes.SequenceEqual(File.ReadAllBytes(encrypted)) && !File.Exists(encrypted+"-wal") &&
                 !File.Exists(encrypted+"-shm") && !File.Exists(encrypted+"-journal"), "opening a backup never changes it or creates sidecars");
+
+            var rc4 = Path.Combine(folder, "rc4 fixture.db");
+            CreateEncryptedFixture(rc4, password, "rc4", "legacy_page_size", 512);
+            var rc4Bytes = File.ReadAllBytes(rc4);
+            var rc4Roster = LiveTimeBackupReader.ReadEncryptedRoster(rc4, password);
+            Check(rc4Roster.Drivers.SequenceEqual(plainRoster.Drivers) &&
+                rc4Roster.Classes.SequenceEqual(plainRoster.Classes) &&
+                rc4Roster.Entries.SequenceEqual(plainRoster.Entries), "same password imports the legacy RC4 roster");
+            var rc4WrongPassword = false;
+            try { LiveTimeBackupReader.ReadEncryptedRoster(rc4, "incorrect"u8.ToArray()); }
+            catch (InvalidDataException) { rc4WrongPassword = true; }
+            Check(rc4WrongPassword && rc4Bytes.SequenceEqual(File.ReadAllBytes(rc4)) &&
+                !File.Exists(rc4+"-wal") && !File.Exists(rc4+"-shm") && !File.Exists(rc4+"-journal"),
+                "RC4 rejects a wrong password and leaves the original backup unchanged");
 
             var codedPath=Path.Combine(folder,"coded.db");
             var codedRef=Path.Combine(folder,"coded-reference.db");
@@ -191,17 +205,17 @@ internal static class LiveTimeImportChecks
         }
     }
 
-    private static void CreateSqlCipherFixture(string path, byte[] password)
+    private static void CreateEncryptedFixture(string path, byte[] password, string cipherName, string option, int value)
     {
         var result = NativeOpen(path, out var db, 6, IntPtr.Zero);
         try
         {
-            var cipher = NativeIndex("sqlcipher");
+            var cipher = NativeIndex(cipherName);
             if (result != 0 || cipher <= 0 || NativeConfig(db, "cipher", cipher) != cipher ||
-                NativeConfigMode(db, "sqlcipher", "legacy", 4) != 4 ||
+                NativeConfigMode(db, cipherName, option, value) != value ||
                 NativeKey(db, password, password.Length) != 0 ||
                 NativeExec(db, FixtureSql, IntPtr.Zero, IntPtr.Zero, IntPtr.Zero) != 0)
-                throw new InvalidOperationException("Could not create the synthetic SQLCipher backup.");
+                throw new InvalidOperationException($"Could not create the synthetic {cipherName} backup.");
         }
         finally { if (db != IntPtr.Zero) NativeClose(db); }
     }
