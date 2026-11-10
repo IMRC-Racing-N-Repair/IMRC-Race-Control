@@ -205,7 +205,11 @@ public partial class RoundMainBuilderDialog : Window
             }
             if (createNew) { Title = "New Round / Mains"; NewRoundButton.Visibility = Visibility.Collapsed; BeginNewRound(); }
             else if (SavedSessions.Count > 0) ShowSavedLineups();
-            else { HeatPlans.Clear(); BuildOptionsPanel.Visibility = Visibility.Collapsed; GenerateButton.Visibility = Visibility.Collapsed; Dispatcher.BeginInvoke(new Action(OpenCompactGenerator)); }
+            else
+            {
+                ShowSavedLineups();
+                if (_raceEvent.ClassIds.Count > 0) Dispatcher.BeginInvoke(new Action(OpenCompactGenerator));
+            }
         };
     }
 
@@ -254,7 +258,7 @@ public partial class RoundMainBuilderDialog : Window
             return [];
 
         if (selected.AllClasses)
-            return _raceEvent.ClassIds
+            return BuilderClassIds()
                 .Select(id => _classes.FirstOrDefault(c => c.Id == id))
                 .Where(c => c is not null)
                 .Cast<ClassDefinition>()
@@ -1915,6 +1919,7 @@ public partial class RoundMainBuilderDialog : Window
             savedSuccessfully = true;
             _stagedLineups.Clear(); _pendingRaceOrder.Clear(); _pendingCombinedRaces.Clear();
             _deletedSessionIds.Clear(); _lineupSnapshot = null;
+            RefreshPlaceholderClassChoices();
             InitializeSavedFilters(); ShowSavedLineups();
             BuilderStatusText.Text = "All lineup changes saved.";
         }

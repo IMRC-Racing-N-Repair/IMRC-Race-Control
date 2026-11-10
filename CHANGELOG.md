@@ -3,6 +3,7 @@
 Keep all release history in this file. Add each new version at the top; do not create version-specific changelog files.
 
 ## 0.16.30
+- Right-click blank space in the Rounds / Mains lineup to reserve an empty race for a class missing from the selected round. Save the spot and add racers manually when they arrive.
 - Let operators preview and import LiveTime drivers, classes, class assignments and personal transponders separately. Select individual events and import completed qualifying races and mains, with optional scored laps. Add a portable import-copy exporter for SQLCipher backups with a valid password.
 - Default Trackmate USB/Serial to 115200 baud and remember any manually selected Trackmate rate separately. I-Lap keeps its 9600 baud preset.
 - Right-click an unknown Practice driver to assign the transponder to a driver and class without losing recorded laps. Rental assignments last for the current Practice session.

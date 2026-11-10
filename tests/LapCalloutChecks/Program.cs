@@ -564,6 +564,31 @@ Equal("123456", raceDay.DriverAssignments.Single(a => a.DriverId == lateDriver.I
 SavedRoundEditor.ReplaceScope(raceDay, [completedHeat, edited], [completedHeat, edited]);
 Equal(2, raceDay.DriverAssignments.Count, "Repeated saves do not duplicate event entries");
 
+var extraClass = new ClassDefinition { Name = "Reserved", MainRaceFormat = RaceFormat.Laps, MainTargetLaps = 45,
+    MainRules = [new MainRuleDefinition { MaxRacers = 7 }] };
+var q1Slot = new DashboardRoundChoice(SessionType.Qualifying, 1);
+var q2Slot = new DashboardRoundChoice(SessionType.Qualifying, 2);
+var alreadyScheduled = new ClassDefinition { Id = "class-b", Name = "Existing" };
+Equal(extraClass.Id, SavedRoundEditor.AvailablePlaceholderClasses([alreadyScheduled, extraClass], raceDay.Sessions, q1Slot).Single().Id,
+    "Only classes missing from the chosen round are offered");
+Equal(2, SavedRoundEditor.AvailablePlaceholderClasses([alreadyScheduled, extraClass], raceDay.Sessions, q2Slot).Count,
+    "A class in another round is still eligible");
+var reserved = SavedRoundEditor.CreatePlaceholder(extraClass, q1Slot, raceDay.Sessions);
+Equal(0, reserved.Entrants.Count, "Reserved class starts with zero racers");
+Equal(false, raceDay.ClassIds.Contains(extraClass.Id), "Preparing a reserve spot does not check in the class before Save");
+SavedRoundEditor.ReplaceScope(raceDay, [], [reserved]);
+Equal(true, raceDay.ClassIds.Contains(extraClass.Id), "Saving an empty spot checks the configured class into the event");
+Equal(2, raceDay.DriverAssignments.Count, "Saving an empty spot does not register drivers");
+Equal(completedHeatJson, JsonSerializer.Serialize(completedHeat), "Reserving another class does not change completed results");
+var rejectedDuplicateSlot = false;
+try { SavedRoundEditor.CreatePlaceholder(extraClass, q1Slot, raceDay.Sessions); }
+catch (InvalidOperationException) { rejectedDuplicateSlot = true; }
+Equal(true, rejectedDuplicateSlot, "Cannot add the same class twice in the same round");
+var mainSlot = SavedRoundEditor.CreatePlaceholder(extraClass, new(SessionType.Race, 2), raceDay.Sessions);
+Equal((SessionType.Race, 2, 1, 0, 7, RaceFormat.Laps, 45),
+    (mainSlot.SessionType, mainSlot.MainLeg, mainSlot.Heat, mainSlot.RacerCount, mainSlot.MainCapacity, mainSlot.RaceFormat, mainSlot.TargetLaps),
+    "Reserved main respects the chosen leg and the class settings");
+
 if (args.Contains("--isolated-database"))
 {
     var db = new RaceControlDatabaseService();
@@ -574,6 +599,7 @@ if (args.Contains("--isolated-database"))
     var reopenedState = (await new RaceControlDatabaseService().LoadApplicationStateAsync())!;
     var reopenedEvent = reopenedState.Events.Single();
     var reopened = reopenedEvent.Sessions.Single(s => s.Id == pending.Id);
+    Equal(0, reopenedEvent.Sessions.Single(s => s.Id == reserved.Id).Entrants.Count, "SQLite reopen retains an empty reserved race");
     Equal(2, reopened.Entrants.Count, "SQLite reopen keeps added driver");
     Equal(lateDriver.Id, reopened.Entrants[0].DriverId, "SQLite reopen keeps lineup order");
     Equal("123456", reopened.Entrants[0].TransponderId, "SQLite reopen keeps transponder");
@@ -590,7 +616,7 @@ if (args.Contains("--isolated-database"))
     Equal(1, twice.Sessions.Single(s => s.Id == pending.Id).Entrants.Count, "Second edit survives second restart");
     Equal(firstDriver.Id, twice.Sessions.Single(s => s.Id == pending.Id).Entrants.Single().DriverId, "Correct remaining driver");
     Equal(2, twice.DriverAssignments.Count, "Race removal does not delete event registration");
-    Equal(4, twice.Sessions.Count, "Repeated edit does not duplicate heats");
+    Equal(5, twice.Sessions.Count, "Repeated edit keeps the reserve spot without duplicating heats");
 }
 var transferSource = new List<SessionEntrant> { new() { DriverId="one",TransponderId="123" } };
 var transferTarget = new List<SessionEntrant> { new() { DriverId="two",TransponderId="456" } };
