@@ -36,7 +36,10 @@ public partial class MainWindow
         });
 
         string? sourcePath=null, referencePath=null;
-        LiveTimeImportSource? source=null;
+        LiveTimeImportSource? source=null, scoped=null;
+        HashSet<string> selectedVenues = new(StringComparer.OrdinalIgnoreCase);
+        HashSet<long>? selectedDrivers = null, selectedClasses = null;
+        List<TrackProfile> venuePlan = [];
         List<RaceDayEventDefinition> eventPlan = [];
         List<(RaceDayEventDefinition Event, TrackProfile Track)> trackPlan = [];
         LiveTimeRosterPlan? plan=null;
@@ -65,6 +68,16 @@ public partial class MainWindow
             TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 4, 0, 0)
         });
         panel.Children.Add(unlockPanel);
+        var scopeLabel = new TextBlock { TextWrapping=TextWrapping.Wrap, Margin=new Thickness(0,8,0,4) };
+        var scopeButtons = new WrapPanel { Margin=new Thickness(0,0,0,4) };
+        var chooseTracks = new Button { Content="CHOOSE TRACKS…", Visibility=Visibility.Collapsed };
+        var chooseDrivers = new Button { Content="CHOOSE DRIVERS…", Visibility=Visibility.Collapsed };
+        var chooseClasses = new Button { Content="CHOOSE CLASSES…", Visibility=Visibility.Collapsed };
+        scopeButtons.Children.Add(chooseTracks);
+        scopeButtons.Children.Add(chooseDrivers);
+        scopeButtons.Children.Add(chooseClasses);
+        panel.Children.Add(scopeLabel);
+        panel.Children.Add(scopeButtons);
         var categories = new WrapPanel { Margin = new Thickness(0, 8, 0, 4), IsEnabled = false };
         var toggles = new[]
         {
@@ -80,7 +93,7 @@ public partial class MainWindow
             MaxHeight = 175 };
         var eventSelector = new Expander { Content = eventList, Visibility = Visibility.Collapsed, Margin = new Thickness(0, 4, 0, 8) };
         var optionsHint = new TextBlock { TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 4, 0, 6) };
-        optionsHint.Text = "Class settings updates matching classes. Events & races includes completed races and scored laps.";
+        optionsHint.Text = "Enable Events & races to import completed results and track records. Driver and class choices affect the roster; saved race results keep their original lineups.";
         panel.Children.Add(categories);
         panel.Children.Add(optionsHint);
         panel.Children.Add(eventSelector);
@@ -101,9 +114,10 @@ public partial class MainWindow
             return (button, count, label, option);
         }
 
-        void SetCategoryCounts(LiveTimeImportSource? import)
+        void SetCategoryCounts(bool resetEvents)
         {
-            var roster = import?.Roster;
+            var import = scoped;
+            var roster = import is null ? null : LiveTimeVenueSelection.FilterRoster(import.Roster, selectedDrivers, selectedClasses);
             int[] counts = roster is null ? [] : [
                 roster.Drivers.Count, roster.Classes.Count, roster.Entries.Count,
                 LiveTimeRosterMerge.CountPersonalTransponders(roster),
@@ -114,9 +128,10 @@ public partial class MainWindow
                 var (control, count, label, _) = toggles[i];
                 count.Text = roster is null ? "—" : counts[i].ToString("N0");
                 control.IsEnabled = roster is not null && counts[i] > 0;
-                control.IsChecked = roster is not null && counts[i] > 0 && i < 4;
-                AutomationProperties.SetName(control, roster is null ? label : $"{label}: {count.Text} in backup");
+                if (resetEvents) control.IsChecked = roster is not null && counts[i] > 0 && i < 4;
+                AutomationProperties.SetName(control, roster is null ? label : $"{label}: {count.Text} available");
             }
+            if (!resetEvents) return;
             eventList.ItemsSource = import?.History;
             eventList.SelectAll();
             eventSelector.IsExpanded = false;
@@ -149,9 +164,12 @@ public partial class MainWindow
             progress.IsIndeterminate = value;
             progressOverlay.Visibility = value ? Visibility.Visible : Visibility.Collapsed;
             busy=value;select.IsEnabled=reference.IsEnabled=close.IsEnabled=unlock.IsEnabled=unlockFile.IsEnabled=passwordBox.IsEnabled=!value;
-            categories.IsEnabled=!value && source is not null;
+            categories.IsEnabled=!value && scoped is not null;
+            chooseTracks.IsEnabled = !value;
+            chooseDrivers.IsEnabled = !value && scoped?.Roster.Drivers.Count > 0;
+            chooseClasses.IsEnabled = !value && scoped?.Roster.Classes.Count > 0;
             eventSelector.IsEnabled = !value;
-            commit.IsEnabled=!value && (plan?.HasChanges==true || eventPlan.Count > 0 || trackPlan.Count > 0);
+            commit.IsEnabled=!value && (plan?.HasChanges==true || eventPlan.Count > 0 || trackPlan.Count > 0 || venuePlan.Count > 0);
         }
         dialog.Closing+=(_,e)=>{if(busy)e.Cancel=true;else passwordBox.Clear();};
 
@@ -163,10 +181,11 @@ public partial class MainWindow
 
         async Task UpdatePreviewAsync()
         {
-            if (busy || source is not { } import) return;
-            var selection = toggles.Where(t => t.Control.IsChecked == true)
+            if (busy || scoped is not { } import) return;
+            var rosterSelection = LiveTimeVenueSelection.FilterRoster(import.Roster, selectedDrivers, selectedClasses);
+            var selection = toggles.Where(t => t.Control.IsEnabled && t.Control.IsChecked == true)
                 .Aggregate(LiveTimeRosterSelection.None, (selected, toggle) => selected | toggle.Option);
-            var includeHistory = eventToggle.IsChecked == true;
+            var includeHistory = eventToggle.IsEnabled && eventToggle.IsChecked == true;
             eventSelector.Visibility = includeHistory ? Visibility.Visible : Visibility.Collapsed;
             var chosen = includeHistory ? eventList.SelectedItems.OfType<LiveTimeEventHistory>().ToList() : [];
             var chosenIds = chosen.Select(e => e.SourceId).ToList();
@@ -176,23 +195,27 @@ public partial class MainWindow
             var events = Events.ToList();
             var rentalNumbers = _settings.RentalTransponders.Inventory.Select(t => t.Number).ToList();
             var savedTrack = _settings.Track;
+            var knownTracks = _settings.ImportedTracks.ToList();
+            var venues = selectedVenues.ToHashSet(StringComparer.OrdinalIgnoreCase);
             SetBusy(true, "Preparing the import preview…");
             try
             {
-                (plan, eventPlan, trackPlan) = await Task.Run(() =>
+                (plan, eventPlan, trackPlan, venuePlan) = await Task.Run(() =>
                 {
-                    var roster = LiveTimeRosterMerge.Preview(import.Roster, drivers, classes, assignments, rentalNumbers,
+                    var roster = LiveTimeRosterMerge.Preview(rosterSelection, drivers, classes, assignments, rentalNumbers,
                         selection, resolveForHistory: chosenIds.Count > 0);
                     List<RaceDayEventDefinition> history = chosenIds.Count == 0 ? [] : LiveTimeHistoryMerge.Preview(
                         import, chosenIds, events, roster, includeLaps: true, savedTrack: savedTrack);
                     List<(RaceDayEventDefinition Event, TrackProfile Track)> links = chosenIds.Count == 0 ? [] :
                         LiveTimeHistoryMerge.MissingTrackLinks(import, chosenIds, events, savedTrack);
-                    return (roster, history, links);
+                    return (roster, history, links, LiveTimeHistoryMerge.NewTracks(import, venues, knownTracks, savedTrack));
                 });
                 if (includeHistory)
                     eventSelector.Header = $"Choose events ({chosen.Count:N0} selected • {chosen.Sum(e => e.RaceCount):N0} completed races)";
-                status.Text = selection == LiveTimeRosterSelection.None && !includeHistory ? "Select the categories to import." :
-                    plan.HasChanges || eventPlan.Count > 0 || trackPlan.Count > 0 ? "Ready to import." : "No new records to import with this selection.";
+                status.Text = plan.HasChanges || eventPlan.Count > 0 || trackPlan.Count > 0 || venuePlan.Count > 0 ? "Ready to import." :
+                    selection == LiveTimeRosterSelection.None && !includeHistory ? "Select the categories to import." : "No new records to import with this selection.";
+                if (venuePlan.Count > 0)
+                    status.Text += $" Add {venuePlan.Count:N0} tracks to Track Info.";
                 if (plan.ClassUpdates.Count > 0)
                     status.Text += $" Update settings on {plan.ClassUpdates.Count:N0} existing classes.";
                 if (includeHistory)
@@ -209,6 +232,7 @@ public partial class MainWindow
                 plan = null;
                 eventPlan = [];
                 trackPlan = [];
+                venuePlan = [];
                 status.Text = "Could not prepare the preview: " + ex.Message;
             }
             finally { SetBusy(false); }
@@ -222,12 +246,92 @@ public partial class MainWindow
 
         eventList.SelectionChanged += async (_, _) => await UpdatePreviewAsync();
 
+        void UpdateScopeLabels()
+        {
+            chooseTracks.Visibility = source?.Venues.Count > 1 ? Visibility.Visible : Visibility.Collapsed;
+            chooseDrivers.Visibility = chooseClasses.Visibility = scoped is not null ? Visibility.Visible : Visibility.Collapsed;
+            chooseDrivers.Content = selectedDrivers is null ? "CHOOSE DRIVERS…" : $"DRIVERS: {selectedDrivers.Count:N0} SELECTED…";
+            chooseClasses.Content = selectedClasses is null ? "CHOOSE CLASSES…" : $"CLASSES: {selectedClasses.Count:N0} SELECTED…";
+            var names = source?.Venues.Where(v => selectedVenues.Contains(v.Id)).Select(v => v.Name).ToList() ?? [];
+            scopeLabel.Text = names.Count > 0 ? $"Tracks: {string.Join(", ", names)}" :
+                source?.Venues.Count > 0 ? "Choose which tracks to import." : "";
+        }
+
+        async Task ApplyVenueSelectionAsync(HashSet<string> ids)
+        {
+            if (source is not { } import) return;
+            selectedVenues = ids;
+            selectedDrivers = selectedClasses = null;
+            scoped = null;
+            plan = null;
+            eventPlan = [];
+            trackPlan = [];
+            venuePlan = [];
+            SetBusy(true, "Finding records for the selected tracks…");
+            try
+            {
+                scoped = await Task.Run(() => LiveTimeVenueSelection.Scope(import, ids));
+                UpdateScopeLabels();
+                SetCategoryCounts(resetEvents: true);
+            }
+            catch (Exception ex)
+            {
+                scoped = null;
+                UpdateScopeLabels();
+                SetCategoryCounts(resetEvents: true);
+                status.Text = "Could not prepare the track selection: " + ex.Message;
+            }
+            finally { SetBusy(false); }
+            await UpdatePreviewAsync();
+        }
+
+        async Task ChooseTracksAsync()
+        {
+            if (busy || source is not { } import) return;
+            var checkedIds = scoped is null ? import.Venues.Select(v => v.Id) : selectedVenues;
+            var title = import.Venues.Count(v => v.Track is not null) > 1 ? "Multiple Tracks Found" : "Choose Tracks";
+            var chosen = PickLiveTimeItems(dialog, title,
+                "Click a row to select or clear a track. The next screen shows only the selected tracks’ drivers, classes, and events.",
+                import.Venues.Select(v => (v.Id, v.Label)), checkedIds, requireSelection: true);
+            if (chosen is not null) await ApplyVenueSelectionAsync(chosen);
+        }
+
+        chooseTracks.Click += async (_, _) => await ChooseTracksAsync();
+        chooseDrivers.Click += async (_, _) =>
+        {
+            if (busy || scoped is not { } import) return;
+            var rows = import.Roster.Drivers.Select(d => (d.LocalId, $"{d.FirstName} {d.LastName}".Trim() +
+                (string.IsNullOrWhiteSpace(d.Nickname) ? "" : $" ({d.Nickname})"))).OrderBy(x => x.Item2);
+            var chosen = PickLiveTimeItems(dialog, "Choose Drivers", "Click a row to select or clear a driver for the roster.",
+                rows, selectedDrivers ?? import.Roster.Drivers.Select(d => d.LocalId).ToHashSet());
+            if (chosen is null) return;
+            selectedDrivers = chosen;
+            UpdateScopeLabels();
+            SetCategoryCounts(resetEvents: false);
+            await UpdatePreviewAsync();
+        };
+        chooseClasses.Click += async (_, _) =>
+        {
+            if (busy || scoped is not { } import) return;
+            var chosen = PickLiveTimeItems(dialog, "Choose Classes", "Click a row to select or clear a class and its assignments and settings.",
+                import.Roster.Classes.Select(c => (c.LocalId, c.Name)).OrderBy(x => x.Name),
+                selectedClasses ?? import.Roster.Classes.Select(c => c.LocalId).ToHashSet());
+            if (chosen is null) return;
+            selectedClasses = chosen;
+            UpdateScopeLabels();
+            SetCategoryCounts(resetEvents: false);
+            await UpdatePreviewAsync();
+        };
+
         async Task PreviewAsync(byte[]? password = null)
         {
             if(sourcePath is not { } path)return;
-            source=null;plan=null;eventPlan=[];trackPlan=[];
+            source=scoped=null;plan=null;eventPlan=[];trackPlan=[];venuePlan=[];
+            selectedVenues = new(StringComparer.OrdinalIgnoreCase);
+            selectedDrivers = selectedClasses = null;
             SetBusy(true, password is null ? "Reading the backup…" : "Unlocking and reading the backup…");
-            SetCategoryCounts(null);
+            UpdateScopeLabels();
+            SetCategoryCounts(resetEvents: true);
             if (password is null)
             {
                 unlockPanel.Visibility = Visibility.Collapsed;
@@ -241,7 +345,7 @@ public partial class MainWindow
                     ? LiveTimeBackupReader.ReadImport(path,referencePath)
                     : LiveTimeBackupReader.ReadEncryptedImport(path,password));
                 unlockPanel.Visibility = Visibility.Collapsed;
-                SetCategoryCounts(source);
+                UpdateScopeLabels();
             }
             catch (LiveTimeBackupPasswordRequiredException ex)
             {
@@ -252,9 +356,16 @@ public partial class MainWindow
             finally
             {
                 SetBusy(false);
-                if (source is not null) await UpdatePreviewAsync();
                 if (unlockPanel.Visibility == Visibility.Visible) passwordBox.Focus();
             }
+            if (source is not { } import) return;
+            if (import.Venues.Count > 1)
+            {
+                status.Text = "Choose tracks to see their import options.";
+                await ChooseTracksAsync();
+            }
+            else
+                await ApplyVenueSelectionAsync(import.Venues.Select(v => v.Id).ToHashSet(StringComparer.OrdinalIgnoreCase));
         }
 
         async Task UnlockAsync()
@@ -314,9 +425,11 @@ public partial class MainWindow
         reference.Click+=async (_,_)=>{if(Pick("Select an older backup from the same LiveTime installation") is { } path){referencePath=path;await PreviewAsync();}};
         commit.Click+=async (_,_) =>
         {
-            if(plan is not { } additions || (!additions.HasChanges && eventPlan.Count == 0 && trackPlan.Count == 0) || !ApplicationUpdateAllowed)return;
+            if (busy || plan is not { } additions ||
+                (!additions.HasChanges && eventPlan.Count == 0 && trackPlan.Count == 0 && venuePlan.Count == 0) || !ApplicationUpdateAllowed) return;
             var importedEvents = eventPlan;
             var restoredTracks = trackPlan;
+            var newVenues = venuePlan;
             SetBusy(true, "Saving the current race data…");
             var applied=false;
             var updated = new List<(DriverClassAssignment Assignment, string PreviousTags)>();
@@ -328,6 +441,7 @@ public partial class MainWindow
                 stageText.Text = "Applying the selected records…";
                 await System.Windows.Threading.Dispatcher.Yield(DispatcherPriority.Background);
                 applied=true;
+                _settings.ImportedTracks.AddRange(newVenues);
                 foreach(var driver in additions.Drivers)Drivers.Add(driver);
                 foreach(var cls in additions.Classes)Classes.Add(cls);
                 foreach (var change in additions.ClassUpdates) change.After.ApplyTo(change.Class);
@@ -349,6 +463,7 @@ public partial class MainWindow
             {
                 if(applied)
                 {
+                    foreach (var venue in newVenues) _settings.ImportedTracks.Remove(venue);
                     foreach(var driver in additions.Drivers)Drivers.Remove(driver);
                     foreach(var cls in additions.Classes)Classes.Remove(cls);
                     foreach (var change in additions.ClassUpdates) change.Before.ApplyTo(change.Class);
@@ -376,9 +491,72 @@ public partial class MainWindow
             }
             finally { SetBusy(false); }
             await UpdatePreviewAsync();
-            status.Text=$"Imported {additions.Drivers.Count} drivers, {additions.Classes.Count} classes and {additions.Assignments.Count} assignments. Filled transponders on {additions.TagFills.Count} existing assignments. Updated {additions.ClassUpdates.Count} existing class settings. Added {importedEvents.Count} events and {importedEvents.Sum(e => e.Sessions.Count)} completed races. Restored tracks on {restoredTracks.Count} existing events.";
+            status.Text=$"Imported {additions.Drivers.Count} drivers, {additions.Classes.Count} classes and {additions.Assignments.Count} assignments. Filled transponders on {additions.TagFills.Count} existing assignments. Updated {additions.ClassUpdates.Count} existing class settings. Added {importedEvents.Count} events and {importedEvents.Sum(e => e.Sessions.Count)} completed races. Added {newVenues.Count} tracks. Restored tracks on {restoredTracks.Count} existing events.";
             FooterStatusText.Text="Selected LiveTime data imported.";
         };
         dialog.ShowDialog();
+    }
+
+    private sealed record LiveTimePickerRow<T>(T Id, string Label);
+
+    private static HashSet<T>? PickLiveTimeItems<T>(Window owner, string title, string instructions,
+        IEnumerable<(T Id, string Label)> items, IEnumerable<T> initiallySelected, bool requireSelection = false) where T : notnull
+    {
+        var dialog = new Window { Owner=owner, Title=title, Width=Math.Min(560, SystemParameters.WorkArea.Width * .9),
+            Height=Math.Min(480, SystemParameters.WorkArea.Height * .8), WindowStartupLocation=WindowStartupLocation.CenterOwner };
+        var rows = items.Select(r => new LiveTimePickerRow<T>(r.Id,r.Label)).ToList();
+        var selected = initiallySelected.ToHashSet();
+        var root = new DockPanel { Margin=new Thickness(18) };
+        var top = new StackPanel();
+        top.Children.Add(new TextBlock { Text=title, FontSize=20, FontWeight=FontWeights.Bold });
+        top.Children.Add(new TextBlock { Text=instructions, TextWrapping=TextWrapping.Wrap, Margin=new Thickness(0,6,0,8) });
+        var search = new TextBox { Margin=new Thickness(0,0,0,6), ToolTip="Search this list" };
+        AutomationProperties.SetName(search,"Search " + title);
+        top.Children.Add(search);
+        DockPanel.SetDock(top,Dock.Top);
+        root.Children.Add(top);
+        var buttons = new WrapPanel { Margin=new Thickness(0,8,0,0) };
+        var selectAll = new Button { Content="SELECT SHOWN" };
+        var clear = new Button { Content="CLEAR SHOWN" };
+        var cancel = new Button { Content="CANCEL", IsCancel=true };
+        var accept = new Button { Content="CONTINUE", IsDefault=true };
+        var count = new TextBlock { VerticalAlignment=VerticalAlignment.Center, Margin=new Thickness(6,0,0,0) };
+        foreach (UIElement element in new UIElement[] { selectAll, clear, count, cancel, accept }) buttons.Children.Add(element);
+        DockPanel.SetDock(buttons,Dock.Bottom);
+        root.Children.Add(buttons);
+        var list = new ListBox { SelectionMode=SelectionMode.Multiple, DisplayMemberPath=nameof(LiveTimePickerRow<T>.Label) };
+        AutomationProperties.SetName(list,title);
+        root.Children.Add(list);
+        dialog.Content=root;
+        bool refreshing=false;
+
+        void UpdateCount()
+        {
+            count.Text=$"{selected.Count:N0} selected";
+            accept.IsEnabled=!requireSelection || selected.Count>0;
+        }
+        void Refresh()
+        {
+            refreshing=true;
+            var query=search.Text.Trim();
+            var shown=rows.Where(r => r.Label.Contains(query,StringComparison.CurrentCultureIgnoreCase)).ToList();
+            list.ItemsSource=shown;
+            foreach (var row in shown.Where(r => selected.Contains(r.Id))) list.SelectedItems.Add(row);
+            refreshing=false;
+            UpdateCount();
+        }
+        list.SelectionChanged += (_,e) =>
+        {
+            if (refreshing) return;
+            foreach (var row in e.RemovedItems.OfType<LiveTimePickerRow<T>>()) selected.Remove(row.Id);
+            foreach (var row in e.AddedItems.OfType<LiveTimePickerRow<T>>()) selected.Add(row.Id);
+            UpdateCount();
+        };
+        search.TextChanged += (_,_) => Refresh();
+        selectAll.Click += (_,_) => { selected.UnionWith(list.Items.Cast<LiveTimePickerRow<T>>().Select(r => r.Id)); Refresh(); };
+        clear.Click += (_,_) => { selected.ExceptWith(list.Items.Cast<LiveTimePickerRow<T>>().Select(r => r.Id)); Refresh(); };
+        accept.Click += (_,_) => dialog.DialogResult=true;
+        Refresh();
+        return dialog.ShowDialog()==true ? selected : null;
     }
 }

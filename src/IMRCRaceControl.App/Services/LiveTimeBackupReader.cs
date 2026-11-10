@@ -17,6 +17,7 @@ public sealed record LiveTimeRoster(int SchemaVersion, List<LiveTimeDriver> Driv
     List<LiveTimeClassEntry> Entries, long Events, long Races, long Laps, long PracticeLaps, long Rentals)
 {
     public List<string> RentalNumbers { get; init; } = [];
+    internal IReadOnlySet<string> SharedTransponderNumbers { get; init; } = new HashSet<string>();
 }
 
 public static partial class LiveTimeBackupReader
@@ -66,14 +67,15 @@ public static partial class LiveTimeBackupReader
         var roster = ReadRoster(db);
         if (roster.SchemaVersion != 325)
             return new LiveTimeImportSource(roster, []);
-        var history = ReadRaceHistory(db);
-        if (history.Count == 0)
-            return new LiveTimeImportSource(roster, history);
+        var (venues, eventTracks, timings) = ReadVenues(db);
+        var history = ReadRaceHistory(db, eventTracks);
         return new LiveTimeImportSource(roster, history)
         {
-            HistoryDrivers = Read(db, "SELECT LID,GUID,FirstName,LastName,NickName,PhoneticName FROM Driver WHERE IsActive=0",
+            Venues = venues,
+            VenueTimings = timings,
+            HistoryDrivers = history.Count == 0 ? [] : Read(db, "SELECT LID,GUID,FirstName,LastName,NickName,PhoneticName FROM Driver WHERE IsActive=0",
                 r => new LiveTimeDriver(r.GetInt64(0), GuidValue(r,1), TextValue(r,2), TextValue(r,3), TextValue(r,4), TextValue(r,5))),
-            HistoryClasses = Read(db, "SELECT LID,GUID,Name,Color FROM RaceClass WHERE IsActive=0",
+            HistoryClasses = history.Count == 0 ? [] : Read(db, "SELECT LID,GUID,Name,Color FROM RaceClass WHERE IsActive=0",
                 r => new LiveTimeClass(r.GetInt64(0), GuidValue(r,1), TextValue(r,2), TextValue(r,3), null))
         };
     }
@@ -250,18 +252,8 @@ public static partial class LiveTimeBackupReader
 
         if (tables.Contains("EventRaceClassSetting"))
         {
-            var settings = Read(db, """
-                SELECT s.RaceClassLID,s.MinimumLapTimeSeconds,s.QualifyingStartTypeID,s.QualifyingLengthTypeID,
-                    s.QualifyingLengthSeconds,s.QualifyingLengthLaps,s.QualifyingNumberOfDriversPerRace,
-                    s.MainStartTypeID,s.MainLengthTypeID,s.MainDefaultMainLengthSeconds,s.MainDefaultMainLengthLaps,
-                    s.MainDefaultNumberOfDrivers
-                FROM EventRaceClassSetting s JOIN Event e ON e.LID=s.EventLID
-                WHERE e.IsActive=1
-                ORDER BY julianday(e.StartDateTime),e.LID,s.LID
-                """, r => (Class:r.GetInt64(0), Timing:new LiveTimeClassTiming(
-                    r.IsDBNull(1) ? null : Number(r,1), Int(r,2), Int(r,3), Int(r,4), Int(r,5), Int(r,6),
-                    Int(r,7), Int(r,8), Int(r,9), Int(r,10), Int(r,11))))
-                .GroupBy(row => row.Class).ToDictionary(g => g.Key, g => g.Last().Timing);
+            var settings = ReadEventClassTimings(db).GroupBy(row => row.ClassId)
+                .ToDictionary(g => g.Key, g => g.Last().Timing);
             classes = classes.Select(c => c with { Timing = settings.GetValueOrDefault(c.LocalId) }).ToList();
         }
 

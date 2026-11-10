@@ -6,6 +6,7 @@ public sealed class AppSettings
     public RentalTransponderState RentalTransponders { get; set; } = new();
     public OnlinePublishingSettings OnlinePublishing { get; set; } = new();
     public TrackProfile Track { get; set; } = new();
+    public List<TrackProfile> ImportedTracks { get; set; } = [];
     public string DriverCrossingStyle { get; set; } = "Box";
     public string DriverCrossingColor { get; set; } = "#35C76F";
     public List<string>? SpectatorVisibleColumns { get; set; }

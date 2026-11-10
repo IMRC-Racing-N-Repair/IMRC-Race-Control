@@ -97,7 +97,7 @@ public static class LiveTimeRosterMerge
     {
         var rentals = source.RentalNumbers.Select(NormalizeTag).ToHashSet(IgnoreCase);
         return source.Entries.SelectMany(entry => Tags(entry.Transponders))
-            .Where(tag => !rentals.Contains(tag))
+            .Where(tag => !rentals.Contains(tag) && !source.SharedTransponderNumbers.Contains(tag))
             .Distinct(IgnoreCase)
             .Count();
     }
@@ -240,7 +240,7 @@ public static class LiveTimeRosterMerge
             var usable=new List<string>();
             foreach(var tag in tags)
             {
-                if(rentals.Contains(tag) || sourceTagOwners[tag].Distinct().Skip(1).Any() ||
+                if(rentals.Contains(tag) || source.SharedTransponderNumbers.Contains(tag) || sourceTagOwners[tag].Distinct().Skip(1).Any() ||
                     tagOwners.TryGetValue(tag,out var owners) && owners.Any(owner=>!IgnoreCase.Equals(owner,driver.Id)))
                 { plan.Issues.Add($"Skipped shared or rental transponder {tag} for {driver.FullName} in {cls.Name}."); continue; }
                 usable.Add(tag);
@@ -260,6 +260,11 @@ public static class LiveTimeRosterMerge
         }
         return plan;
     }
+
+    internal static IReadOnlySet<string> SharedTags(LiveTimeRoster source) => source.SharedTransponderNumbers
+        .Concat(source.Entries.SelectMany(e => Tags(e.Transponders).Select(tag => (Tag: tag, e.DriverId)))
+            .GroupBy(x => x.Tag, IgnoreCase).Where(g => g.Select(x => x.DriverId).Distinct().Skip(1).Any()).Select(g => g.Key))
+        .ToHashSet(IgnoreCase);
 
     private static string FullName(LiveTimeDriver d) => $"{d.FirstName} {d.LastName}".Trim();
 

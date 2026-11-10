@@ -13,11 +13,18 @@ are in the backup. Click a button to include or exclude that category.
 - Click **Import Selected** when ready. Race Control backs up its database
   before saving.
 
+When a backup contains multiple tracks, **Multiple Tracks Found** lets you pick
+which venues to import. The category counts then show only the selected venues.
+Use **Choose Drivers** and **Choose Classes** to narrow the roster further.
+Completed race history keeps the original drivers and results even if their
+profiles are not selected. Backups with no venue entries keep the full roster.
+
 Enable **Events & races** to import historical events, completed qualifying heats
 and mains, finishing results, and scored laps from schema 325. Expand **Choose
 events** to select individual events. Already imported events and races are not duplicated. Reimport the original
 backup with **Events & races** enabled to fill in missing venue links.
-**Track Info → Track Records** lets you select the imported venue. An imported
+**Track Info → Track Records** lets you select an imported venue, even if you did
+not import its completed races. An imported
 venue with the same unique name as the saved track uses the saved track's
 identity; records from other venues remain separate.
 

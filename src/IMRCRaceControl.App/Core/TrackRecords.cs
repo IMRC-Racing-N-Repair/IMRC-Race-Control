@@ -14,13 +14,15 @@ public static class TrackRecords
 {
     // Use stable track/class/driver IDs. Never pool unrelated venues or same-name drivers.
     public static List<TrackRecordClass> Calculate(TrackProfile track, IEnumerable<RaceDayEventDefinition> events,
-        IEnumerable<ClassDefinition> classes, int count = 10, string? classId = null)
+        IEnumerable<ClassDefinition> classes, int count = 10, string? classId = null, bool includeUnracedClasses = true)
     {
         if (count < 1) throw new ArgumentOutOfRangeException(nameof(count));
         var sessions = events.Where(e => e.Track?.Id == track.Id)
             .SelectMany(e => e.Sessions.Where(s => s.ProgressStatus == EventSessionStatus.Completed &&
                 (s.SessionType == SessionType.Qualifying || s.SessionType == SessionType.Race)).Select(s => (Event:e, Session:s))).ToList();
-        var catalog = classes.Select(c => (c.Id,c.Name,Color:c.PrintColor))
+        var venueClassIds = sessions.Select(x => x.Session.ClassId).ToHashSet();
+        var catalog = classes.Where(c => includeUnracedClasses || venueClassIds.Contains(c.Id))
+            .Select(c => (c.Id,c.Name,Color:c.PrintColor))
             .Concat(sessions.Select(x => (Id:x.Session.ClassId,Name:x.Session.ClassName,Color:"#DCE1E6")))
             .DistinctBy(c => c.Id).Where(c => classId is null || c.Id == classId).OrderBy(c => c.Name).ThenBy(c=>c.Id);
         return catalog.Select(c =>

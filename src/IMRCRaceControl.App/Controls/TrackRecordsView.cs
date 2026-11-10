@@ -20,7 +20,7 @@ public sealed partial class TrackRecordsView : UserControl
         HorizontalScrollBarVisibility=ScrollBarVisibility.Disabled };
     private readonly TextBlock _status = new() { TextWrapping=TextWrapping.Wrap, Margin=new Thickness(0,8,0,12) };
     private readonly Button _print = new() { Content="PRINT / PDF" };
-    private Func<(TrackProfile Track, List<RaceDayEventDefinition> Events, List<ClassDefinition> Classes)>? _source;
+    private Func<(TrackProfile Track, IReadOnlyList<TrackProfile> ImportedTracks, List<RaceDayEventDefinition> Events, List<ClassDefinition> Classes)>? _source;
     private RaceReport? _report;
     private bool _refreshing;
 
@@ -29,14 +29,14 @@ public sealed partial class TrackRecordsView : UserControl
         var root = new DockPanel { Margin=new Thickness(18) }; Content=root;
         var top = new StackPanel(); DockPanel.SetDock(top,Dock.Top); root.Children.Add(top);
         top.Children.Add(new TextBlock { Text="TRACK RECORDS", FontSize=24, FontWeight=FontWeights.Bold });
-        top.Children.Add(new TextBlock { Text="Fastest valid lap per driver, ranked within each class. Completed qualifying and mains only; breakout laps are excluded.", TextWrapping=TextWrapping.Wrap, Margin=new Thickness(0,6,0,12) });
+        top.Children.Add(new TextBlock { Text="Select a track to see and print its own records. Records use the fastest valid lap per driver and class from completed qualifying and mains.", TextWrapping=TextWrapping.Wrap, Margin=new Thickness(0,6,0,12) });
         var filters = new WrapPanel(); top.Children.Add(filters);
         void Field(string title,FrameworkElement control)
         {
             var field=new StackPanel { Margin=new Thickness(0,0,12,8) };
             field.Children.Add(new TextBlock { Text=title, Margin=new Thickness(0,0,0,4) }); field.Children.Add(control); filters.Children.Add(field);
         }
-        Field("Track",_tracks); Field("Class",_classes); Field("Top per class",_count);
+        Field("Track / venue",_tracks); Field("Class",_classes); Field("Top per class",_count);
         var refresh=new Button { Content="REFRESH", VerticalAlignment=VerticalAlignment.Bottom, Margin=new Thickness(0,0,8,8) };
         filters.Children.Add(refresh); _print.VerticalAlignment=VerticalAlignment.Bottom; _print.Margin=new Thickness(0,0,0,8); filters.Children.Add(_print);
         top.Children.Add(_status);
@@ -47,7 +47,7 @@ public sealed partial class TrackRecordsView : UserControl
         Loaded+=(_,_)=>Refresh();
         _print.Click+=(_,_)=> { if(_report is not null) new ReportPrintDialog(_report) { Owner=Window.GetWindow(this) }.ShowDialog(); };
     }
-    public void Configure(Func<(TrackProfile Track,List<RaceDayEventDefinition> Events,List<ClassDefinition> Classes)> source) { _source=source; Refresh(); }
+    public void Configure(Func<(TrackProfile Track,IReadOnlyList<TrackProfile> ImportedTracks,List<RaceDayEventDefinition> Events,List<ClassDefinition> Classes)> source) { _source=source; Refresh(); }
     public void Refresh()
     {
         if(_source is null) return;
@@ -55,7 +55,8 @@ public sealed partial class TrackRecordsView : UserControl
         var previous = _tracks.SelectedItem as TrackProfile;
         var wasOnlyTrack = _tracks.Items.Count <= 1;
         var venueEvents = data.Events.Where(e => e.Track is not null).ToList();
-        var tracks = new[] { data.Track }.Concat(venueEvents.Select(e => e.Track!)).DistinctBy(t => t.Id).ToList();
+        var tracks = new[] { data.Track }.Concat(data.ImportedTracks).Concat(venueEvents.Select(e => e.Track!))
+            .DistinctBy(t => t.Id, StringComparer.OrdinalIgnoreCase).ToList();
         if (string.IsNullOrWhiteSpace(data.Track.Name) && tracks.Count > 1 &&
             !venueEvents.Any(e => e.Track?.Id == data.Track.Id))
             tracks.Remove(data.Track);
@@ -79,7 +80,7 @@ public sealed partial class TrackRecordsView : UserControl
         var selected = (_classes.SelectedItem as Choice)?.Id;
         _refreshing = true;
         var choices = new List<Choice> { new(null,"All classes") };
-        choices.AddRange(TrackRecords.Calculate(track,data.Events,data.Classes,1).Select(c=>new Choice(c.Id,c.Name)));
+        choices.AddRange(TrackRecords.Calculate(track,data.Events,data.Classes,1, includeUnracedClasses: track.Id == data.Track.Id).Select(c=>new Choice(c.Id,c.Name)));
         _classes.ItemsSource=choices; _classes.SelectedItem=choices.FirstOrDefault(c=>c.Id==selected)??choices[0];
         _refreshing = false;
         Render();
@@ -91,12 +92,13 @@ public sealed partial class TrackRecordsView : UserControl
         if(!int.TryParse(_count.Text,out var count) || count<1) { _status.Text="Enter a whole number of at least 1 for the records per class."; return; }
         var data=_source();
         var track = _tracks.SelectedItem as TrackProfile ?? data.Track;
-        var classes=TrackRecords.Calculate(track,data.Events,data.Classes,count,(_classes.SelectedItem as Choice)?.Id);
+        var classes=TrackRecords.Calculate(track,data.Events,data.Classes,count,(_classes.SelectedItem as Choice)?.Id,
+            includeUnracedClasses: track.Id == data.Track.Id);
         _report=TrackRecords.Report(track.Name,classes,count); _print.IsEnabled=classes.Count>0;
         var unassigned=data.Events.Count(e=>e.Track is null && e.Sessions.Any(s=>s.ProgressStatus==EventSessionStatus.Completed));
-        _status.Text=$"{(string.IsNullOrWhiteSpace(track.Name)?"Your track":track.Name)} • {classes.Sum(c=>c.Records.Count)} records • Top {count} per class"+
+        _status.Text=$"{(string.IsNullOrWhiteSpace(track.Name)?"Your track":track.Name)} • {data.Events.Count(e => e.Track?.Id == track.Id):N0} events • {classes.Sum(c=>c.Records.Count)} records • Top {count} per class"+
             (unassigned>0 ? $"\n{unassigned} event(s) have no track assigned. For older LiveTime imports, reimport Events & races from the original backup to restore venue links without duplicating races. For other events, assign a track in Track Details." : "");
-        if(classes.Count==0) _records.Children.Add(new TextBlock { Text=_report.EmptyMessage, TextWrapping=TextWrapping.Wrap });
+        if(classes.Count==0) _records.Children.Add(new TextBlock { Text="No completed races recorded at this track yet.", TextWrapping=TextWrapping.Wrap });
         foreach(var c in classes)
         {
             var heading=new TextBlock { Text=c.Name.ToUpperInvariant(), FontSize=18, FontWeight=FontWeights.Bold, Margin=new Thickness(10,4,0,4) };

@@ -64,6 +64,7 @@ public sealed class SettingsService
         settings.DriverRatingReviews ??= [];
         settings.DriverClassAssignments ??= [];
         settings.Track ??= new();
+        settings.ImportedTracks ??= [];
         settings.OnlinePublishing ??= new();
         if (string.IsNullOrWhiteSpace(settings.Track.Id)) settings.Track.Id = Guid.NewGuid().ToString("N");
         settings.Events ??= [];

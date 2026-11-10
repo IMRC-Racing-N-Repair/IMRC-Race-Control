@@ -1853,7 +1853,7 @@
                         <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
                             <StackPanel Margin="18" MaxWidth="1050" HorizontalAlignment="Stretch">
                                 <TextBlock Text="TRACK DETAILS" FontSize="24" FontWeight="Bold"/>
-                                <TextBlock Text="Your venue, contact details and racing schedule. New events use this saved track." TextWrapping="Wrap" Margin="0,6,0,18"/>
+                                <TextBlock Text="Your home track and its contact details. New events use this track. Browse imported venues and their results under Track Records." TextWrapping="Wrap" Margin="0,6,0,18"/>
                                 <Grid>
                                     <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
                                     <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>

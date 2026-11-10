@@ -219,6 +219,65 @@ internal static class LiveTimeImportChecks
             justOne[0].Track = new TrackProfile { Id = "manual" };
             Check(LiveTimeHistoryMerge.MissingTrackLinks(archive, [sourceEvent.SourceId], justOne, savedTrack).Count == 0,
                 "never replaces a previously assigned venue");
+            var venueFixture = Path.Combine(folder, "venues.db");
+            CreateFixture(venueFixture, false);
+            using (var venueDb = new SqliteConnection(new SqliteConnectionStringBuilder
+                { DataSource = venueFixture, Pooling = false }.ToString()))
+            {
+                venueDb.Open();
+                using var sql = venueDb.CreateCommand();
+                sql.CommandText = """
+                    UPDATE SystemVersion SET [Database]=325;
+                    CREATE TABLE Track (LID INTEGER PRIMARY KEY, GUID TEXT, Name TEXT);
+                    INSERT INTO Track VALUES
+                        (1,'da742296-3726-441f-9286-19723f08c45e','Home'),
+                        (2,'0e563a18-df67-4581-b2fb-3fdd445d1850','Away'),
+                        (3,'0ac96e91-c8a6-4285-8b81-8f67b6340e30','No events yet');
+                    ALTER TABLE Event ADD COLUMN TrackLID INTEGER;
+                    UPDATE Event SET TrackLID=LID;
+                    INSERT INTO Event VALUES (3,1,'2025-03-02',NULL);
+                    CREATE TABLE EventRegistration (LID INTEGER PRIMARY KEY, EventLID INTEGER, DriverLID INTEGER, RaceClassLID INTEGER, IsRegistered INTEGER);
+                    INSERT INTO EventRegistration VALUES (1,1,1,1,1),(2,2,2,1,1),(3,1,2,1,0),(4,3,2,1,1);
+                    """;
+                sql.ExecuteNonQuery();
+            }
+            var allVenues = LiveTimeBackupReader.ReadImport(venueFixture);
+            var homeVenue = allVenues.Venues.Single(v => v.Name == "Home");
+            var awayVenue = allVenues.Venues.Single(v => v.Name == "Away");
+            var unusedVenue = allVenues.Venues.Single(v => v.Name == "No events yet");
+            Check(allVenues.Venues.Count == 4 && unusedVenue.EventIds.Count == 0 &&
+                allVenues.Venues.Single(v => v.Track is null).EventIds.SetEquals([3L]),
+                "finds named tracks without races and separates events without a track");
+            allVenues = allVenues with { History = [sourceEvent with { Track = homeVenue.Track },
+                otherEvent with { LocalId = 2, Track = awayVenue.Track }] };
+            var scopedHome = LiveTimeVenueSelection.Scope(allVenues, new HashSet<string> { homeVenue.Id });
+            Check(scopedHome.History.Single().SourceId == sourceEvent.SourceId &&
+                scopedHome.Roster.Drivers.Single().LocalId == 1 &&
+                scopedHome.Roster.Entries.Single().Transponders == "1234567;2345678" &&
+                scopedHome.Roster.Classes.Single().Timing?.QualSeconds == 300,
+                "uses only active registrations, personal tags, events and class settings at the selected venue");
+            var scopeBoth = LiveTimeVenueSelection.Scope(allVenues, new HashSet<string> { homeVenue.Id, awayVenue.Id });
+            Check(scopeBoth.Roster.Classes.Count == 1 && scopeBoth.Roster.Entries.Count == 2 &&
+                scopeBoth.History.Count == 2 && scopeBoth.Roster.Classes.Single().Timing?.QualSeconds == 240,
+                "combines selections without duplicating a class and uses the latest selected class setup");
+            var noDrivers = LiveTimeVenueSelection.FilterRoster(scopedHome.Roster, new HashSet<long>(), null);
+            var eventsOnly = LiveTimeHistoryMerge.Preview(scopedHome, [sourceEvent.SourceId], [],
+                LiveTimeRosterMerge.Preview(noDrivers, [], [], []), true);
+            Check(noDrivers.Drivers.Count == 0 && noDrivers.Entries.Count == 0 &&
+                eventsOnly.Single().Sessions.Single().Entrants.Single().DriverName == "Casey Lane",
+                "excluding roster drivers keeps original entrants in selected completed results");
+            Check(IMRCRaceControl.Core.TrackRecords.Calculate(homeVenue.Track!, eventsOnly,
+                [new ClassDefinition { Id = "unrelated", Name = "Other venue's class" }], includeUnracedClasses: false)
+                .All(c => c.Id != "unrelated"), "an imported venue's record view excludes unrelated classes");
+            var newTrack = LiveTimeHistoryMerge.NewTracks(allVenues, [unusedVenue.Id], [], savedTrack).Single();
+            Check(newTrack.Id == unusedVenue.Id && !LiveTimeHistoryMerge.NewTracks(allVenues,
+                [newTrack.Id, homeVenue.Id], [newTrack], savedTrack).Any(),
+                "saves a selected venue even without events and never duplicates it or the matched home track");
+            var shared = allVenues with { Roster = allVenues.Roster with
+                { Entries = [..allVenues.Roster.Entries.Where(e => e.DriverId == 1), new(2, 1, "1234567")] } };
+            var selectedShared = LiveTimeVenueSelection.Scope(shared, new HashSet<string> { homeVenue.Id });
+            Check(LiveTimeRosterMerge.Preview(selectedShared.Roster, [], [], []).Assignments.Single().TransponderId == "2345678",
+                "a shared tag stays excluded when its other driver races at an unselected venue");
             return checks;
         }
         finally {Directory.Delete(folder,true);}

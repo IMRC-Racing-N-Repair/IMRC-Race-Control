@@ -3,6 +3,7 @@
 Keep all release history in this file. Add each new version at the top; do not create version-specific changelog files.
 
 ## 0.16.30
+- Choose tracks when importing a multi-track LiveTime backup, then select drivers, classes, and race history from those venues. Track Info keeps each imported venue and its records separate.
 - Add Event class card zoom with a compact list at the smallest setting, support mouse-wheel scrolling over Track Records, and show progress while importing LiveTime data. Clarify Rating and SOF in the driver view and lineup reports.
 - Preserve venue information from LiveTime imports, show records by track, and restore missing venue links when reimporting older history.
 - Announce a new track and class record when the driver finishes and show it at the bottom of the race, pop-out, and web scoreboards.

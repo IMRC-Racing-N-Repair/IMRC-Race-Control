@@ -7,6 +7,8 @@ namespace IMRCRaceControl.Services;
 
 public sealed record LiveTimeImportSource(LiveTimeRoster Roster, IReadOnlyList<LiveTimeEventHistory> History)
 {
+    public IReadOnlyList<LiveTimeVenue> Venues { get; init; } = [];
+    internal IReadOnlyList<LiveTimeEventClassTiming> VenueTimings { get; init; } = [];
     public IReadOnlyList<LiveTimeDriver> HistoryDrivers { get; init; } = [];
     public IReadOnlyList<LiveTimeClass> HistoryClasses { get; init; } = [];
 }
@@ -29,7 +31,7 @@ public sealed record LiveTimeRaceLapHistory(long Sequence, int Number, double Se
 
 public static partial class LiveTimeBackupReader
 {
-    private static List<LiveTimeEventHistory> ReadRaceHistory(SqliteConnection db)
+    private static List<LiveTimeEventHistory> ReadRaceHistory(SqliteConnection db, IReadOnlyDictionary<long, TrackProfile> eventTracks)
     {
         var tables = Read(db, "SELECT name FROM sqlite_schema WHERE type='table'", r => r.GetString(0))
             .ToHashSet(StringComparer.OrdinalIgnoreCase);
@@ -80,17 +82,9 @@ public static partial class LiveTimeBackupReader
                     Int(r,12)!=0, Int(r,13)!=0, Int(r,14)!=0, string.Join(";",tagLookup[id].Distinct()), laps[id].ToList()));
             }).ToLookup(e => e.Race,e => e.Entry);
         var byEvent = races.ToLookup(r => r.EventId, r => r.Race with { Entries = entries[r.Race.LocalId].ToList() });
-        var hasTrack = tables.Contains("Track") &&
-            Read(db, "PRAGMA table_info('Event')", r => r.GetString(1)).Contains("TrackLID", StringComparer.OrdinalIgnoreCase);
-        var tracks = hasTrack
-            ? Read(db, "SELECT LID,GUID,Name FROM Track", r => (Id:Long(r,0), Guid:GuidValue(r,1), Name:TextValue(r,2)))
-                .Where(t => t.Guid != Guid.Empty && t.Name.Length > 0)
-                .ToDictionary(t => t.Id, t => new TrackProfile { Id = "livetime-track-" + t.Guid.ToString("N"), Name = t.Name })
-            : [];
-        var eventQuery = "SELECT LID,GUID,Name,StartDateTime,EndDateTime," + (hasTrack ? "TrackLID" : "NULL") + " FROM Event WHERE IsActive=1";
-        return Read(db, eventQuery,
+        return Read(db, "SELECT LID,GUID,Name,StartDateTime,EndDateTime FROM Event WHERE IsActive=1",
                 r => new LiveTimeEventHistory(r.GetInt64(0),GuidValue(r,1),TextValue(r,2),Date(TextValue(r,3)) ?? DateTimeOffset.UnixEpoch,
-                    Date(TextValue(r,4)),byEvent[r.GetInt64(0)].ToList()) { Track = tracks.GetValueOrDefault(Long(r,5)) })
+                    Date(TextValue(r,4)),byEvent[r.GetInt64(0)].ToList()) { Track = eventTracks.GetValueOrDefault(r.GetInt64(0)) })
             .Where(e => e.SourceId != Guid.Empty && e.Date > DateTimeOffset.UnixEpoch && (e.Races.Count > 0 || e.End.HasValue))
             .OrderByDescending(e => e.Date).ToList();
     }
@@ -107,6 +101,16 @@ public static partial class LiveTimeBackupReader
 
 public static class LiveTimeHistoryMerge
 {
+    public static List<TrackProfile> NewTracks(LiveTimeImportSource source, IEnumerable<string> chosen,
+        IEnumerable<TrackProfile> existing, TrackProfile savedTrack)
+    {
+        var selected = chosen.ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var known = existing.Select(t => t.Id).Append(savedTrack.Id).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        return source.Venues.Where(v => selected.Contains(v.Id) && v.Track is not null)
+            .Select(v => ResolveTrack(source, v.Track, savedTrack)!)
+            .Where(t => known.Add(t.Id)).ToList();
+    }
+
     public static string EventId(Guid id) => "livetime-event-" + id.ToString("N");
 
     public static List<RaceDayEventDefinition> Preview(LiveTimeImportSource source, IEnumerable<Guid> chosen,
@@ -200,12 +204,13 @@ public static class LiveTimeHistoryMerge
             .Select(e => (e, ResolveTrack(source, history[e.Id].Track, savedTrack)!)).ToList();
     }
 
-    private static TrackProfile? ResolveTrack(LiveTimeImportSource source, TrackProfile? imported, TrackProfile? saved)
+    internal static TrackProfile? ResolveTrack(LiveTimeImportSource source, TrackProfile? imported, TrackProfile? saved)
     {
         if (imported is null) return null;
         if (saved is not null && string.Equals(imported.Name.Trim(), saved.Name.Trim(), StringComparison.OrdinalIgnoreCase) &&
-            source.History.Where(e => string.Equals(e.Track?.Name.Trim(), imported.Name.Trim(), StringComparison.OrdinalIgnoreCase))
-                .Select(e => e.Track!.Id).Distinct(StringComparer.OrdinalIgnoreCase).Count() == 1)
+            source.Venues.Select(v => v.Track).Concat(source.History.Select(e => e.Track))
+                .Where(t => string.Equals(t?.Name.Trim(), imported.Name.Trim(), StringComparison.OrdinalIgnoreCase))
+                .Select(t => t!.Id).Distinct(StringComparer.OrdinalIgnoreCase).Count() == 1)
             return saved.Snapshot();
         return imported.Snapshot();
     }
