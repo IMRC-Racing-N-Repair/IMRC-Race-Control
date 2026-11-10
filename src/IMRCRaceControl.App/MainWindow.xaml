@@ -1503,7 +1503,7 @@
                                         <TextBlock x:Name="SelectedDriverAssignmentsTitleText"
                                                    Text="DRIVER CLASS / TRANSPONDER SETUP"
                                                    FontWeight="Bold" FontSize="13"/>
-                                        <TextBlock Text="Ratings are per class. SOF is the last race’s field strength. New drivers start at 1500 / Safety 3.00; SOF appears after racing."
+                                        <TextBlock Text="Rating is the driver’s performance score in this class. Last SOF is the average pre-race rating of the starters in their last rated main. New drivers start at 1500 and Safety 3.00."
                                                    Foreground="{DynamicResource MutedBrush}" TextWrapping="Wrap"/>
                                     </StackPanel>
                                     <Button Grid.Column="1" Content="+ ADD CLASS ASSIGNMENT"
@@ -1525,7 +1525,7 @@
                                             <DataGridTextColumn Header="CLASS" Binding="{Binding ClassName}" Width="1.2*"/>
                                             <DataGridTextColumn Header="TRANSPONDER" Binding="{Binding TransponderId}" Width="1.2*"/>
                                             <DataGridTextColumn Header="RATING" Binding="{Binding RatingDisplay}" Width="65"/>
-                                            <DataGridTextColumn Header="SOF" Binding="{Binding SofDisplay}" Width="60"/>
+                                            <DataGridTextColumn Header="LAST SOF" Binding="{Binding SofDisplay}" Width="75"/>
                                             <DataGridTextColumn Header="SAFETY" Binding="{Binding SafetyDisplay}" Width="65"/>
                                             <DataGridTextColumn Header="SEED" Binding="{Binding SeedRank}" Width="50"/>
                                         </DataGrid.Columns>
@@ -1598,7 +1598,7 @@
                             <DataGridTextColumn Header="LAST SOF" Binding="{Binding LastStrengthOfField, StringFormat=F0}" Width="85"/>
                         </DataGrid.Columns>
                     </DataGrid>
-                    <TextBlock Grid.Row="4" Text="DRIVER RACE HISTORY • SOF = average pre-race rating • Safety excludes lap 1" FontWeight="Bold" Margin="0,8,0,4"/>
+                    <TextBlock Grid.Row="4" Text="DRIVER RACE HISTORY • SOF = average starting-field rating before the race • Safety excludes lap 1" FontWeight="Bold" Margin="0,8,0,4"/>
                     <DataGrid x:Name="DriverRatingHistoryGrid" Grid.Row="5" ItemsSource="{Binding DriverRatingHistory}" AutoGenerateColumns="False" IsReadOnly="True" CanUserAddRows="False" SelectionChanged="DriverRatingHistoryGrid_SelectionChanged">
                         <DataGrid.Columns>
                             <DataGridTextColumn Header="DATE" Binding="{Binding DateDisplay}" Width="120"/>

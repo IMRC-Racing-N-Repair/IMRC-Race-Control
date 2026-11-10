@@ -1,5 +1,6 @@
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Automation;
 using System.Windows.Media;
 using IMRCRaceControl.Models;
 namespace IMRCRaceControl.Controls;
@@ -7,7 +8,15 @@ public sealed class EventRegistrationView : UserControl
 {
     private readonly ListBox _drivers = new() { DisplayMemberPath="Label" };
     private readonly TextBox _search = new();
+    private const int DefaultClassZoom = 5;
     private readonly WrapPanel _classes = new() { ItemWidth=174, Orientation=Orientation.Horizontal };
+    private readonly ScrollViewer _classScroll = new() { VerticalScrollBarVisibility=ScrollBarVisibility.Auto,
+        HorizontalScrollBarVisibility=ScrollBarVisibility.Disabled };
+    private readonly Slider _classZoom = new() { Minimum=0, Maximum=10, Value=DefaultClassZoom, TickFrequency=1,
+        IsSnapToTickEnabled=true, SmallChange=1, LargeChange=1, Width=130, VerticalAlignment=VerticalAlignment.Center };
+    private readonly TextBlock _classZoomLabel = new() { Width=48, VerticalAlignment=VerticalAlignment.Center };
+    private readonly List<ClassTile> _classTiles = [];
+    private sealed record ClassTile(Border Border, Grid Grid, CheckBox Check, DockPanel Transponder);
     private readonly TextBlock _selected = new() { FontSize=17,FontWeight=FontWeights.SemiBold };
     private readonly TextBlock _status = new() { TextWrapping=TextWrapping.Wrap,Margin=new Thickness(0,6,0,0) };
     private readonly Button _newDriver = new() { Content="+ NEW DRIVER" }, _newClass=new() { Content="+ CLASS" };
@@ -28,10 +37,25 @@ public sealed class EventRegistrationView : UserControl
         var heading=new DockPanel();_newClass.HorizontalAlignment=HorizontalAlignment.Right;_newClass.MinWidth=90;
         DockPanel.SetDock(_newClass,Dock.Right);heading.Children.Add(_newClass);_selected.TextWrapping=TextWrapping.Wrap;heading.Children.Add(_selected);header.Children.Add(heading);
         header.Children.Add(new TextBlock { Text="Select classes and enter a transponder for each. Changes save automatically.",TextWrapping=TextWrapping.Wrap,Margin=new Thickness(0,4,0,6) });
+        var zoom = new WrapPanel { Margin=new Thickness(0,0,0,4) };
+        zoom.Children.Add(new TextBlock { Text="Class size", VerticalAlignment=VerticalAlignment.Center, Margin=new Thickness(0,0,5,0) });
+        var smaller = new Button { Content="−", MinWidth=26, ToolTip="Smaller class cards; fully left switches to list" };
+        var larger = new Button { Content="+", MinWidth=26, ToolTip="Larger class cards" };
+        AutomationProperties.SetName(smaller,"Zoom out class cards");
+        AutomationProperties.SetName(larger,"Zoom in class cards");
+        AutomationProperties.SetName(_classZoom,"Class and transponder display size");
+        _classZoom.ToolTip = "Drag all the way left for a compact list. The default card size is 100%.";
+        zoom.Children.Add(smaller); zoom.Children.Add(_classZoom); zoom.Children.Add(larger); zoom.Children.Add(_classZoomLabel);
+        header.Children.Add(zoom);
+        smaller.Click+=(_,_)=>_classZoom.Value--;
+        larger.Click+=(_,_)=>_classZoom.Value++;
+        _classZoom.ValueChanged+=(_,_)=> { ApplyClassLayout(); smaller.IsEnabled=_classZoom.Value>0; larger.IsEnabled=_classZoom.Value<_classZoom.Maximum; };
         DockPanel.SetDock(header,Dock.Top);right.Children.Add(header);DockPanel.SetDock(_status,Dock.Bottom);right.Children.Add(_status);
-        var classScroll=new ScrollViewer { Content=_classes,VerticalScrollBarVisibility=ScrollBarVisibility.Auto,HorizontalScrollBarVisibility=ScrollBarVisibility.Disabled };
-        classScroll.SizeChanged+=(_,e)=>_classes.ItemWidth=Math.Min(174,Math.Max(112,e.NewSize.Width-18));
-        right.Children.Add(classScroll);
+        _classScroll.Content=_classes;
+        _classScroll.SizeChanged+=(_,_)=>ApplyClassLayout();
+        _classScroll.ScrollChanged+=(_,e)=> { if (e.ViewportWidthChange!=0) ApplyClassLayout(); };
+        right.Children.Add(_classScroll);
+        ApplyClassLayout();
         left.SetResourceReference(Panel.BackgroundProperty,"PanelBrush");right.SetResourceReference(Panel.BackgroundProperty,"PanelBrush");Content=root;
         _search.TextChanged+=(_,_)=>RefreshDrivers();_drivers.SelectionChanged+=(_,_)=> { if(!_refreshing)RefreshClasses(); };
     }
@@ -62,6 +86,7 @@ public sealed class EventRegistrationView : UserControl
     {
         if(_saving)return;
         _classes.Children.Clear();
+        _classTiles.Clear();
         var driver=_drivers.SelectedItem as DriverRow;
         _selected.Text=driver is null ? "Select a driver" : _profiles.First(d=>d.Id==driver.Id).DisplayName+" • CLASSES & TRANSPONDERS";
         if(driver is null || _event is null)return;
@@ -72,6 +97,8 @@ public sealed class EventRegistrationView : UserControl
             var defaults=_defaults.Where(a=>a.DriverId==driver.Id && a.ClassId==cls.Id).Select(a=>a.TransponderId).Where(t=>!string.IsNullOrWhiteSpace(t)).Distinct();
             var row=new Grid { Margin=new Thickness(6,4,6,4),MinHeight=43 };
             row.RowDefinitions.Add(new RowDefinition { Height=GridLength.Auto });row.RowDefinitions.Add(new RowDefinition { Height=GridLength.Auto });
+            row.ColumnDefinitions.Add(new ColumnDefinition());
+            row.ColumnDefinitions.Add(new ColumnDefinition { Width=GridLength.Auto });
             var check=new CheckBox { Content=new TextBlock { Text=cls.Name,TextWrapping=TextWrapping.Wrap,FontWeight=FontWeights.SemiBold },IsChecked=assignment is not null,VerticalAlignment=VerticalAlignment.Center,Margin=new Thickness(0,0,0,2) };
             var number=new TextBox { Text=assignment?.TransponderId ?? string.Join(";",defaults),IsEnabled=assignment is not null,ToolTip="Transponder number for this driver and class (optional)",Margin=new Thickness(0) };
             var field=new DockPanel();var label=new TextBlock { Text="TX #",Width=34,VerticalAlignment=VerticalAlignment.Center,FontSize=10 };DockPanel.SetDock(label,Dock.Left);field.Children.Add(label);field.Children.Add(number);
@@ -79,6 +106,7 @@ public sealed class EventRegistrationView : UserControl
             var color=new SolidColorBrush((Color)ColorConverter.ConvertFromString(cls.PrintColor));
             var border=new Border { Child=row,BorderBrush=color,BorderThickness=assignment is not null ? new Thickness(4,1,1,1) : new Thickness(1),CornerRadius=new CornerRadius(4),Margin=new Thickness(0,2,5,3) };
             border.SetResourceReference(Border.BackgroundProperty,assignment is not null ? "PanelHoverBrush" : "InputBrush");_classes.Children.Add(border);
+            _classTiles.Add(new(border,row,check,field));
             check.Click+=async(_,_)=>await Save(eventId,driver.Id,cls.Id,check.IsChecked==true,number.Text);
             if (_event.Status == EventStatus.Active) border.Cursor = System.Windows.Input.Cursors.Hand;
             border.MouseLeftButtonUp += async (_,e) =>
@@ -97,8 +125,31 @@ public sealed class EventRegistrationView : UserControl
                 if(current is not null && current.TransponderId!=number.Text.Trim())await Save(eventId,driver.Id,cls.Id,true,number.Text);
             };
         }
+        ApplyClassLayout();
         _status.Text=_event.Status==EventStatus.Completed ? "Completed event: use Reopen Event to edit registrations." : "Saved races stay in place. Add new registrants to their race in Open Rounds / Mains, then reprint.";
     }
+    private void ApplyClassLayout()
+    {
+        var list = _classZoom.Value == 0;
+        var scale = (50 + _classZoom.Value * 10) / 100;
+        _classZoomLabel.Text = list ? "List" : $"{scale:P0}";
+        var viewport = _classScroll.ViewportWidth;
+        var available = Math.Max(90, (double.IsFinite(viewport) && viewport > 0 ? viewport : _classScroll.ActualWidth) - 2);
+        _classes.ItemWidth = list ? available : Math.Min(available, 174 * scale);
+        foreach (var (border, grid, check, transponder) in _classTiles)
+        {
+            border.LayoutTransform = list ? Transform.Identity : new ScaleTransform(scale,scale);
+            grid.MinHeight = list ? 27 : 43;
+            grid.Margin = list ? new Thickness(6,2,6,2) : new Thickness(6,4,6,4);
+            Grid.SetColumnSpan(check,list ? 1 : 2);
+            Grid.SetRow(transponder,list ? 0 : 1);
+            Grid.SetColumn(transponder,list ? 1 : 0);
+            Grid.SetColumnSpan(transponder,list ? 1 : 2);
+            transponder.Width = list ? Math.Clamp(available * .42,70,170) : double.NaN;
+            transponder.Margin = list ? new Thickness(6,0,0,0) : new Thickness(0);
+        }
+    }
+
     private async Task Save(string eventId,string driver,string cls,bool included,string number)
     {
         if(_save is null || _saving)return;

@@ -2,6 +2,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Data;
 using System.Windows.Media;
+using System.Windows.Input;
 using IMRCRaceControl.Core;
 using IMRCRaceControl.Dialogs;
 using IMRCRaceControl.Models;
@@ -14,7 +15,9 @@ public sealed partial class TrackRecordsView : UserControl
     private readonly ComboBox _tracks = new() { DisplayMemberPath=nameof(TrackProfile.Name), MinWidth=200, MaxWidth=320 };
     private readonly ComboBox _classes = new() { DisplayMemberPath="Name", MinWidth=200, MaxWidth=320 };
     private readonly TextBox _count = new() { Text="10", Width=64, VerticalContentAlignment=VerticalAlignment.Center };
-    private readonly StackPanel _records = new();
+    private readonly StackPanel _records = new() { Background=Brushes.Transparent };
+    private readonly ScrollViewer _recordScroll = new() { VerticalScrollBarVisibility=ScrollBarVisibility.Auto,
+        HorizontalScrollBarVisibility=ScrollBarVisibility.Disabled };
     private readonly TextBlock _status = new() { TextWrapping=TextWrapping.Wrap, Margin=new Thickness(0,8,0,12) };
     private readonly Button _print = new() { Content="PRINT / PDF" };
     private Func<(TrackProfile Track, List<RaceDayEventDefinition> Events, List<ClassDefinition> Classes)>? _source;
@@ -37,7 +40,8 @@ public sealed partial class TrackRecordsView : UserControl
         var refresh=new Button { Content="REFRESH", VerticalAlignment=VerticalAlignment.Bottom, Margin=new Thickness(0,0,8,8) };
         filters.Children.Add(refresh); _print.VerticalAlignment=VerticalAlignment.Bottom; _print.Margin=new Thickness(0,0,0,8); filters.Children.Add(_print);
         top.Children.Add(_status);
-        root.Children.Add(new ScrollViewer { Content=_records, VerticalScrollBarVisibility=ScrollBarVisibility.Auto, HorizontalScrollBarVisibility=ScrollBarVisibility.Disabled });
+        _recordScroll.Content=_records;
+        root.Children.Add(_recordScroll);
         _tracks.SelectionChanged+=(_,_)=> { if (!_refreshing) RefreshClasses(); };
         _classes.SelectionChanged+=(_,_)=>Render(); _count.TextChanged+=(_,_)=>Render(); refresh.Click+=(_,_)=>Refresh();
         Loaded+=(_,_)=>Refresh();
@@ -99,6 +103,14 @@ public sealed partial class TrackRecordsView : UserControl
             _records.Children.Add(new Border { Child=heading, BorderThickness=new Thickness(5,0,0,0), BorderBrush=(Brush)new BrushConverter().ConvertFromString(c.Color)!, Margin=new Thickness(0,12,0,8) });
             if(c.Records.Count==0) { _records.Children.Add(new TextBlock { Text="No completed race laps recorded at this track yet.", Margin=new Thickness(10,0,0,16) }); continue; }
             var grid=new DataGrid { ItemsSource=c.Records, AutoGenerateColumns=false, IsReadOnly=true, CanUserAddRows=false, CanUserSortColumns=false, CanUserReorderColumns=false, HeadersVisibility=DataGridHeadersVisibility.Column, GridLinesVisibility=DataGridGridLinesVisibility.Horizontal, Margin=new Thickness(0,0,0,16) };
+            // A DataGrid has its own ScrollViewer and consumes the wheel even
+            // when its rows fit. Route wheel input to the containing records page.
+            grid.PreviewMouseWheel += (_, e) =>
+            {
+                e.Handled = true;
+                _recordScroll.RaiseEvent(new MouseWheelEventArgs(e.MouseDevice, e.Timestamp, e.Delta)
+                    { RoutedEvent = Mouse.MouseWheelEvent, Source = _recordScroll });
+            };
             grid.SetResourceReference(BackgroundProperty,"PageBrush"); grid.SetResourceReference(ForegroundProperty,"TextBrush");
             grid.SetResourceReference(DataGrid.RowBackgroundProperty,"PageBrush"); grid.SetResourceReference(DataGrid.AlternatingRowBackgroundProperty,"PanelAltBrush");
             void Col(string title,string path,DataGridLength width)=>grid.Columns.Add(new DataGridTextColumn { Header=title, Binding=new Binding(path), Width=width });

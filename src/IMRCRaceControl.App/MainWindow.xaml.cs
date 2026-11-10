@@ -214,7 +214,7 @@ public partial class MainWindow : Window
         UpdateConnectionPanelVisibility();
     }
 
-    private async Task CaptureAndSaveSettingsAsync(bool reportFailureToCaller = false)
+    private async Task CaptureAndSaveSettingsAsync(bool reportFailureToCaller = false, bool backgroundWrite = false)
     {
         await _settingsSaveGate.WaitAsync();
         try
@@ -263,10 +263,20 @@ public partial class MainWindow : Window
             {
                 // SQLite is authoritative. This saves the complete application
                 // snapshot and synchronizes the queryable racing tables atomically.
-                await _database.SaveApplicationStateAsync(_settings);
+                // Microsoft.Data.Sqlite performs database I/O synchronously.
+                if (backgroundWrite)
+                    await Task.Run(() => _database.SaveApplicationStateAsync(_settings));
+                else
+                    await _database.SaveApplicationStateAsync(_settings);
 
                 // Keep settings.json as a readable migration/disaster-recovery backup.
-                try { await _settingsService.SaveAsync(_settings); }
+                try
+                {
+                    if (backgroundWrite)
+                        await Task.Run(() => _settingsService.SaveAsync(_settings));
+                    else
+                        await _settingsService.SaveAsync(_settings);
+                }
                 catch (Exception backupError)
                 {
                     AppCrashLogger.Log("Settings backup save", backupError);
