@@ -23,6 +23,7 @@ FIELDS = {
     "DriverRaceClassTransponder": "LID DriverLID RaceClassLID IsPrimary TransponderNumber",
     "DriverRaceClassCarInformation": "LID DriverLID RaceClassLID",
     "Event": "LID GUID Name IsActive StartDateTime EndDateTime",
+    "Track": "LID GUID Name",
     "Round": "LID EventLID IsActive TypeOrderNumber OrderNumber",
     "Race": ("LID GUID RoundLID RaceClassLID IsActive IsComplete Name TypeID "
              "OrderNumber RaceClassOrderNumber MainLetter MainNumber MultiMainCount StartTypeID "
@@ -36,7 +37,7 @@ FIELDS = {
     "PracticeLap": "LID",  # count only
     "TransponderRental": "LID TransponderNumber",  # exclude known rentals from personal tag import
 }
-OPTIONAL = {"PracticeLap", "TransponderRental", "DriverRaceClassCarInformation", "RaceClassDefaultSetting", "EventRaceClassSetting"}
+OPTIONAL = {"PracticeLap", "TransponderRental", "DriverRaceClassCarInformation", "RaceClassDefaultSetting", "EventRaceClassSetting", "Track"}
 
 
 def export(source, target):
@@ -51,6 +52,10 @@ def export(source, target):
         if name not in tables and name in OPTIONAL:
             continue
         columns = [f'"{column}"' for column in fields.split()]
+        if name == "Event" and "Track" in tables and any(
+            row[1] == "TrackLID" for row in source.execute('PRAGMA table_info("Event")')
+        ):
+            columns.append('"TrackLID"')
         column_sql = ",".join(columns)
         data = source.execute(f'SELECT {column_sql} FROM "{name}"')
         target.execute(f'CREATE TABLE "{name}" ({column_sql})')

@@ -69,6 +69,7 @@
                             <RowDefinition Height="Auto"/>
                             <RowDefinition Height="Auto"/>
                             <RowDefinition Height="*"/>
+                            <RowDefinition Height="Auto"/>
                         </Grid.RowDefinitions>
 
                         <Border x:Name="DashboardRaceHeader" Background="{DynamicResource DashboardPanelBrush}" BorderBrush="{DynamicResource BorderBrush}"
@@ -628,6 +629,8 @@
                             </Grid>
                         </Grid>
 
+                        <controls:TrackRecordStrip x:Name="DashboardTrackRecordStrip" Grid.Row="3"/>
+
                         <!-- Legacy/internal controls are intentionally hidden. The dashboard is event-driven. -->
                         <Grid Visibility="Collapsed">
                             <TextBox x:Name="RaceEventText"/>
@@ -819,8 +822,8 @@
                         <Grid.RowDefinitions>
                             <RowDefinition Height="Auto"/>
                             <RowDefinition Height="3*" MinHeight="240"/>
-                            <RowDefinition Height="10"/>
-                            <RowDefinition Height="*" MinHeight="150"/>
+                            <RowDefinition x:Name="EventRoundsSplitterRow" Height="10"/>
+                            <RowDefinition x:Name="EventRoundsRow" Height="*" MinHeight="150"/>
                         </Grid.RowDefinitions>
 
                         <!-- Event lifecycle -->
@@ -1050,7 +1053,7 @@
                             </Border>
                         </Grid>
 
-                        <GridSplitter Grid.Row="2" Height="10" HorizontalAlignment="Stretch"
+                        <GridSplitter x:Name="EventRoundsSplitter" Grid.Row="2" Height="10" HorizontalAlignment="Stretch"
                                       VerticalAlignment="Stretch" ResizeDirection="Rows"
                                       ResizeBehavior="PreviousAndNext" ShowsPreview="False"
                                       Background="{DynamicResource BorderBrush}" Cursor="SizeNS"
@@ -1068,7 +1071,7 @@
                         </GridSplitter>
 
                         <!-- Sessions / builder -->
-                        <Border Grid.Row="3"
+                        <Border x:Name="EventRoundsSection" Grid.Row="3"
                                 Background="{DynamicResource PanelBrush}" BorderBrush="{DynamicResource BorderBrush}"
                                 BorderThickness="0,0,0,1" CornerRadius="0" Padding="7" Margin="0,6,0,0">
                             <Grid>
@@ -1397,8 +1400,9 @@
                                     </Grid.ColumnDefinitions>
                                     <StackPanel>
                                         <TextBlock Text="DRIVER DIRECTORY" FontWeight="Bold" FontSize="13"/>
-                                        <TextBlock Text="Select a driver to view their profile and class/transponder assignments. New and edit actions open a focused popup."
-                                                   Foreground="{DynamicResource MutedBrush}" Margin="0,3,0,0" TextWrapping="Wrap"/>
+                                        <TextBlock Text="Search by name or nickname" Foreground="{DynamicResource MutedBrush}" Margin="0,3,0,0"/>
+                                        <TextBox x:Name="DriverDirectorySearchText" TextChanged="DriverDirectorySearchText_Changed"
+                                                 AutomationProperties.Name="Search drivers" Margin="0,3,0,0"/>
                                     </StackPanel>
                                     <Button Grid.Column="1" Content="+ NEW DRIVER" Click="NewDriver_Click"
                                             VerticalAlignment="Center" Margin="12,0,0,0"/>
@@ -1406,7 +1410,7 @@
                             </Border>
 
                             <ListBox x:Name="DriverGrid" Grid.Row="1"
-                                     ItemsSource="{Binding Drivers}" SelectionMode="Extended"
+                                     SelectionMode="Extended"
                                      SelectionChanged="DriverGrid_SelectionChanged">
                                 <ListBox.ItemTemplate>
                                     <DataTemplate>

@@ -68,7 +68,7 @@ public partial class MainWindow
         return ApplyWebDisplayPreferences(JsonSerializer.Serialize(new {
             title=SpectatorIsPractice?"PRACTICE":SpectatorRaceHeader, subtitle=SpectatorRaceSubheader,
             clock=SpectatorIsPractice?"":SpectatorMasterClock, state=SpectatorRaceState, practice=SpectatorIsPractice,
-            next=GetNextRacePreview(), colors=keys.ToDictionary(k=>k,Color),
+            next=GetNextRacePreview(), trackRecord=SpectatorTrackRecordNotice, colors=keys.ToDictionary(k=>k,Color),
             crossingStyle=_settings.DriverCrossingStyle, finishedStyle=_settings.FinishedDriverStyle,
             showOverall=_settings.WebShowOverallPosition, projectionInfo=SpectatorProjectionText,
             columns=DashboardColumnCatalog.LockedColumns.Concat(_settings.DashboardColumnOrder.Where(c=>c!="MANUAL" && _settings.DashboardVisibleColumns.Contains(c))).ToArray(),

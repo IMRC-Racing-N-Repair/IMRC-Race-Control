@@ -188,7 +188,9 @@ internal static class LiveTimeImportChecks
                 [new(1, Guid.NewGuid(), 1, "Main", 2, 1, 2, 1, 1, "A", 1, 1, 2, 1, 300, 0, 3.5, raceAt, raceAt.AddMinutes(5),
                     [new(1, 1, 1, 2, 1, 5.5, 5.5, 5.5, 0, 0, 0, false, true, false, "1234567",
                         [new(1, 1, 5.5, 5.5, raceAt.AddSeconds(5.5))])])]);
-            var otherEvent = sourceEvent with { SourceId = Guid.NewGuid(), Name = "Event B" };
+            sourceEvent = sourceEvent with { Track = new TrackProfile { Id = "livetime-track-home", Name = "Home" } };
+            var otherEvent = sourceEvent with { SourceId = Guid.NewGuid(), Name = "Event B",
+                Track = new TrackProfile { Id = "livetime-track-away", Name = "Away" } };
             var emptyEvent = sourceEvent with { SourceId = Guid.NewGuid(), Name = "Event with no races", Races = [] };
             var archive = new LiveTimeImportSource(decoded, [sourceEvent, otherEvent, emptyEvent]);
             Check(LiveTimeHistoryMerge.Preview(archive, [emptyEvent.SourceId], [], clean, includeLaps:true)
@@ -203,6 +205,20 @@ internal static class LiveTimeImportChecks
                 "results-only history selection excludes individual laps");
             Check(LiveTimeHistoryMerge.Preview(archive, [sourceEvent.SourceId], justOne, clean, includeLaps:true).Count==0,
                 "events already imported are not overwritten or duplicated");
+            var savedTrack = new TrackProfile { Id = "local-home", Name = " Home " };
+            var withTrack = LiveTimeHistoryMerge.Preview(archive, [sourceEvent.SourceId, otherEvent.SourceId], [], clean,
+                includeLaps:true, savedTrack:savedTrack);
+            Check(withTrack.Single(e => e.Name == "Event A").Track?.Id == savedTrack.Id &&
+                withTrack.Single(e => e.Name == "Event B").Track?.Id == "livetime-track-away",
+                "matches the saved venue and keeps other imported venues distinct");
+            justOne[0].Track = null;
+            var links = LiveTimeHistoryMerge.MissingTrackLinks(archive, [sourceEvent.SourceId], justOne, savedTrack);
+            Check(links.Single().Event == justOne[0] && links[0].Track.Id == savedTrack.Id &&
+                LiveTimeHistoryMerge.Preview(archive, [sourceEvent.SourceId], justOne, clean, includeLaps:true).Count == 0,
+                "reimport restores missing venue without duplicating history");
+            justOne[0].Track = new TrackProfile { Id = "manual" };
+            Check(LiveTimeHistoryMerge.MissingTrackLinks(archive, [sourceEvent.SourceId], justOne, savedTrack).Count == 0,
+                "never replaces a previously assigned venue");
             return checks;
         }
         finally {Directory.Delete(folder,true);}

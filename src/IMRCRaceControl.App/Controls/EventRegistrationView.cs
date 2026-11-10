@@ -7,7 +7,7 @@ public sealed class EventRegistrationView : UserControl
 {
     private readonly ListBox _drivers = new() { DisplayMemberPath="Label" };
     private readonly TextBox _search = new();
-    private readonly WrapPanel _classes = new() { ItemWidth=260, Orientation=Orientation.Horizontal };
+    private readonly WrapPanel _classes = new() { ItemWidth=174, Orientation=Orientation.Horizontal };
     private readonly TextBlock _selected = new() { FontSize=17,FontWeight=FontWeights.SemiBold };
     private readonly TextBlock _status = new() { TextWrapping=TextWrapping.Wrap,Margin=new Thickness(0,6,0,0) };
     private readonly Button _newDriver = new() { Content="+ NEW DRIVER" }, _newClass=new() { Content="+ CLASS" };
@@ -30,7 +30,7 @@ public sealed class EventRegistrationView : UserControl
         header.Children.Add(new TextBlock { Text="Select classes and enter a transponder for each. Changes save automatically.",TextWrapping=TextWrapping.Wrap,Margin=new Thickness(0,4,0,6) });
         DockPanel.SetDock(header,Dock.Top);right.Children.Add(header);DockPanel.SetDock(_status,Dock.Bottom);right.Children.Add(_status);
         var classScroll=new ScrollViewer { Content=_classes,VerticalScrollBarVisibility=ScrollBarVisibility.Auto,HorizontalScrollBarVisibility=ScrollBarVisibility.Disabled };
-        classScroll.SizeChanged+=(_,e)=>_classes.ItemWidth=Math.Min(260,Math.Max(150,e.NewSize.Width-18));
+        classScroll.SizeChanged+=(_,e)=>_classes.ItemWidth=Math.Min(174,Math.Max(112,e.NewSize.Width-18));
         right.Children.Add(classScroll);
         left.SetResourceReference(Panel.BackgroundProperty,"PanelBrush");right.SetResourceReference(Panel.BackgroundProperty,"PanelBrush");Content=root;
         _search.TextChanged+=(_,_)=>RefreshDrivers();_drivers.SelectionChanged+=(_,_)=> { if(!_refreshing)RefreshClasses(); };
@@ -70,16 +70,26 @@ public sealed class EventRegistrationView : UserControl
         {
             var assignment=_event.DriverAssignments.FirstOrDefault(a=>a.DriverId==driver.Id && a.ClassId==cls.Id);
             var defaults=_defaults.Where(a=>a.DriverId==driver.Id && a.ClassId==cls.Id).Select(a=>a.TransponderId).Where(t=>!string.IsNullOrWhiteSpace(t)).Distinct();
-            var row=new Grid { Margin=new Thickness(10,7,10,7),MinHeight=65 };
+            var row=new Grid { Margin=new Thickness(6,4,6,4),MinHeight=43 };
             row.RowDefinitions.Add(new RowDefinition { Height=GridLength.Auto });row.RowDefinitions.Add(new RowDefinition { Height=GridLength.Auto });
-            var check=new CheckBox { Content=new TextBlock { Text=cls.Name,TextWrapping=TextWrapping.Wrap,FontWeight=FontWeights.SemiBold },IsChecked=assignment is not null,VerticalAlignment=VerticalAlignment.Center,Margin=new Thickness(0,0,0,6) };
+            var check=new CheckBox { Content=new TextBlock { Text=cls.Name,TextWrapping=TextWrapping.Wrap,FontWeight=FontWeights.SemiBold },IsChecked=assignment is not null,VerticalAlignment=VerticalAlignment.Center,Margin=new Thickness(0,0,0,2) };
             var number=new TextBox { Text=assignment?.TransponderId ?? string.Join(";",defaults),IsEnabled=assignment is not null,ToolTip="Transponder number for this driver and class (optional)",Margin=new Thickness(0) };
             var field=new DockPanel();var label=new TextBlock { Text="TX #",Width=34,VerticalAlignment=VerticalAlignment.Center,FontSize=10 };DockPanel.SetDock(label,Dock.Left);field.Children.Add(label);field.Children.Add(number);
             Grid.SetRow(field,1);row.Children.Add(check);row.Children.Add(field);row.IsEnabled=_event.Status==EventStatus.Active;
             var color=new SolidColorBrush((Color)ColorConverter.ConvertFromString(cls.PrintColor));
-            var border=new Border { Child=row,BorderBrush=color,BorderThickness=assignment is not null ? new Thickness(4,1,1,1) : new Thickness(1),CornerRadius=new CornerRadius(4),Margin=new Thickness(0,3,8,5) };
+            var border=new Border { Child=row,BorderBrush=color,BorderThickness=assignment is not null ? new Thickness(4,1,1,1) : new Thickness(1),CornerRadius=new CornerRadius(4),Margin=new Thickness(0,2,5,3) };
             border.SetResourceReference(Border.BackgroundProperty,assignment is not null ? "PanelHoverBrush" : "InputBrush");_classes.Children.Add(border);
             check.Click+=async(_,_)=>await Save(eventId,driver.Id,cls.Id,check.IsChecked==true,number.Text);
+            if (_event.Status == EventStatus.Active) border.Cursor = System.Windows.Input.Cursors.Hand;
+            border.MouseLeftButtonUp += async (_,e) =>
+            {
+                if (!row.IsEnabled || _saving || e.OriginalSource is not DependencyObject source) return;
+                // Keep the active transponder field editable and let the checkbox handle its own click.
+                if ((number.IsEnabled && (ReferenceEquals(source,number) || number.IsAncestorOf(source))) ||
+                    ReferenceEquals(source,check) || check.IsAncestorOf(source)) return;
+                e.Handled = true;
+                await Save(eventId,driver.Id,cls.Id,check.IsChecked!=true,number.Text);
+            };
             number.LostKeyboardFocus+=async(_,_)=>
             {
                 if(_saving || _event?.Id!=eventId)return;

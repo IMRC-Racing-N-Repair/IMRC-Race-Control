@@ -48,6 +48,31 @@ internal static class TrackRecordsChecks
         Check(report.Sections.Single(s=>s.Title=="Stock").Rows[0].SequenceEqual(new[]{"1","Driver 1","4.500","10/10/2026","Week 1"}),"print name time date and event");
         Check(TrackRecords.Calculate(track,events,classes,50).Single(c=>c.Id=="a").Records.Count==12,"count larger than available");
         Check(TrackRecords.Calculate(track,events,[]).Any(c=>c.Id=="a"),"historical class retained");
+        a.Id = "stock-history";
+        var baselines = TrackRecords.BestTimes(track.Id, events, new HashSet<string>());
+        Check(baselines["a"] == TimeSpan.FromSeconds(4.5) && baselines["b"] == TimeSpan.FromSeconds(5.1),
+            "race baselines use completed laps from the same track and class");
+        Check(!TrackRecords.BestTimes(track.Id, events, new HashSet<string> { a.Id }).ContainsKey("a"),
+            "the race being rerun is excluded from the baseline");
+        var tracking = new TrackRecordRace(baselines);
+        var earlyLap = a.Laps[0] with { LapTime=TimeSpan.FromSeconds(4.2), Finished=false };
+        var finish = earlyLap with { LapNumber=2, LapTime=TimeSpan.FromSeconds(6), Finished=true };
+        Check(tracking.DriverFinished(earlyLap, "a", "Stock", [earlyLap]) is null, "no announcement before finishing");
+        Check(tracking.DriverFinished(finish, "a", "Stock", [earlyLap,finish]) is { Time.TotalSeconds:4.2 },
+            "announces the fastest accepted lap at the finish");
+        Check(tracking.DriverFinished(finish, "a", "Stock", [earlyLap,finish]) is null, "does not repeat a finished driver's record");
+        var second = finish with { CarNumber=2,LapTime=TimeSpan.FromSeconds(4.3) };
+        Check(tracking.DriverFinished(second, "a", "Stock", [second]) is null, "does not call a time slower than the new leader");
+        var tie = finish with { CarNumber=3,LapTime=TimeSpan.FromSeconds(4.2) };
+        Check(tracking.DriverFinished(tie, "a", "Stock", [tie]) is null, "does not announce ties");
+        var anotherClass = finish with { CarNumber=4,LapTime=TimeSpan.FromSeconds(4.9) };
+        Check(tracking.DriverFinished(anotherClass, "b", "Modified", [anotherClass]) is { ClassName:"Modified" },
+            "combined racers compete against their own class record");
+        var noRecord = finish with { CarNumber=5,LapTime=TimeSpan.FromSeconds(3) };
+        Check(tracking.DriverFinished(noRecord, "empty", "Empty", [noRecord]) is null, "does not announce a first benchmark as a broken record");
+        tracking.Reset();
+        Check(tracking.Latest is null && tracking.DriverFinished(finish, "a", "Stock", [earlyLap,finish]) is not null,
+            "record tracking can be recalculated after undoing a passing");
         bool rejected=false; try { TrackRecords.Calculate(track,events,classes,0); } catch(ArgumentOutOfRangeException) { rejected=true; }
         Check(rejected,"invalid count");
         return checks;

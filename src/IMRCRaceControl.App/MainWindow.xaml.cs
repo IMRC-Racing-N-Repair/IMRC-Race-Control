@@ -34,6 +34,8 @@ public partial class MainWindow : Window
     private readonly ObservableCollection<DriverClassAssignment> _driverAssignments = new();
 
     private AppSettings _settings;
+    private System.ComponentModel.ICollectionView? _driverDirectoryView;
+    private GridLength _eventRoundsHeight = new(1, GridUnitType.Star);
     private ClassDefinition? _editingClass;
     private DriverProfile? _editingDriver;
     private RaceDayEventDefinition? _activeEvent;
@@ -83,6 +85,7 @@ public partial class MainWindow : Window
         _database = database;
         _startupWarning = startupWarning;
         InitializeComponent();
+        ConfigureDriverDirectorySearch();
         RaceClassSections.Attach(Standings);
         RaceClassSections.Attach(RoundProjectionRows);
         DataContext = this;
@@ -392,6 +395,24 @@ public partial class MainWindow : Window
     // Drivers and class/transponder assignments
     // -----------------------------
 
+    private void ConfigureDriverDirectorySearch()
+    {
+        // A private view keeps the search from filtering event and race pickers.
+        var source = new System.Windows.Data.CollectionViewSource { Source = Drivers };
+        _driverDirectoryView = source.View;
+        _driverDirectoryView.Filter = item =>
+        {
+            if (item is not DriverProfile driver) return false;
+            var name = $"{driver.FullName} {driver.DisplayName} {driver.Nickname}";
+            return DriverDirectorySearchText.Text.Split(' ', StringSplitOptions.RemoveEmptyEntries)
+                .All(word => name.Contains(word, StringComparison.OrdinalIgnoreCase));
+        };
+        DriverGrid.ItemsSource = _driverDirectoryView;
+    }
+
+    private void DriverDirectorySearchText_Changed(object sender, TextChangedEventArgs e) =>
+        _driverDirectoryView?.Refresh();
+
     private void DriverGrid_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
         if (DriverGrid.SelectedItems.Count != 1 || DriverGrid.SelectedItem is not DriverProfile selected)
@@ -421,6 +442,7 @@ public partial class MainWindow : Window
         if (driver is null)
             return;
 
+        DriverDirectorySearchText.Clear();
         _editingDriver = driver;
         DriverGrid.SelectedItem = driver;
         AssignmentEmptyPrompt.Visibility = Visibility.Collapsed;
@@ -443,6 +465,7 @@ public partial class MainWindow : Window
         if (ShowDriverEditor(driver) is null)
             return;
 
+        DriverDirectorySearchText.Clear();
         DriverGrid.SelectedItem = driver;
         DriverGrid.Items.Refresh();
         SelectedDriverAssignmentsTitleText.Text = $"{driver.DisplayName.ToUpperInvariant()} • CLASS / TRANSPONDER SETUP";
@@ -817,6 +840,16 @@ public partial class MainWindow : Window
         EventClassDownButton.IsEnabled = editable;
         EventNewDriverButton.IsEnabled = editable;
         RoundMainBuilderButton.IsEnabled = editable;
+        var roundsVisible = _activeEvent?.Status != EventStatus.Completed;
+        if (!roundsVisible && EventRoundsSection.Visibility != Visibility.Collapsed)
+            _eventRoundsHeight = EventRoundsRow.Height;
+        EventRoundsSection.Visibility = EventRoundsSplitter.Visibility = roundsVisible ? Visibility.Visible : Visibility.Collapsed;
+        EventRoundsSplitterRow.Height = new GridLength(roundsVisible ? 10 : 0);
+        EventRoundsRow.MinHeight = roundsVisible ? 150 : 0;
+        if (!roundsVisible)
+            EventRoundsRow.Height = new GridLength(0);
+        else if (EventRoundsRow.Height.Value == 0)
+            EventRoundsRow.Height = _eventRoundsHeight;
 
         // Browsing remains available for completed events.
         EventRosterClassCombo.IsEnabled = hasEvent && (_activeEvent?.ClassIds.Count ?? 0) > 0;
@@ -842,7 +875,7 @@ public partial class MainWindow : Window
         var keepHeader = selectSessionId is null && PlannedSessionGrid?.SelectedItem is EventRunRow { IsCombinedHeader: true };
 
         PlannedSessions.Clear();
-        if (_activeEvent is not null)
+        if (_activeEvent is { Status: EventStatus.Active })
         {
             RaceSchedule.AssignRaceNumbers(_activeEvent.Sessions);
             foreach (var session in EventRunRow.Build(RaceSchedule.DisplayOrder(_activeEvent.Sessions)))
@@ -2039,6 +2072,7 @@ public partial class MainWindow : Window
 
             _raceAudio.Reset();
             if (_loadedSession is {IsCombinedRace:true}) CombinedRaces.Validate(_loadedSession.CombinedMembers,Classes.ToList());
+            BeginTrackRecordRace(cls, sessionType);
             var toneTime = DateTimeOffset.Now;
             _toneService.Play(_settings.StartTone, _settings.StartToneLength, _settings.StartToneFile);
             _endTonePlayed = false;
@@ -2234,6 +2268,7 @@ public partial class MainWindow : Window
 
     private void RefreshRaceUi(DateTimeOffset now)
     {
+        DashboardTrackRecordStrip?.Show(LiveTrackRecordNotice);
         if (_recallMode)
         {
             RenderRecalledRace();
@@ -2244,7 +2279,7 @@ public partial class MainWindow : Window
 
         if (state == RaceState.Complete && _lastRenderedRaceState != RaceState.Complete && _raceEngine.AllDriversFinished)
         {
-            _lapSpeech.Stop();
+            _lapSpeech.StopLaps();
             _lapSpeech.Enqueue("All drivers are done.", _settings.RaceAnnouncementRate,
                 _settings.LapSpeechVolume, _settings.LapSpeechVoice);
         }
@@ -2480,7 +2515,7 @@ public partial class MainWindow : Window
                 if (_raceEngine.State == RaceState.Complete)
                 {
                     if (_raceEngine.IsLappedRace) _endTonePlayed = true;
-                    _lapSpeech.Stop();
+                    _lapSpeech.StopLaps();
                 }
             }
             else if (firstCrossing && _settings.RaceFirstCrossingToneEnabled)
@@ -2516,9 +2551,17 @@ public partial class MainWindow : Window
             LastPassingText.Text = result.Message;
         }
 
+        var trackRecord = TrackRecordOnFinish(result.Lap);
         FooterStatusText.Text = result.Message;
         RefreshDriverLapPanel();
         RefreshRaceUi(DateTimeOffset.Now);
+        if (trackRecord is not null)
+        {
+            var driverId = SessionRacers.FirstOrDefault(r => r.CarNumber == carNumber)?.DriverId;
+            var spokenName = Drivers.FirstOrDefault(d => d.Id == driverId)?.SpokenName ?? trackRecord.Driver;
+            _lapSpeech.Enqueue(trackRecord.Announcement(spokenName), _settings.RaceAnnouncementRate,
+                _settings.LapSpeechVolume, _settings.LapSpeechVoice);
+        }
 
         // Force the final timing snapshot (position/gaps/averages) to paint now,
         // not on the next 100 ms dashboard timer tick.
@@ -2541,6 +2584,7 @@ public partial class MainWindow : Window
 
         _lapSpeech.Stop();
         var result = _raceEngine.UndoLastPassing(DateTimeOffset.Now);
+        RecheckTrackRecords();
         FooterStatusText.Text = result.Message;
         LastPassingText.Text = result.Message;
         if (!result.Accepted)

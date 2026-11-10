@@ -3,6 +3,9 @@
 Keep all release history in this file. Add each new version at the top; do not create version-specific changelog files.
 
 ## 0.16.30
+- Preserve venue information from LiveTime imports, show records by track, and restore missing venue links when reimporting older history.
+- Announce a new track and class record when the driver finishes and show it at the bottom of the race, pop-out, and web scoreboards.
+- Search the Drivers tab by name or nickname. Show smaller clickable registration class cards and hide Rounds / Mains once an event ends.
 - Ctrl-click multiple drivers or classes to delete them together while preserving completed race history.
 - Open System.Data.SQLite RC4 and SQLCipher 4 LiveTime .db backups directly with the backup password. A matching SQLCipher unlock key also works. Preview in memory without a separate conversion.
 - Right-click blank space in the Rounds / Mains lineup to reserve an empty race for a class missing from the selected round. Save the spot and add racers manually when they arrive.

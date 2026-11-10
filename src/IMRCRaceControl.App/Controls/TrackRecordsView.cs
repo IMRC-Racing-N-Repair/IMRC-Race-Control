@@ -11,6 +11,7 @@ namespace IMRCRaceControl.Controls;
 public sealed partial class TrackRecordsView : UserControl
 {
     private sealed record Choice(string? Id, string Name);
+    private readonly ComboBox _tracks = new() { DisplayMemberPath=nameof(TrackProfile.Name), MinWidth=200, MaxWidth=320 };
     private readonly ComboBox _classes = new() { DisplayMemberPath="Name", MinWidth=200, MaxWidth=320 };
     private readonly TextBox _count = new() { Text="10", Width=64, VerticalContentAlignment=VerticalAlignment.Center };
     private readonly StackPanel _records = new();
@@ -32,11 +33,12 @@ public sealed partial class TrackRecordsView : UserControl
             var field=new StackPanel { Margin=new Thickness(0,0,12,8) };
             field.Children.Add(new TextBlock { Text=title, Margin=new Thickness(0,0,0,4) }); field.Children.Add(control); filters.Children.Add(field);
         }
-        Field("Class",_classes); Field("Top per class",_count);
+        Field("Track",_tracks); Field("Class",_classes); Field("Top per class",_count);
         var refresh=new Button { Content="REFRESH", VerticalAlignment=VerticalAlignment.Bottom, Margin=new Thickness(0,0,8,8) };
         filters.Children.Add(refresh); _print.VerticalAlignment=VerticalAlignment.Bottom; _print.Margin=new Thickness(0,0,0,8); filters.Children.Add(_print);
         top.Children.Add(_status);
         root.Children.Add(new ScrollViewer { Content=_records, VerticalScrollBarVisibility=ScrollBarVisibility.Auto, HorizontalScrollBarVisibility=ScrollBarVisibility.Disabled });
+        _tracks.SelectionChanged+=(_,_)=> { if (!_refreshing) RefreshClasses(); };
         _classes.SelectionChanged+=(_,_)=>Render(); _count.TextChanged+=(_,_)=>Render(); refresh.Click+=(_,_)=>Refresh();
         Loaded+=(_,_)=>Refresh();
         _print.Click+=(_,_)=> { if(_report is not null) new ReportPrintDialog(_report) { Owner=Window.GetWindow(this) }.ShowDialog(); };
@@ -45,12 +47,38 @@ public sealed partial class TrackRecordsView : UserControl
     public void Refresh()
     {
         if(_source is null) return;
-        var data=_source(); var selected=(_classes.SelectedItem as Choice)?.Id;
-        _refreshing=true;
-        var choices=new List<Choice> { new(null,"All classes") };
-        choices.AddRange(TrackRecords.Calculate(data.Track,data.Events,data.Classes,1).Select(c=>new Choice(c.Id,c.Name)));
+        var data = _source();
+        var previous = _tracks.SelectedItem as TrackProfile;
+        var wasOnlyTrack = _tracks.Items.Count <= 1;
+        var venueEvents = data.Events.Where(e => e.Track is not null).ToList();
+        var tracks = new[] { data.Track }.Concat(venueEvents.Select(e => e.Track!)).DistinctBy(t => t.Id).ToList();
+        if (string.IsNullOrWhiteSpace(data.Track.Name) && tracks.Count > 1 &&
+            !venueEvents.Any(e => e.Track?.Id == data.Track.Id))
+            tracks.Remove(data.Track);
+        var withRecords = venueEvents.Where(e => e.Sessions.Any(s => s.ProgressStatus == EventSessionStatus.Completed && s.Laps.Count > 0))
+            .GroupBy(e => e.Track!.Id).OrderByDescending(g => g.Count()).Select(g => g.Key).ToList();
+        var preferred = tracks.FirstOrDefault(t => t.Id == previous?.Id);
+        if (preferred is null || (wasOnlyTrack && !withRecords.Contains(preferred.Id)))
+            preferred = tracks.FirstOrDefault(t => t.Id == withRecords.FirstOrDefault()) ?? tracks[0];
+        _refreshing = true;
+        _tracks.ItemsSource = tracks;
+        _tracks.SelectedItem = preferred;
+        _refreshing = false;
+        RefreshClasses();
+    }
+
+    private void RefreshClasses()
+    {
+        if (_source is null) return;
+        var data = _source();
+        var track = _tracks.SelectedItem as TrackProfile ?? data.Track;
+        var selected = (_classes.SelectedItem as Choice)?.Id;
+        _refreshing = true;
+        var choices = new List<Choice> { new(null,"All classes") };
+        choices.AddRange(TrackRecords.Calculate(track,data.Events,data.Classes,1).Select(c=>new Choice(c.Id,c.Name)));
         _classes.ItemsSource=choices; _classes.SelectedItem=choices.FirstOrDefault(c=>c.Id==selected)??choices[0];
-        _refreshing=false; Render();
+        _refreshing = false;
+        Render();
     }
     private void Render()
     {
@@ -58,11 +86,12 @@ public sealed partial class TrackRecordsView : UserControl
         _records.Children.Clear(); _report=null; _print.IsEnabled=false;
         if(!int.TryParse(_count.Text,out var count) || count<1) { _status.Text="Enter a whole number of at least 1 for the records per class."; return; }
         var data=_source();
-        var classes=TrackRecords.Calculate(data.Track,data.Events,data.Classes,count,(_classes.SelectedItem as Choice)?.Id);
-        _report=TrackRecords.Report(data.Track.Name,classes,count); _print.IsEnabled=classes.Count>0;
+        var track = _tracks.SelectedItem as TrackProfile ?? data.Track;
+        var classes=TrackRecords.Calculate(track,data.Events,data.Classes,count,(_classes.SelectedItem as Choice)?.Id);
+        _report=TrackRecords.Report(track.Name,classes,count); _print.IsEnabled=classes.Count>0;
         var unassigned=data.Events.Count(e=>e.Track is null && e.Sessions.Any(s=>s.ProgressStatus==EventSessionStatus.Completed));
-        _status.Text=$"{(string.IsNullOrWhiteSpace(data.Track.Name)?"Your track":data.Track.Name)} • {classes.Sum(c=>c.Records.Count)} records • Top {count} per class"+
-            (unassigned>0 ? $"\n{unassigned} older event(s) have no track assigned. Select an event in Events, then use Track details → Assign saved track to selected event to include its records." : "");
+        _status.Text=$"{(string.IsNullOrWhiteSpace(track.Name)?"Your track":track.Name)} • {classes.Sum(c=>c.Records.Count)} records • Top {count} per class"+
+            (unassigned>0 ? $"\n{unassigned} event(s) have no track assigned. For older LiveTime imports, reimport Events & races from the original backup to restore venue links without duplicating races. For other events, assign a track in Track Details." : "");
         if(classes.Count==0) _records.Children.Add(new TextBlock { Text=_report.EmptyMessage, TextWrapping=TextWrapping.Wrap });
         foreach(var c in classes)
         {

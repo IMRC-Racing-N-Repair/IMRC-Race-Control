@@ -13,6 +13,7 @@ public sealed record LiveTimeImportSource(LiveTimeRoster Roster, IReadOnlyList<L
 public sealed record LiveTimeEventHistory(long LocalId, Guid SourceId, string Name, DateTimeOffset Date,
     DateTimeOffset? End, List<LiveTimeRaceHistory> Races)
 {
+    public TrackProfile? Track { get; init; }
     public int RaceCount => Races.Count;
     public int LapCount => Races.Sum(r => r.Entries.Sum(e => e.Laps.Count));
     public string Label => $"{Date:yyyy-MM-dd} • {Name} • {RaceCount} races / {LapCount:N0} laps";
@@ -79,9 +80,17 @@ public static partial class LiveTimeBackupReader
                     Int(r,12)!=0, Int(r,13)!=0, Int(r,14)!=0, string.Join(";",tagLookup[id].Distinct()), laps[id].ToList()));
             }).ToLookup(e => e.Race,e => e.Entry);
         var byEvent = races.ToLookup(r => r.EventId, r => r.Race with { Entries = entries[r.Race.LocalId].ToList() });
-        return Read(db, "SELECT LID,GUID,Name,StartDateTime,EndDateTime FROM Event WHERE IsActive=1",
+        var hasTrack = tables.Contains("Track") &&
+            Read(db, "PRAGMA table_info('Event')", r => r.GetString(1)).Contains("TrackLID", StringComparer.OrdinalIgnoreCase);
+        var tracks = hasTrack
+            ? Read(db, "SELECT LID,GUID,Name FROM Track", r => (Id:Long(r,0), Guid:GuidValue(r,1), Name:TextValue(r,2)))
+                .Where(t => t.Guid != Guid.Empty && t.Name.Length > 0)
+                .ToDictionary(t => t.Id, t => new TrackProfile { Id = "livetime-track-" + t.Guid.ToString("N"), Name = t.Name })
+            : [];
+        var eventQuery = "SELECT LID,GUID,Name,StartDateTime,EndDateTime," + (hasTrack ? "TrackLID" : "NULL") + " FROM Event WHERE IsActive=1";
+        return Read(db, eventQuery,
                 r => new LiveTimeEventHistory(r.GetInt64(0),GuidValue(r,1),TextValue(r,2),Date(TextValue(r,3)) ?? DateTimeOffset.UnixEpoch,
-                    Date(TextValue(r,4)),byEvent[r.GetInt64(0)].ToList()))
+                    Date(TextValue(r,4)),byEvent[r.GetInt64(0)].ToList()) { Track = tracks.GetValueOrDefault(Long(r,5)) })
             .Where(e => e.SourceId != Guid.Empty && e.Date > DateTimeOffset.UnixEpoch && (e.Races.Count > 0 || e.End.HasValue))
             .OrderByDescending(e => e.Date).ToList();
     }
@@ -101,7 +110,8 @@ public static class LiveTimeHistoryMerge
     public static string EventId(Guid id) => "livetime-event-" + id.ToString("N");
 
     public static List<RaceDayEventDefinition> Preview(LiveTimeImportSource source, IEnumerable<Guid> chosen,
-        IReadOnlyCollection<RaceDayEventDefinition> existing, LiveTimeRosterPlan roster, bool includeLaps)
+        IReadOnlyCollection<RaceDayEventDefinition> existing, LiveTimeRosterPlan roster, bool includeLaps,
+        TrackProfile? savedTrack = null)
     {
         var selection = chosen.ToHashSet();
         var eventIds = existing.Select(e => e.Id).ToHashSet(StringComparer.OrdinalIgnoreCase);
@@ -114,7 +124,7 @@ public static class LiveTimeHistoryMerge
             var ev = new RaceDayEventDefinition
             {
                 Id=EventId(history.SourceId), Name=string.IsNullOrWhiteSpace(history.Name) ? "LiveTime event" : history.Name,
-                EventDate=history.Date.Date, CreatedAt=history.Date,
+                EventDate=history.Date.Date, CreatedAt=history.Date, Track=ResolveTrack(source, history.Track, savedTrack),
                 CompletedAt=history.End ?? history.Races.Select(r => r.Finished).DefaultIfEmpty().Max(), Status=EventStatus.Completed
             };
             var sessionIds = new HashSet<Guid>();
@@ -178,6 +188,26 @@ public static class LiveTimeHistoryMerge
             if (ev.Sessions.Count > 0 || (history.Races.Count == 0 && history.End.HasValue)) output.Add(ev);
         }
         return output;
+    }
+
+    public static List<(RaceDayEventDefinition Event, TrackProfile Track)> MissingTrackLinks(LiveTimeImportSource source,
+        IEnumerable<Guid> chosen, IEnumerable<RaceDayEventDefinition> existing, TrackProfile? savedTrack = null)
+    {
+        var selection = chosen.ToHashSet();
+        var history = source.History.Where(h => h.Track is not null && selection.Contains(h.SourceId))
+            .ToDictionary(h => EventId(h.SourceId), StringComparer.OrdinalIgnoreCase);
+        return existing.Where(e => e.Track is null && history.ContainsKey(e.Id))
+            .Select(e => (e, ResolveTrack(source, history[e.Id].Track, savedTrack)!)).ToList();
+    }
+
+    private static TrackProfile? ResolveTrack(LiveTimeImportSource source, TrackProfile? imported, TrackProfile? saved)
+    {
+        if (imported is null) return null;
+        if (saved is not null && string.Equals(imported.Name.Trim(), saved.Name.Trim(), StringComparison.OrdinalIgnoreCase) &&
+            source.History.Where(e => string.Equals(e.Track?.Name.Trim(), imported.Name.Trim(), StringComparison.OrdinalIgnoreCase))
+                .Select(e => e.Track!.Id).Distinct(StringComparer.OrdinalIgnoreCase).Count() == 1)
+            return saved.Snapshot();
+        return imported.Snapshot();
     }
 
     private static string Lap(double seconds) => seconds is > 0 and < 86400

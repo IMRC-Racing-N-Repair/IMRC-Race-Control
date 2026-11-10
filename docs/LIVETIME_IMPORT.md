@@ -15,7 +15,11 @@ are in the backup. Click a button to include or exclude that category.
 
 Enable **Events & races** to import historical events, completed qualifying heats
 and mains, finishing results, and scored laps from schema 325. Expand **Choose
-events** to select individual events. Events already imported are skipped.
+events** to select individual events. Already imported events and races are not duplicated. Reimport the original
+backup with **Events & races** enabled to fill in missing venue links.
+**Track Info → Track Records** lets you select the imported venue. An imported
+venue with the same unique name as the saved track uses the saved track's
+identity; records from other venues remain separate.
 
 Enable **Class settings** to apply supported settings to new or matching
 classes. Minimum lap time comes from the class default when present. Qualifying
