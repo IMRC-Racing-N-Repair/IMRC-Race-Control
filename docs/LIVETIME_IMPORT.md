@@ -1,22 +1,88 @@
-# Import a LiveTime roster
+# Import LiveTime data
 
-In IMRC Race Control, open **Saved Race Data → Import LiveTime Roster** and choose
-a backup created in LiveTime's **Data** section. The preview counts active
-drivers, classes, assignments, and any history in the source. Click **Import
-Roster** to add the previewed records. Race Control backs up its current database
-before applying the import.
+Open **Saved Race Data → Import LiveTime Data** and choose a readable LiveTime
+backup or a portable import copy. Each category button shows how many records
+are in the backup. Click a button to include or exclude that category.
 
-The import adds names, nicknames, phonetic names, classes, minimum lap times
-where present, and personal transponders assigned by class. Existing class
-settings and driver assignments are kept. A racer with the same name is matched
-only if there is a unique transponder match; conflicting and rental transponders
-are listed separately. Review the resulting class settings before racing.
+- Select **Drivers**, **Classes**, **Driver–class assignments**, and **Personal
+  transponders** independently. Assignments need a matching driver and class.
+  Choosing only transponders fills blank tags on existing assignments. Existing
+  nonblank tags, class settings, and rental inventory are kept.
+- The personal transponder count shows distinct numbers, excluding known
+  LiveTime rentals. Existing records and conflicts can reduce what is added.
+- Click **Import Selected** when ready. Race Control backs up its database
+  before saving.
 
-The reader supports recognizable LiveTime SQLite databases and the legacy
-1 KiB page format verified against schema 193. If a legacy backup cannot be
-read on its own, choose an older readable backup from the same installation
-as the optional reference. Reference matching is checked before any roster
-records are shown. Neither source file is changed.
+When a backup contains multiple tracks, **Multiple Tracks Found** lets you pick
+which venues to import. The category counts then show only the selected venues.
+Use **Choose Drivers** and **Choose Classes** to narrow the roster further.
+Completed race history keeps the original drivers and results even if their
+profiles are not selected. Backups with no venue entries keep the full roster.
 
-Race results, individual laps, practice history, and rental inventory are
-counted in the preview but are outside this roster import.
+Enable **Events & races** to import historical events, completed qualifying heats
+and mains, finishing results, and scored laps from schema 325. Expand **Choose
+events** to select individual events. Choose Merge for already imported events to avoid copying existing races. Reimport the original
+backup with **Events & races** enabled to fill in missing venue links.
+**Track Info → Track Records** lets you select an imported venue, even if you did
+not import its completed races. An imported
+venue with the same unique name as the saved track uses the saved track's
+identity; records from other venues remain separate.
+
+Enable **Class settings** to apply supported settings to new or matching
+classes. Minimum lap time comes from the class default when present. Qualifying
+and main start style, timed/lap format, length, and capacities come from the most
+recent active event with settings for that class. Existing custom main rules
+are retained. Review the imported settings before using them for a new race.
+
+Practice history, rental inventory, series, account data, and LiveTime-specific
+options such as audio, flags, bump-up and multi-main scoring are outside this import.
+
+## Review possible duplicates
+
+When a selected record matches saved Race Control data, **Review Matches & Import**
+opens a review window. **Merge** uses the saved record and adds supported missing
+information. **Keep Both** intentionally creates another record. **Discard
+Incoming** skips the incoming match and keeps the saved record. **Yes for All**
+merges the remaining matches with a single eligible target; ambiguous matches
+still require a choice. **No for All** discards the remaining matches. New,
+unmatched records still import. Canceling the review saves nothing.
+
+A completed event merge adds missing races and preserves existing results. A
+driver/class assignment stays unique; merging can add available personal
+transponder numbers without moving numbers from other drivers or rentals.
+
+## Open original LiveTime backups
+
+Choose the original `.db` in Race Control. Race Control supports both
+System.Data.SQLite RC4 and SQLCipher 4 backups. Enter the backup password when
+prompted. For a SQLCipher backup you can also select **Choose Unlock Key File**
+to open a matching `.livetime-key` file. Race Control previews the data in memory and does not save
+the password, key, or a decrypted copy. Choose a standalone backup without a
+pending journal. Encrypted backups up to 256 MiB are supported.
+
+Plain SQLite and portable import copies also work. For the legacy 1 KiB page
+format, verified against schema 193, you can provide an older backup from the
+same installation as a reference. Older schemas support roster import.
+
+For encrypted backups, a valid backup password or matching key is required.
+Keep any unlock key private alongside its backup. Neither the original backup
+nor the legacy reference is modified.
+
+
+## Private installer with automatic unlock
+
+An installer can include an encrypted passcode resource. When it is present,
+Race Control tries it automatically before showing the manual unlock prompt.
+The original backup stays read-only. Ordinary builds omit the resource.
+
+On Windows, create the resource from a hidden passcode prompt, then pass its
+path to the installer build:
+
+```powershell
+dotnet run --project scripts/LiveTimePasswordBundle -- "$env:TEMP\LiveTimePassword.bundle"
+./scripts/Build-Installer.ps1 -Repository 'https://github.com/OWNER/REPOSITORY' -LiveTimePasswordResource "$env:TEMP\LiveTimePassword.bundle"
+```
+
+The resource and any installer that includes it must be handled like the
+passcode: the app contains what is needed to unwrap it. Keep them out of
+source control and public release artifacts.

@@ -31,7 +31,7 @@
 
                 <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                     <controls:BrandLogo Width="165" Height="64" ToolTip="IMRC Race Control"/>
-                    <TextBlock Text="  v0.16.29" Margin="4,2,0,0"
+                    <TextBlock Text="  v0.16.30" Margin="4,2,0,0"
                                Foreground="{DynamicResource MutedBrush}" FontSize="10"
                                VerticalAlignment="Center"/>
                 </StackPanel>
@@ -64,11 +64,16 @@
                       Margin="2" Background="{DynamicResource DashboardBackgroundBrush}"
                       HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
                     <Border Background="{DynamicResource HoneycombPatternBrush}" Opacity="0" IsHitTestVisible="False"/>
-                    <Grid Margin="2" HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
+                    <TextBlock x:Name="RaceNoEventMessage" Text="No Event has started"
+                               HorizontalAlignment="Center" VerticalAlignment="Center"
+                               Foreground="{DynamicResource DashboardTextBrush}" FontSize="22" FontWeight="SemiBold"/>
+                    <Grid x:Name="RaceDashboardContent" Visibility="Collapsed" Margin="2"
+                          HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
                         <Grid.RowDefinitions>
                             <RowDefinition Height="Auto"/>
                             <RowDefinition Height="Auto"/>
                             <RowDefinition Height="*"/>
+                            <RowDefinition Height="Auto"/>
                         </Grid.RowDefinitions>
 
                         <Border x:Name="DashboardRaceHeader" Background="{DynamicResource DashboardPanelBrush}" BorderBrush="{DynamicResource BorderBrush}"
@@ -628,6 +633,8 @@
                             </Grid>
                         </Grid>
 
+                        <controls:TrackRecordStrip x:Name="DashboardTrackRecordStrip" Grid.Row="3"/>
+
                         <!-- Legacy/internal controls are intentionally hidden. The dashboard is event-driven. -->
                         <Grid Visibility="Collapsed">
                             <TextBox x:Name="RaceEventText"/>
@@ -691,7 +698,7 @@
                                     <CheckBox x:Name="PracticeLapCalloutsCheck" Content="LAP CALLOUTS"
                                               Click="PracticeLapCallouts_Click" Margin="0,5,0,5"
                                               ToolTip="Turn practice lap announcements on or off. The first crossing can still announce the driver's name."/>
-                                    <TextBlock Text="While Practice is active, race sessions cannot be started. Driver cards appear only after the first detected crossing."
+                                    <TextBlock Text="While Practice is active, race sessions cannot be started. Right-click an Unknown driver card to assign its transponder."
                                                Foreground="{DynamicResource MutedBrush}"
                                                TextWrapping="Wrap"/>
                                 </StackPanel>
@@ -718,6 +725,7 @@
                                 <Grid Margin="4">
                                     <ItemsControl x:Name="PracticeCardsControl"
                                                   ItemsSource="{Binding VisiblePracticeCards}"
+                                                  PreviewMouseRightButtonUp="PracticeCards_PreviewMouseRightButtonUp"
                                                   HorizontalContentAlignment="Stretch"
                                                   VerticalContentAlignment="Stretch">
                                         <ItemsControl.ItemsPanel>
@@ -818,8 +826,8 @@
                         <Grid.RowDefinitions>
                             <RowDefinition Height="Auto"/>
                             <RowDefinition Height="3*" MinHeight="240"/>
-                            <RowDefinition Height="10"/>
-                            <RowDefinition Height="*" MinHeight="150"/>
+                            <RowDefinition x:Name="EventRoundsSplitterRow" Height="10"/>
+                            <RowDefinition x:Name="EventRoundsRow" Height="*" MinHeight="150"/>
                         </Grid.RowDefinitions>
 
                         <!-- Event lifecycle -->
@@ -1049,7 +1057,7 @@
                             </Border>
                         </Grid>
 
-                        <GridSplitter Grid.Row="2" Height="10" HorizontalAlignment="Stretch"
+                        <GridSplitter x:Name="EventRoundsSplitter" Grid.Row="2" Height="10" HorizontalAlignment="Stretch"
                                       VerticalAlignment="Stretch" ResizeDirection="Rows"
                                       ResizeBehavior="PreviousAndNext" ShowsPreview="False"
                                       Background="{DynamicResource BorderBrush}" Cursor="SizeNS"
@@ -1067,7 +1075,7 @@
                         </GridSplitter>
 
                         <!-- Sessions / builder -->
-                        <Border Grid.Row="3"
+                        <Border x:Name="EventRoundsSection" Grid.Row="3"
                                 Background="{DynamicResource PanelBrush}" BorderBrush="{DynamicResource BorderBrush}"
                                 BorderThickness="0,0,0,1" CornerRadius="0" Padding="7" Margin="0,6,0,0">
                             <Grid>
@@ -1315,7 +1323,7 @@
                         </Grid.ColumnDefinitions>
 
                         <DataGrid x:Name="ClassGrid" ItemsSource="{Binding Classes}" AutoGenerateColumns="False"
-                                  IsReadOnly="True" CanUserAddRows="False"
+                                  IsReadOnly="True" CanUserAddRows="False" SelectionMode="Extended" SelectionUnit="FullRow"
                                   SelectionChanged="ClassGrid_SelectionChanged">
                             <DataGrid.Columns>
                                 <DataGridTextColumn Header="CLASS" Binding="{Binding Name}" Width="1.15*"/>
@@ -1354,7 +1362,8 @@
 
                                 <WrapPanel>
                                     <Button Content="EDIT CLASS" Click="EditClass_Click"/>
-                                    <Button Content="DELETE CLASS" Click="DeleteClass_Click" Background="{DynamicResource AccentDarkBrush}"/>
+                                    <Button Content="DELETE SELECTED" Click="DeleteClass_Click" Background="{DynamicResource AccentDarkBrush}"
+                                            ToolTip="Hold Ctrl and click to select multiple classes."/>
                                 </WrapPanel>
                             </StackPanel>
                         </Border>
@@ -1395,8 +1404,9 @@
                                     </Grid.ColumnDefinitions>
                                     <StackPanel>
                                         <TextBlock Text="DRIVER DIRECTORY" FontWeight="Bold" FontSize="13"/>
-                                        <TextBlock Text="Select a driver to view their profile and class/transponder assignments. New and edit actions open a focused popup."
-                                                   Foreground="{DynamicResource MutedBrush}" Margin="0,3,0,0" TextWrapping="Wrap"/>
+                                        <TextBlock Text="Search by name or nickname" Foreground="{DynamicResource MutedBrush}" Margin="0,3,0,0"/>
+                                        <TextBox x:Name="DriverDirectorySearchText" TextChanged="DriverDirectorySearchText_Changed"
+                                                 AutomationProperties.Name="Search drivers" Margin="0,3,0,0"/>
                                     </StackPanel>
                                     <Button Grid.Column="1" Content="+ NEW DRIVER" Click="NewDriver_Click"
                                             VerticalAlignment="Center" Margin="12,0,0,0"/>
@@ -1404,7 +1414,7 @@
                             </Border>
 
                             <ListBox x:Name="DriverGrid" Grid.Row="1"
-                                     ItemsSource="{Binding Drivers}"
+                                     SelectionMode="Extended"
                                      SelectionChanged="DriverGrid_SelectionChanged">
                                 <ListBox.ItemTemplate>
                                     <DataTemplate>
@@ -1460,7 +1470,8 @@
 
                                 <WrapPanel>
                                     <Button Content="EDIT DRIVER" Click="EditDriver_Click"/>
-                                    <Button Content="DELETE DRIVER" Click="DeleteDriver_Click" Background="{DynamicResource AccentDarkBrush}"/>
+                                    <Button Content="DELETE SELECTED" Click="DeleteDriver_Click" Background="{DynamicResource AccentDarkBrush}"
+                                            ToolTip="Hold Ctrl and click to select multiple drivers."/>
                                 </WrapPanel>
                             </StackPanel>
                         </Border>
@@ -1496,7 +1507,7 @@
                                         <TextBlock x:Name="SelectedDriverAssignmentsTitleText"
                                                    Text="DRIVER CLASS / TRANSPONDER SETUP"
                                                    FontWeight="Bold" FontSize="13"/>
-                                        <TextBlock Text="Ratings are per class. SOF is the last race’s field strength. New drivers start at 1500 / Safety 3.00; SOF appears after racing."
+                                        <TextBlock Text="Rating is the driver’s performance score in this class. Last SOF is the average pre-race rating of the starters in their last rated main. New drivers start at 1500 and Safety 3.00."
                                                    Foreground="{DynamicResource MutedBrush}" TextWrapping="Wrap"/>
                                     </StackPanel>
                                     <Button Grid.Column="1" Content="+ ADD CLASS ASSIGNMENT"
@@ -1518,7 +1529,7 @@
                                             <DataGridTextColumn Header="CLASS" Binding="{Binding ClassName}" Width="1.2*"/>
                                             <DataGridTextColumn Header="TRANSPONDER" Binding="{Binding TransponderId}" Width="1.2*"/>
                                             <DataGridTextColumn Header="RATING" Binding="{Binding RatingDisplay}" Width="65"/>
-                                            <DataGridTextColumn Header="SOF" Binding="{Binding SofDisplay}" Width="60"/>
+                                            <DataGridTextColumn Header="LAST SOF" Binding="{Binding SofDisplay}" Width="75"/>
                                             <DataGridTextColumn Header="SAFETY" Binding="{Binding SafetyDisplay}" Width="65"/>
                                             <DataGridTextColumn Header="SEED" Binding="{Binding SeedRank}" Width="50"/>
                                         </DataGrid.Columns>
@@ -1591,7 +1602,7 @@
                             <DataGridTextColumn Header="LAST SOF" Binding="{Binding LastStrengthOfField, StringFormat=F0}" Width="85"/>
                         </DataGrid.Columns>
                     </DataGrid>
-                    <TextBlock Grid.Row="4" Text="DRIVER RACE HISTORY • SOF = average pre-race rating • Safety excludes lap 1" FontWeight="Bold" Margin="0,8,0,4"/>
+                    <TextBlock Grid.Row="4" Text="DRIVER RACE HISTORY • SOF = average starting-field rating before the race • Safety excludes lap 1" FontWeight="Bold" Margin="0,8,0,4"/>
                     <DataGrid x:Name="DriverRatingHistoryGrid" Grid.Row="5" ItemsSource="{Binding DriverRatingHistory}" AutoGenerateColumns="False" IsReadOnly="True" CanUserAddRows="False" SelectionChanged="DriverRatingHistoryGrid_SelectionChanged">
                         <DataGrid.Columns>
                             <DataGridTextColumn Header="DATE" Binding="{Binding DateDisplay}" Width="120"/>
@@ -1643,7 +1654,7 @@
                                               IsEnabled="False"
                                               IsChecked="True"
                                               Margin="0,5,0,5"/>
-                                    <TextBlock Text="I-Lap and Trackmate preset 9600 baud, 8-N-1 with no flow control and send their own startup commands. For Trackmate RC/Iridium, select its COM port and close other timing software first. OpenStint uses its running decoder service."
+                                    <TextBlock Text="Trackmate defaults to 115200 baud and I-Lap to 9600. Both preset 8-N-1 with no flow control and send their own startup commands. For Trackmate RC/Iridium, select its COM port and close other timing software first. OpenStint uses its running decoder service."
                                                TextWrapping="Wrap"
                                                Foreground="{DynamicResource MutedBrush}"
                                                FontSize="12"/>
@@ -1846,7 +1857,7 @@
                         <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
                             <StackPanel Margin="18" MaxWidth="1050" HorizontalAlignment="Stretch">
                                 <TextBlock Text="TRACK DETAILS" FontSize="24" FontWeight="Bold"/>
-                                <TextBlock Text="Your venue, contact details and racing schedule. New events use this saved track." TextWrapping="Wrap" Margin="0,6,0,18"/>
+                                <TextBlock Text="Your home track and its contact details. New events use this track. Browse imported venues and their results under Track Records." TextWrapping="Wrap" Margin="0,6,0,18"/>
                                 <Grid>
                                     <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
                                     <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
@@ -1938,7 +1949,20 @@
         </Border>
     </Grid>
     <Border Grid.Row="1" Background="{DynamicResource PanelBrush}">
-    <Border.Style><Style TargetType="Border"><Setter Property="Visibility" Value="Collapsed"/><Style.Triggers><DataTrigger Binding="{Binding ElementName=RaceTab, Path=IsSelected}" Value="True"><Setter Property="Visibility" Value="Visible"/></DataTrigger></Style.Triggers></Style></Border.Style>
+        <Border.Style>
+            <Style TargetType="Border">
+                <Setter Property="Visibility" Value="Collapsed"/>
+                <Style.Triggers>
+                    <MultiDataTrigger>
+                        <MultiDataTrigger.Conditions>
+                            <Condition Binding="{Binding ElementName=RaceTab, Path=IsSelected}" Value="True"/>
+                            <Condition Binding="{Binding ElementName=RaceDashboardContent, Path=Visibility}" Value="Visible"/>
+                        </MultiDataTrigger.Conditions>
+                        <Setter Property="Visibility" Value="Visible"/>
+                    </MultiDataTrigger>
+                </Style.Triggers>
+            </Style>
+        </Border.Style>
 <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="8,3">
  <Button Content="−" Width="30" MinWidth="30" Padding="4" Click="DashboardZoomOut_Click" ToolTip="Zoom out"/>
  <CheckBox x:Name="DashboardHeaderZoom" Content="Include header" VerticalAlignment="Center" Click="DashboardHeaderZoom_Click" Margin="0,0,10,0"/>

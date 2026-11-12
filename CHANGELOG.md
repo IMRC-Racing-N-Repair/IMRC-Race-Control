@@ -2,6 +2,21 @@
 
 Keep all release history in this file. Add each new version at the top; do not create version-specific changelog files.
 
+## 0.16.30
+- Review existing LiveTime matches before importing. Merge, keep an intentional copy, or discard incoming records one at a time, with merge-all and discard-all options. Keep saved results and transponder assignments protected.
+- Show “No Event has started” in the Race tab until an event is selected.
+- Choose tracks when importing a multi-track LiveTime backup, then select drivers, classes, and race history from those venues. Track Info keeps each imported venue and its records separate.
+- Add Event class card zoom with a compact list at the smallest setting, support mouse-wheel scrolling over Track Records, and show progress while importing LiveTime data. Clarify Rating and SOF in the driver view and lineup reports.
+- Preserve venue information from LiveTime imports, show records by track, and restore missing venue links when reimporting older history.
+- Announce a new track and class record when the driver finishes and show it at the bottom of the race, pop-out, and web scoreboards.
+- Search the Drivers tab by name or nickname. Show smaller clickable registration class cards and hide Rounds / Mains once an event ends.
+- Ctrl-click multiple drivers or classes to delete them together while preserving completed race history.
+- Open System.Data.SQLite RC4 and SQLCipher 4 LiveTime .db backups directly with the backup password. A matching SQLCipher unlock key also works. Preview in memory without a separate conversion.
+- Right-click blank space in the Rounds / Mains lineup to reserve an empty race for a class missing from the selected round. Save the spot and add racers manually when they arrive.
+- Show backup counts on selectable buttons for LiveTime drivers, classes, class assignments and personal transponders. Optionally import selected events with completed races and scored laps, and apply supported qualifying and mains settings to matching classes.
+- Default Trackmate USB/Serial to 115200 baud and remember any manually selected Trackmate rate separately. I-Lap keeps its 9600 baud preset.
+- Right-click an unknown Practice driver to assign the transponder to a driver and class without losing recorded laps. Rental assignments last for the current Practice session.
+
 ## 0.16.29
 - Add a read-only LiveTime roster import in Saved Race Data. Preview active drivers, classes and transponder assignments, flag conflicts and back up Race Control before adding records. Show source history counts separately.
 - Show combined runs as one compact race row with indented classes in the event schedule and Rounds / Mains. Count each combined run as one race in its round.

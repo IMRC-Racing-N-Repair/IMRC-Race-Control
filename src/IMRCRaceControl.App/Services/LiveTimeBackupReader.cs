@@ -6,21 +6,81 @@ using Microsoft.Data.Sqlite;
 namespace IMRCRaceControl.Services;
 
 public sealed record LiveTimeDriver(long LocalId, Guid SourceId, string FirstName, string LastName, string Nickname, string PhoneticName);
-public sealed record LiveTimeClass(long LocalId, Guid SourceId, string Name, string Color, double? MinimumLapSeconds);
+public sealed record LiveTimeClass(long LocalId, Guid SourceId, string Name, string Color, double? MinimumLapSeconds)
+{
+    public LiveTimeClassTiming? Timing { get; init; }
+}
+public sealed record LiveTimeClassTiming(double? MinimumLap, int QualStart, int QualFormat, int QualSeconds,
+    int QualLaps, int HeatCapacity, int MainStart, int MainFormat, int MainSeconds, int MainLaps, int MainCapacity);
 public sealed record LiveTimeClassEntry(long DriverId, long ClassId, string Transponders);
 public sealed record LiveTimeRoster(int SchemaVersion, List<LiveTimeDriver> Drivers, List<LiveTimeClass> Classes,
     List<LiveTimeClassEntry> Entries, long Events, long Races, long Laps, long PracticeLaps, long Rentals)
 {
     public List<string> RentalNumbers { get; init; } = [];
+    internal IReadOnlySet<string> SharedTransponderNumbers { get; init; } = new HashSet<string>();
 }
 
-public static class LiveTimeBackupReader
+public static partial class LiveTimeBackupReader
 {
     private const int LegacyPageSize = 1024;
     private const int MaxEncodedBytes = 256 * 1024 * 1024;
     private static ReadOnlySpan<byte> Header => "SQLite format 3\0"u8;
 
-    public static LiveTimeRoster Read(string path, string? referencePath = null)
+    public static LiveTimeRoster Read(string path, string? referencePath = null) =>
+        ReadFile(path, referencePath, db => ReadRoster(db), promptForPassword: false);
+
+    public static LiveTimeRoster ReadImportRoster(string path, string? referencePath = null) =>
+        ReadWithBundledPassword(path, referencePath, db => ReadRoster(db, includeHistoryCounts: false));
+
+    public static LiveTimeImportSource ReadImport(string path, string? referencePath = null) =>
+        ReadWithBundledPassword(path, referencePath, ReadImportSource);
+
+    private static T ReadWithBundledPassword<T>(string path, string? referencePath, Func<SqliteConnection, T> read)
+        where T : class
+    {
+        try
+        {
+            return ReadFile(path, referencePath, read);
+        }
+        catch (LiveTimeBackupPasswordRequiredException)
+        {
+            var password = LiveTimePasswordBundle.Read();
+            if (password is null) throw;
+            try
+            {
+                return ReadEncrypted(path, password, read);
+            }
+            catch (InvalidDataException)
+            {
+                // An unsupported or differently keyed backup can still be opened manually.
+                throw new LiveTimeBackupPasswordRequiredException();
+            }
+            finally
+            {
+                CryptographicOperations.ZeroMemory(password);
+            }
+        }
+    }
+
+    private static LiveTimeImportSource ReadImportSource(SqliteConnection db)
+    {
+        var roster = ReadRoster(db);
+        if (roster.SchemaVersion != 325)
+            return new LiveTimeImportSource(roster, []);
+        var (venues, eventTracks, timings) = ReadVenues(db);
+        var history = ReadRaceHistory(db, eventTracks);
+        return new LiveTimeImportSource(roster, history)
+        {
+            Venues = venues,
+            VenueTimings = timings,
+            HistoryDrivers = history.Count == 0 ? [] : Read(db, "SELECT LID,GUID,FirstName,LastName,NickName,PhoneticName FROM Driver WHERE IsActive=0",
+                r => new LiveTimeDriver(r.GetInt64(0), GuidValue(r,1), TextValue(r,2), TextValue(r,3), TextValue(r,4), TextValue(r,5))),
+            HistoryClasses = history.Count == 0 ? [] : Read(db, "SELECT LID,GUID,Name,Color FROM RaceClass WHERE IsActive=0",
+                r => new LiveTimeClass(r.GetInt64(0), GuidValue(r,1), TextValue(r,2), TextValue(r,3), null))
+        };
+    }
+
+    private static T ReadFile<T>(string path, string? referencePath, Func<SqliteConnection,T> read, bool promptForPassword = true) where T : class
     {
         if (IsPlainDatabase(path))
         {
@@ -28,13 +88,17 @@ public static class LiveTimeBackupReader
             using var db = new SqliteConnection(new SqliteConnectionStringBuilder
                 { DataSource = path, Mode = SqliteOpenMode.ReadOnly, Pooling = false }.ToString());
             db.Open();
-            return ReadRoster(db);
+            return read(db);
         }
+
+        var length = new FileInfo(path).Length;
+        if (promptForPassword && length % LegacyPageSize != 0 && CouldBeEncryptedBackup(length))
+            throw new LiveTimeBackupPasswordRequiredException();
 
         var encoded = ReadEncoded(path);
         try
         {
-            if (TryReadEncoded(encoded, encoded, out var roster))
+            if (TryReadEncoded(encoded, encoded, read, out var roster))
                 return roster!;
 
             if (!string.IsNullOrWhiteSpace(referencePath))
@@ -42,14 +106,16 @@ public static class LiveTimeBackupReader
                 var reference = ReadEncoded(referencePath);
                 try
                 {
-                    if (TryReadEncoded(encoded, reference, out roster))
+                    if (TryReadEncoded(encoded, reference, read, out roster))
                         return roster!;
                 }
                 finally { CryptographicOperations.ZeroMemory(reference); }
             }
 
-            throw new InvalidDataException("This backup could not be opened as a supported LiveTime database. " +
-                "Try a matching older backup as the reference, or use a readable LiveTime database copy.");
+            if (promptForPassword && CouldBeEncryptedBackup(encoded.Length))
+                throw new LiveTimeBackupPasswordRequiredException();
+
+            throw new InvalidDataException("This backup could not be opened. For an older backup, try a matching reference.");
         }
         finally { CryptographicOperations.ZeroMemory(encoded); }
     }
@@ -76,7 +142,7 @@ public static class LiveTimeBackupReader
     // Repeated unused pages supply candidates. No vendor/user password or recovered
     // mask is stored. A candidate is accepted only after full SQLite integrity and
     // LiveTime schema checks; this does not assume newer backups use the same layout.
-    private static bool TryReadEncoded(byte[] encoded, byte[] reference, out LiveTimeRoster? roster)
+    private static bool TryReadEncoded<T>(byte[] encoded, byte[] reference, Func<SqliteConnection,T> read, out T? roster) where T : class
     {
         roster = null;
         var signatures = new Dictionary<ulong, (int Offset, int Count)>();
@@ -102,7 +168,7 @@ public static class LiveTimeBackupReader
                 decoded = new byte[encoded.Length];
                 for (var i = 0; i < encoded.Length; i++) decoded[i] = (byte)(encoded[i] ^ mask[i % LegacyPageSize]);
                 using var db = OpenInMemory(decoded);
-                roster = ReadRoster(db);
+                roster = read(db);
                 return true;
             }
             catch (SqliteException) { }
@@ -153,7 +219,7 @@ public static class LiveTimeBackupReader
     private static extern int SqliteDeserialize(IntPtr db, [MarshalAs(UnmanagedType.LPUTF8Str)] string schema,
         IntPtr memory, long size, long capacity, uint flags);
 
-    private static LiveTimeRoster ReadRoster(SqliteConnection db)
+    private static LiveTimeRoster ReadRoster(SqliteConnection db, bool includeHistoryCounts = true)
     {
         using var cmd = db.CreateCommand();
         cmd.CommandText = "PRAGMA trusted_schema=OFF; PRAGMA query_only=ON;";
@@ -184,6 +250,13 @@ public static class LiveTimeBackupReader
             classes = classes.Select(c=>c with {MinimumLapSeconds=minimums.GetValueOrDefault(c.LocalId)}).ToList();
         }
 
+        if (tables.Contains("EventRaceClassSetting"))
+        {
+            var settings = ReadEventClassTimings(db).GroupBy(row => row.ClassId)
+                .ToDictionary(g => g.Key, g => g.Last().Timing);
+            classes = classes.Select(c => c with { Timing = settings.GetValueOrDefault(c.LocalId) }).ToList();
+        }
+
         var tags = Read(db, "SELECT DriverLID,RaceClassLID,TransponderNumber FROM DriverRaceClassTransponder ORDER BY IsPrimary DESC,LID",
             r => (Driver:r.GetInt64(0), Class:r.GetInt64(1), Tag:r.IsDBNull(2) ? 0 : r.GetInt64(2)));
         var relationships = tags.Select(x => (x.Driver,x.Class)).ToHashSet();
@@ -199,7 +272,7 @@ public static class LiveTimeBackupReader
 
         long Count(string table)
         {
-            if (!tables.Contains(table)) return 0;
+            if (!includeHistoryCounts || !tables.Contains(table)) return 0;
             cmd.CommandText = $"SELECT count(*) FROM [{table}]";
             return Convert.ToInt64(cmd.ExecuteScalar());
         }

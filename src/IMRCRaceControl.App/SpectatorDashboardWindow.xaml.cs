@@ -72,6 +72,7 @@ public partial class SpectatorDashboardWindow : Window
         }
         if (PopoutZoomSlider.Value != _raceControl.PopoutZoom * 100) PopoutZoomSlider.Value = _raceControl.PopoutZoom * 100;
         var practice = _raceControl.SpectatorIsPractice;
+        SpectatorTrackRecordStrip.Show(practice ? null : _raceControl.SpectatorTrackRecordNotice);
         RaceBoard.Visibility = practice ? Visibility.Collapsed : Visibility.Visible;
         SpectatorPracticeCards.Visibility = practice ? Visibility.Visible : Visibility.Collapsed;
         PracticeEmptyText.Visibility = practice && _raceControl.VisiblePracticeCards.Count == 0 ? Visibility.Visible : Visibility.Collapsed;

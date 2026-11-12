@@ -34,6 +34,8 @@ public partial class MainWindow : Window
     private readonly ObservableCollection<DriverClassAssignment> _driverAssignments = new();
 
     private AppSettings _settings;
+    private System.ComponentModel.ICollectionView? _driverDirectoryView;
+    private GridLength _eventRoundsHeight = new(1, GridUnitType.Star);
     private ClassDefinition? _editingClass;
     private DriverProfile? _editingDriver;
     private RaceDayEventDefinition? _activeEvent;
@@ -83,6 +85,7 @@ public partial class MainWindow : Window
         _database = database;
         _startupWarning = startupWarning;
         InitializeComponent();
+        ConfigureDriverDirectorySearch();
         RaceClassSections.Attach(Standings);
         RaceClassSections.Attach(RoundProjectionRows);
         DataContext = this;
@@ -152,18 +155,13 @@ public partial class MainWindow : Window
         RebuildSessionQueueOrder();
         RefreshRaceDayFlow();
 
-        if (_activeEvent is null)
-        {
-            MainTabs.SelectedItem = EventTab;
-            HeaderMessageText.Text = "Create a race-day event to unlock the Race Dashboard.";
-        }
-        else
+        if (_activeEvent is not null)
         {
             UpdateRaceDefaultsFromClass();
             HeaderMessageText.Text = $"Event ready: {_activeEvent.Name}";
+            RefreshRaceUi(DateTimeOffset.Now);
         }
 
-        RefreshRaceUi(DateTimeOffset.Now);
         FooterStatusText.Text = _activeEvent is null
             ? "Create a race-day event first. Then add classes, drivers, and build rounds or mains."
             : "Event ready. Build rounds/mains in Event Setup or run the current heat.";
@@ -202,7 +200,8 @@ public partial class MainWindow : Window
         OpenStintHostText.Text = _settings.OpenStintHost;
         OpenStintPortText.Text = _settings.OpenStintPort.ToString();
         SelectComboByText(ConnectionTypeCombo, _settings.LastConnectionType);
-        BaudCombo.Text = _settings.LastBaudRate.ToString();
+        BaudCombo.Text = (TrackmateProtocol.IsProfile(SelectedText(ConnectionTypeCombo))
+            ? PreferredTrackmateBaudRate() : _settings.LastBaudRate).ToString();
         SelectComboByText(DataBitsCombo, _settings.LastDataBits);
         SelectComboByText(ParityCombo, _settings.LastParity);
         SelectComboByText(StopBitsCombo, _settings.LastStopBits);
@@ -210,7 +209,7 @@ public partial class MainWindow : Window
         UpdateConnectionPanelVisibility();
     }
 
-    private async Task CaptureAndSaveSettingsAsync(bool reportFailureToCaller = false)
+    private async Task CaptureAndSaveSettingsAsync(bool reportFailureToCaller = false, bool backgroundWrite = false)
     {
         await _settingsSaveGate.WaitAsync();
         try
@@ -237,7 +236,13 @@ public partial class MainWindow : Window
             _settings.LastConnectionType = SelectedText(ConnectionTypeCombo);
             _settings.LastComPort = PortCombo.SelectedItem?.ToString() ?? _settings.LastComPort;
             if (int.TryParse(EditableComboText(BaudCombo), out var baud) && baud > 0)
-                _settings.LastBaudRate = baud;
+            {
+                if (TrackmateProtocol.IsProfile(_settings.LastConnectionType))
+                    _settings.LastTrackmateBaudRate = baud;
+                else if (_settings.LastConnectionType.StartsWith("USB", StringComparison.OrdinalIgnoreCase) ||
+                         _settings.LastConnectionType.StartsWith("I-Lap", StringComparison.OrdinalIgnoreCase))
+                    _settings.LastBaudRate = baud;
+            }
             _settings.LastDataBits = SelectedText(DataBitsCombo);
             _settings.LastParity = SelectedText(ParityCombo);
             _settings.LastStopBits = SelectedText(StopBitsCombo);
@@ -253,10 +258,20 @@ public partial class MainWindow : Window
             {
                 // SQLite is authoritative. This saves the complete application
                 // snapshot and synchronizes the queryable racing tables atomically.
-                await _database.SaveApplicationStateAsync(_settings);
+                // Microsoft.Data.Sqlite performs database I/O synchronously.
+                if (backgroundWrite)
+                    await Task.Run(() => _database.SaveApplicationStateAsync(_settings));
+                else
+                    await _database.SaveApplicationStateAsync(_settings);
 
                 // Keep settings.json as a readable migration/disaster-recovery backup.
-                try { await _settingsService.SaveAsync(_settings); }
+                try
+                {
+                    if (backgroundWrite)
+                        await Task.Run(() => _settingsService.SaveAsync(_settings));
+                    else
+                        await _settingsService.SaveAsync(_settings);
+                }
                 catch (Exception backupError)
                 {
                     AppCrashLogger.Log("Settings backup save", backupError);
@@ -295,7 +310,7 @@ public partial class MainWindow : Window
 
     private void ClassGrid_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
-        _editingClass = ClassGrid.SelectedItem as ClassDefinition;
+        _editingClass = ClassGrid.SelectedItems.Count == 1 ? ClassGrid.SelectedItem as ClassDefinition : null;
         UpdateClassDetail(_editingClass);
     }
 
@@ -316,10 +331,10 @@ public partial class MainWindow : Window
 
     private async void EditClass_Click(object sender, RoutedEventArgs e)
     {
-        var selected = ClassGrid.SelectedItem as ClassDefinition ?? _editingClass;
+        var selected = ClassGrid.SelectedItems.Count == 1 ? ClassGrid.SelectedItem as ClassDefinition : null;
         if (selected is null)
         {
-            FooterStatusText.Text = "Select a class to edit.";
+            FooterStatusText.Text = "Select one class to edit.";
             return;
         }
 
@@ -339,44 +354,73 @@ public partial class MainWindow : Window
 
     private async void DeleteClass_Click(object sender, RoutedEventArgs e)
     {
-        if (ClassGrid.SelectedItem is not ClassDefinition selected)
+        var selected = ClassGrid.SelectedItems.OfType<ClassDefinition>().ToList();
+        if (selected.Count == 0 || !ApplicationUpdateAllowed)
             return;
-        if (Classes.Count <= 1)
+        if (selected.Count >= Classes.Count)
         {
             MessageBox.Show(this, "At least one class must remain.", "Class setup", MessageBoxButton.OK, MessageBoxImage.Information);
             return;
         }
 
-        if (MessageBox.Show(this, $"Delete class '{selected.Name}' and its driver assignments/planned sessions?", "Delete class",
-                MessageBoxButton.YesNo, MessageBoxImage.Warning) != MessageBoxResult.Yes)
+        var description = selected.Count == 1 ? $"class '{selected[0].Name}'" : $"{selected.Count} classes";
+        if (MessageBox.Show(this, $"Delete {description}, their driver assignments, and unrun sessions? Completed race history will be kept.", "Delete classes",
+                MessageBoxButton.YesNo, MessageBoxImage.Warning, MessageBoxResult.No) != MessageBoxResult.Yes)
             return;
 
-        foreach (var assignment in _driverAssignments.Where(a => a.ClassId == selected.Id).ToList())
+        var ids = selected.Select(c => c.Id).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var loadedId = _loadedSession is { ProgressStatus: EventSessionStatus.Planned or EventSessionStatus.Loaded } loaded &&
+            (ids.Contains(loaded.ClassId) || loaded.CombinedMembers.Any(m => ids.Contains(m.ClassId))) ? loaded.Id : null;
+        foreach (var assignment in _driverAssignments.Where(a => ids.Contains(a.ClassId)).ToList())
             _driverAssignments.Remove(assignment);
-        foreach (var ev in Events)
+        foreach (var ev in Events.Where(e => e.Status == EventStatus.Active))
         {
-            ev.ClassIds.RemoveAll(id => id == selected.Id);
-            ev.DriverAssignments.RemoveAll(a => a.ClassId == selected.Id);
-            ev.Sessions.RemoveAll(s => s.ClassId == selected.Id);
+            ev.Sessions.RemoveAll(s => ids.Contains(s.ClassId) && s.ProgressStatus is EventSessionStatus.Planned or EventSessionStatus.Loaded);
+            foreach (var group in ev.Sessions.Where(s => !string.IsNullOrEmpty(s.CombinedRaceId)).GroupBy(s => s.CombinedRaceId))
+                if (group.Count() == 1 && group.Single().ProgressStatus is EventSessionStatus.Planned or EventSessionStatus.Loaded)
+                    group.Single().CombinedRaceId = "";
+            var historical = ev.Sessions.Select(s => s.ClassId).ToHashSet(StringComparer.OrdinalIgnoreCase);
+            ev.ClassIds.RemoveAll(id => ids.Contains(id) && !historical.Contains(id));
+            ev.DriverAssignments.RemoveAll(a => ids.Contains(a.ClassId));
         }
-        Classes.Remove(selected);
+        foreach (var item in selected) Classes.Remove(item);
         _editingClass = null;
-        RaceClassCombo.SelectedItem = Classes.FirstOrDefault();
+        if (RaceClassCombo.SelectedItem is null)
+            RaceClassCombo.SelectedItem = Classes.FirstOrDefault();
+        RefreshLoadedAfterRosterDeletion(loadedId);
         UpdateClassDetail(null);
         RefreshAssignmentRows();
         RefreshEventClassChoices();
         RefreshPlannedSessions();
         await CaptureAndSaveSettingsAsync();
-        FooterStatusText.Text = $"Class '{selected.Name}' deleted.";
+        FooterStatusText.Text = $"Deleted {description}.";
     }
 
     // -----------------------------
     // Drivers and class/transponder assignments
     // -----------------------------
 
+    private void ConfigureDriverDirectorySearch()
+    {
+        // A private view keeps the search from filtering event and race pickers.
+        var source = new System.Windows.Data.CollectionViewSource { Source = Drivers };
+        _driverDirectoryView = source.View;
+        _driverDirectoryView.Filter = item =>
+        {
+            if (item is not DriverProfile driver) return false;
+            var name = $"{driver.FullName} {driver.DisplayName} {driver.Nickname}";
+            return DriverDirectorySearchText.Text.Split(' ', StringSplitOptions.RemoveEmptyEntries)
+                .All(word => name.Contains(word, StringComparison.OrdinalIgnoreCase));
+        };
+        DriverGrid.ItemsSource = _driverDirectoryView;
+    }
+
+    private void DriverDirectorySearchText_Changed(object sender, TextChangedEventArgs e) =>
+        _driverDirectoryView?.Refresh();
+
     private void DriverGrid_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
-        if (DriverGrid.SelectedItem is not DriverProfile selected)
+        if (DriverGrid.SelectedItems.Count != 1 || DriverGrid.SelectedItem is not DriverProfile selected)
         {
             _editingDriver = null;
             UpdateDriverProfileDetail(null);
@@ -403,6 +447,7 @@ public partial class MainWindow : Window
         if (driver is null)
             return;
 
+        DriverDirectorySearchText.Clear();
         _editingDriver = driver;
         DriverGrid.SelectedItem = driver;
         AssignmentEmptyPrompt.Visibility = Visibility.Collapsed;
@@ -415,16 +460,17 @@ public partial class MainWindow : Window
 
     private async void EditDriver_Click(object sender, RoutedEventArgs e)
     {
-        var driver = _editingDriver ?? DriverGrid.SelectedItem as DriverProfile;
+        var driver = DriverGrid.SelectedItems.Count == 1 ? DriverGrid.SelectedItem as DriverProfile : null;
         if (driver is null)
         {
-            FooterStatusText.Text = "Select a driver to edit.";
+            FooterStatusText.Text = "Select one driver to edit.";
             return;
         }
 
         if (ShowDriverEditor(driver) is null)
             return;
 
+        DriverDirectorySearchText.Clear();
         DriverGrid.SelectedItem = driver;
         DriverGrid.Items.Refresh();
         SelectedDriverAssignmentsTitleText.Text = $"{driver.DisplayName.ToUpperInvariant()} • CLASS / TRANSPONDER SETUP";
@@ -435,28 +481,37 @@ public partial class MainWindow : Window
 
     private async void DeleteDriver_Click(object sender, RoutedEventArgs e)
     {
-        var selected = _editingDriver ?? DriverGrid.SelectedItem as DriverProfile;
-        if (selected is null)
+        var selected = DriverGrid.SelectedItems.OfType<DriverProfile>().ToList();
+        if (selected.Count == 0 || !ApplicationUpdateAllowed)
             return;
 
+        var description = selected.Count == 1 ? $"driver '{selected[0].DisplayName}'" : $"{selected.Count} drivers";
         if (MessageBox.Show(this,
-                $"Delete driver '{selected.DisplayName}' and all of their class/transponder assignments?",
-                "Delete driver",
-                MessageBoxButton.YesNo,
-                MessageBoxImage.Warning) != MessageBoxResult.Yes)
+                $"Delete {description} and remove their assignments and entries in unrun races? Completed race history will be kept.",
+                "Delete drivers", MessageBoxButton.YesNo, MessageBoxImage.Warning, MessageBoxResult.No) != MessageBoxResult.Yes)
             return;
 
-        foreach (var assignment in _driverAssignments.Where(a => a.DriverId == selected.Id).ToList())
+        var ids = selected.Select(d => d.Id).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var loadedId = _loadedSession is { ProgressStatus: EventSessionStatus.Planned or EventSessionStatus.Loaded } loaded &&
+            loaded.Entrants.Any(e => ids.Contains(e.DriverId)) ? loaded.Id : null;
+        foreach (var assignment in _driverAssignments.Where(a => ids.Contains(a.DriverId)).ToList())
             _driverAssignments.Remove(assignment);
 
-        foreach (var ev in Events)
+        foreach (var ev in Events.Where(e => e.Status == EventStatus.Active))
         {
-            ev.DriverAssignments.RemoveAll(a => a.DriverId == selected.Id);
-            foreach (var session in ev.Sessions)
-                session.Entrants.RemoveAll(ent => ent.DriverId == selected.Id);
+            ev.DriverAssignments.RemoveAll(a => ids.Contains(a.DriverId));
+            foreach (var session in ev.Sessions.Where(s => s.ProgressStatus is EventSessionStatus.Planned or EventSessionStatus.Loaded))
+                session.Entrants.RemoveAll(ent => ids.Contains(ent.DriverId));
         }
 
-        Drivers.Remove(selected);
+        foreach (var item in selected) Drivers.Remove(item);
+        RefreshLoadedAfterRosterDeletion(loadedId);
+        if (_loadedSession is null)
+        {
+            foreach (var racer in SessionRacers.Where(r => ids.Contains(r.DriverId)).ToList())
+                SessionRacers.Remove(racer);
+            UpdateSessionRosterText();
+        }
         _editingDriver = null;
         DriverGrid.SelectedItem = null;
         UpdateDriverProfileDetail(null);
@@ -468,7 +523,21 @@ public partial class MainWindow : Window
         RefreshPlannedSessions();
 
         await CaptureAndSaveSettingsAsync();
-        FooterStatusText.Text = $"Driver '{selected.DisplayName}' deleted.";
+        FooterStatusText.Text = $"Deleted {description}.";
+    }
+
+    private void RefreshLoadedAfterRosterDeletion(string? loadedId)
+    {
+        if (loadedId is null) return;
+        var replacement = GetQueueSessions().FirstOrDefault(s => s.Id == loadedId);
+        _loadedSession = null;
+        if (replacement is not null)
+        {
+            LoadSessionIntoRaceControl(replacement, saveSettings: false);
+            return;
+        }
+        SessionRacers.Clear();
+        UpdateSessionRosterText();
     }
 
     private void NewAssignment_Click(object sender, RoutedEventArgs e)
@@ -683,9 +752,6 @@ public partial class MainWindow : Window
         UpdateRaceDashboardAvailability();
         RebuildSessionQueueOrder();
         RefreshRaceDayFlow();
-
-        if (_activeEvent is null)
-            MainTabs.SelectedItem = EventTab;
     }
 
     private void LoadEventToEditor(RaceDayEventDefinition? ev)
@@ -727,7 +793,9 @@ public partial class MainWindow : Window
     private void UpdateRaceDashboardAvailability()
     {
         var available = _activeEvent is not null;
-        RaceTab.IsEnabled = available && !_practiceActive;
+        RaceTab.IsEnabled = !_practiceActive;
+        RaceDashboardContent.Visibility = available ? Visibility.Visible : Visibility.Collapsed;
+        RaceNoEventMessage.Visibility = available ? Visibility.Collapsed : Visibility.Visible;
 
         if (!available)
         {
@@ -736,7 +804,7 @@ public partial class MainWindow : Window
             if (!_practiceActive)
             {
                 HeaderRaceStateText.Text = "NO EVENT";
-                HeaderMessageText.Text = "Create a race-day event to unlock the Race Dashboard.";
+                HeaderMessageText.Text = "Create a race-day event in the Event tab.";
             }
         }
         else
@@ -776,6 +844,16 @@ public partial class MainWindow : Window
         EventClassDownButton.IsEnabled = editable;
         EventNewDriverButton.IsEnabled = editable;
         RoundMainBuilderButton.IsEnabled = editable;
+        var roundsVisible = _activeEvent?.Status != EventStatus.Completed;
+        if (!roundsVisible && EventRoundsSection.Visibility != Visibility.Collapsed)
+            _eventRoundsHeight = EventRoundsRow.Height;
+        EventRoundsSection.Visibility = EventRoundsSplitter.Visibility = roundsVisible ? Visibility.Visible : Visibility.Collapsed;
+        EventRoundsSplitterRow.Height = new GridLength(roundsVisible ? 10 : 0);
+        EventRoundsRow.MinHeight = roundsVisible ? 150 : 0;
+        if (!roundsVisible)
+            EventRoundsRow.Height = new GridLength(0);
+        else if (EventRoundsRow.Height.Value == 0)
+            EventRoundsRow.Height = _eventRoundsHeight;
 
         // Browsing remains available for completed events.
         EventRosterClassCombo.IsEnabled = hasEvent && (_activeEvent?.ClassIds.Count ?? 0) > 0;
@@ -801,7 +879,7 @@ public partial class MainWindow : Window
         var keepHeader = selectSessionId is null && PlannedSessionGrid?.SelectedItem is EventRunRow { IsCombinedHeader: true };
 
         PlannedSessions.Clear();
-        if (_activeEvent is not null)
+        if (_activeEvent is { Status: EventStatus.Active })
         {
             RaceSchedule.AssignRaceNumbers(_activeEvent.Sessions);
             foreach (var session in EventRunRow.Build(RaceSchedule.DisplayOrder(_activeEvent.Sessions)))
@@ -962,9 +1040,6 @@ public partial class MainWindow : Window
         UpdateRaceDashboardAvailability();
         RebuildSessionQueueOrder();
         RefreshRaceDayFlow();
-
-        if (_activeEvent is null)
-            MainTabs.SelectedItem = EventTab;
 
         await CaptureAndSaveSettingsAsync();
     }
@@ -1998,6 +2073,7 @@ public partial class MainWindow : Window
 
             _raceAudio.Reset();
             if (_loadedSession is {IsCombinedRace:true}) CombinedRaces.Validate(_loadedSession.CombinedMembers,Classes.ToList());
+            BeginTrackRecordRace(cls, sessionType);
             var toneTime = DateTimeOffset.Now;
             _toneService.Play(_settings.StartTone, _settings.StartToneLength, _settings.StartToneFile);
             _endTonePlayed = false;
@@ -2193,6 +2269,7 @@ public partial class MainWindow : Window
 
     private void RefreshRaceUi(DateTimeOffset now)
     {
+        DashboardTrackRecordStrip?.Show(LiveTrackRecordNotice);
         if (_recallMode)
         {
             RenderRecalledRace();
@@ -2203,7 +2280,7 @@ public partial class MainWindow : Window
 
         if (state == RaceState.Complete && _lastRenderedRaceState != RaceState.Complete && _raceEngine.AllDriversFinished)
         {
-            _lapSpeech.Stop();
+            _lapSpeech.StopLaps();
             _lapSpeech.Enqueue("All drivers are done.", _settings.RaceAnnouncementRate,
                 _settings.LapSpeechVolume, _settings.LapSpeechVoice);
         }
@@ -2337,7 +2414,7 @@ public partial class MainWindow : Window
 
     private void Window_PreviewKeyDown(object sender, KeyEventArgs e)
     {
-        if (e.IsRepeat || MainTabs.SelectedItem != RaceTab || IsEditingText())
+        if (e.IsRepeat || _activeEvent is null || MainTabs.SelectedItem != RaceTab || IsEditingText())
             return;
 
         var key = e.Key == Key.System ? e.SystemKey : e.Key;
@@ -2439,7 +2516,7 @@ public partial class MainWindow : Window
                 if (_raceEngine.State == RaceState.Complete)
                 {
                     if (_raceEngine.IsLappedRace) _endTonePlayed = true;
-                    _lapSpeech.Stop();
+                    _lapSpeech.StopLaps();
                 }
             }
             else if (firstCrossing && _settings.RaceFirstCrossingToneEnabled)
@@ -2475,9 +2552,17 @@ public partial class MainWindow : Window
             LastPassingText.Text = result.Message;
         }
 
+        var trackRecord = TrackRecordOnFinish(result.Lap);
         FooterStatusText.Text = result.Message;
         RefreshDriverLapPanel();
         RefreshRaceUi(DateTimeOffset.Now);
+        if (trackRecord is not null)
+        {
+            var driverId = SessionRacers.FirstOrDefault(r => r.CarNumber == carNumber)?.DriverId;
+            var spokenName = Drivers.FirstOrDefault(d => d.Id == driverId)?.SpokenName ?? trackRecord.Driver;
+            _lapSpeech.Enqueue(trackRecord.Announcement(spokenName), _settings.RaceAnnouncementRate,
+                _settings.LapSpeechVolume, _settings.LapSpeechVoice);
+        }
 
         // Force the final timing snapshot (position/gaps/averages) to paint now,
         // not on the next 100 ms dashboard timer tick.
@@ -2500,6 +2585,7 @@ public partial class MainWindow : Window
 
         _lapSpeech.Stop();
         var result = _raceEngine.UndoLastPassing(DateTimeOffset.Now);
+        RecheckTrackRecords();
         FooterStatusText.Text = result.Message;
         LastPassingText.Text = result.Message;
         if (!result.Accepted)
@@ -2638,17 +2724,33 @@ public partial class MainWindow : Window
     // Decoder / connection console
     // -----------------------------
 
+    private int PreferredTrackmateBaudRate() => TrackmateProtocol.ResolveBaudRate(
+        _settings.LastTrackmateBaudRate,
+        TrackmateProtocol.IsProfile(_settings.LastConnectionType) ? _settings.LastBaudRate : null);
+
     private void ConnectionTypeCombo_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
         if (!IsLoaded)
             return;
-        if (SelectedText(ConnectionTypeCombo).StartsWith("I-Lap", StringComparison.Ordinal) || SelectedText(ConnectionTypeCombo).StartsWith("Trackmate", StringComparison.Ordinal))
+
+        var wasTrackmate = e.RemovedItems.OfType<ComboBoxItem>()
+            .Any(item => TrackmateProtocol.IsProfile(item.Content?.ToString() ?? string.Empty));
+        if (wasTrackmate && int.TryParse(EditableComboText(BaudCombo), out var previousBaud) && previousBaud > 0)
+            _settings.LastTrackmateBaudRate = previousBaud;
+
+        var mode = SelectedText(ConnectionTypeCombo);
+        var isTrackmate = TrackmateProtocol.IsProfile(mode);
+        if (isTrackmate || mode.StartsWith("I-Lap", StringComparison.Ordinal))
         {
-            BaudCombo.Text = "9600";
+            BaudCombo.Text = isTrackmate ? PreferredTrackmateBaudRate().ToString() : "9600";
             SelectComboByText(DataBitsCombo, "8");
             SelectComboByText(ParityCombo, "None");
             SelectComboByText(StopBitsCombo, "1");
             SelectComboByText(HandshakeCombo, "None");
+        }
+        else if (wasTrackmate)
+        {
+            BaudCombo.Text = _settings.LastBaudRate.ToString();
         }
         UpdateConnectionPanelVisibility();
     }

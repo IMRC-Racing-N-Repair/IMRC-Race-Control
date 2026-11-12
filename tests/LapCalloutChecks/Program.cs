@@ -11,6 +11,42 @@ if (args is ["--inspect-livetime-backup", var backup])
     return;
 }
 
+if (args is ["--verify-livetime-import-copy", _] or ["--verify-livetime-encrypted", _, _])
+{
+    LiveTimeImportSource source;
+    if (args.Length == 3)
+    {
+        var password = File.ReadAllBytes(args[2]);
+        try { source = LiveTimeBackupReader.ReadEncryptedImport(args[1], password); }
+        finally { System.Security.Cryptography.CryptographicOperations.ZeroMemory(password); }
+    }
+    else source = LiveTimeBackupReader.ReadImport(args[1]);
+    var roster = LiveTimeRosterMerge.Preview(source.Roster, [], [], []);
+    var ids = source.History.Select(e => e.SourceId).ToList();
+    var one = LiveTimeHistoryMerge.Preview(source, ids.Take(1), [], roster, includeLaps:false);
+    var all = LiveTimeHistoryMerge.Preview(source, ids, [], roster, includeLaps:true);
+    var repeat = LiveTimeHistoryMerge.Preview(source, ids, all, roster, includeLaps:true);
+    if (one.Count != 1 || one[0].Sessions.Any(r => r.Results.Count == 0 || r.Laps.Count != 0)
+        || all.Count != source.History.Count || repeat.Count != 0
+        || all.Sum(e => e.Sessions.Count) != source.History.Sum(e => e.RaceCount)
+        || all.Sum(e => e.Sessions.Sum(r => r.Laps.Count)) != source.History.Sum(e => e.LapCount))
+        throw new Exception("The import did not preserve the expected selected events and results.");
+    var db = new RaceControlDatabaseService();
+    if (!db.DatabasePath.StartsWith("/tmp/imrc-callout-test-data/", StringComparison.Ordinal))
+        throw new Exception("Run the import verification with the isolated test database.");
+    await db.SaveApplicationStateAsync(new AppSettings { Drivers=roster.Drivers, Classes=roster.Classes,
+        DriverClassAssignments=roster.Assignments, Events=all });
+    var loaded = await db.LoadApplicationStateAsync() ?? throw new Exception("Could not reload imported events.");
+    var laps = all.Sum(e => e.Sessions.Sum(r => r.Laps.Count));
+    if (loaded.Events.Count != all.Count || loaded.Events.Sum(e => e.Sessions.Sum(r => r.Laps.Count)) != laps
+        || loaded.Events.Sum(e => e.Sessions.Sum(r => r.Results.Count)) != all.Sum(e => e.Sessions.Sum(r => r.Results.Count)))
+        throw new Exception("Database round trip did not preserve race results and laps.");
+    Console.WriteLine($"PASS: {source.Roster.Drivers.Count} active drivers; {source.Roster.Classes.Count} classes; " +
+        $"{all.Count} selected events, {all.Sum(e=>e.Sessions.Count)} completed races, {laps} scored laps. " +
+        "Verified one-event/results-only selection, duplicate protection and database reload.");
+    return;
+}
+
 if (args.Contains("--livetime-import-only"))
 {
     Console.WriteLine($"PASS: {LiveTimeImportChecks.Run()} LiveTime import checks.");
@@ -40,6 +76,27 @@ void Equal<T>(T expected, T actual, string label)
         throw new Exception($"{label}: expected {expected}, got {actual}");
     checks++;
 }
+// Simulate decoder hits before and after the operator assigns an unknown card.
+var practiceCards = new List<PracticeCardViewModel>();
+var practiceStart = new DateTimeOffset(2026, 11, 9, 18, 0, 0, TimeSpan.Zero);
+var practiceDriver = new DriverProfile { FirstName = "Test", LastName = "Racer" };
+var unknownPractice = PracticeTracker.Record(practiceCards, null, " 987654 ", "decoder", practiceStart);
+Equal(true, unknownPractice.Created, "Unassigned tag starts its own practice card");
+Equal("Unknown driver", unknownPractice.Card.DriverName, "Unassigned tag shows Unknown driver");
+Equal("987654", unknownPractice.Card.TransponderId, "Unknown card shows the actual transponder");
+Equal(false, unknownPractice.LapAdded, "First unknown crossing starts timing");
+var unknownLap = PracticeTracker.Record(practiceCards, null, "987654", "decoder", practiceStart.AddSeconds(6));
+Equal(TimeSpan.FromSeconds(6), unknownLap.Card.Laps.Single().LapTime, "Unknown card records laps before assignment");
+var originalStint = unknownLap.Card.StintId;
+PracticeTracker.Record(practiceCards, practiceDriver, "123456", "decoder", practiceStart.AddSeconds(7), "Other class");
+unknownLap.Card.ResolveDriver(practiceDriver.Id, practiceDriver.DisplayName, "Sportsman");
+var assignedLap = PracticeTracker.Record(practiceCards, practiceDriver, "987654", "decoder", practiceStart.AddSeconds(12), "Sportsman");
+Equal(originalStint, assignedLap.Card.StintId, "Assigned card retains its original stint");
+Equal(practiceDriver.DisplayName, assignedLap.Card.DriverName, "Assigned card shows selected driver");
+Equal("Sportsman", assignedLap.Card.ClassName, "Assigned card shows selected class");
+Equal(2, assignedLap.Card.LapCount, "Assigned card keeps previous lap and adds next decoder hit");
+Equal(0, practiceCards.Single(c => c.TransponderId == "123456").LapCount, "Same driver's other transponder has independent timing");
+
 // Completed race exports must stay scoped to saved race cars, including zero-lap drivers.
 var exportRace = new EventSessionDefinition { ProgressStatus=EventSessionStatus.Completed, ClassName="Stock", RaceNumber=2,
     Entrants=[new() { CarNumber=1,DriverName="Alex, \"Ace\"" },new() { CarNumber=2,DriverName="Alex, \"Ace\"" },new() { CarNumber=3,DriverName="No laps" }],
@@ -373,6 +430,13 @@ if (args.Contains("--isolated-database"))
     var loaded = (await new RaceControlDatabaseService().LoadApplicationStateAsync())!;
     Equal(true, loaded.LapAnnouncementsTenthsOnly, "SQLite setting reload");
     Equal("Yoh shee", loaded.Drivers[0].PhoneticName, "SQLite phonetic reload");
+
+    var practiceHistory = new PracticeHistoryService();
+    await practiceHistory.SaveStintAsync(assignedLap.Card, practiceStart.AddSeconds(15));
+    var savedPractice = (await practiceHistory.LoadRecentStintsAsync(driverId: practiceDriver.Id)).Single();
+    Equal(originalStint, savedPractice.StintId, "Assigned practice stint is saved under the selected driver");
+    var savedPracticeLaps = await practiceHistory.LoadLapsAsync(savedPractice.StintId);
+    Equal(2, savedPracticeLaps.Count, "History includes laps recorded before and after assignment");
 }
 // Separate dashboard switches and selected voice survive upgrade and save/reload.
 var preferences = new AppSettings { LapAnnouncementsEnabled = true };
@@ -507,6 +571,31 @@ Equal("123456", raceDay.DriverAssignments.Single(a => a.DriverId == lateDriver.I
 SavedRoundEditor.ReplaceScope(raceDay, [completedHeat, edited], [completedHeat, edited]);
 Equal(2, raceDay.DriverAssignments.Count, "Repeated saves do not duplicate event entries");
 
+var extraClass = new ClassDefinition { Name = "Reserved", MainRaceFormat = RaceFormat.Laps, MainTargetLaps = 45,
+    MainRules = [new MainRuleDefinition { MaxRacers = 7 }] };
+var q1Slot = new DashboardRoundChoice(SessionType.Qualifying, 1);
+var q2Slot = new DashboardRoundChoice(SessionType.Qualifying, 2);
+var alreadyScheduled = new ClassDefinition { Id = "class-b", Name = "Existing" };
+Equal(extraClass.Id, SavedRoundEditor.AvailablePlaceholderClasses([alreadyScheduled, extraClass], raceDay.Sessions, q1Slot).Single().Id,
+    "Only classes missing from the chosen round are offered");
+Equal(2, SavedRoundEditor.AvailablePlaceholderClasses([alreadyScheduled, extraClass], raceDay.Sessions, q2Slot).Count,
+    "A class in another round is still eligible");
+var reserved = SavedRoundEditor.CreatePlaceholder(extraClass, q1Slot, raceDay.Sessions);
+Equal(0, reserved.Entrants.Count, "Reserved class starts with zero racers");
+Equal(false, raceDay.ClassIds.Contains(extraClass.Id), "Preparing a reserve spot does not check in the class before Save");
+SavedRoundEditor.ReplaceScope(raceDay, [], [reserved]);
+Equal(true, raceDay.ClassIds.Contains(extraClass.Id), "Saving an empty spot checks the configured class into the event");
+Equal(2, raceDay.DriverAssignments.Count, "Saving an empty spot does not register drivers");
+Equal(completedHeatJson, JsonSerializer.Serialize(completedHeat), "Reserving another class does not change completed results");
+var rejectedDuplicateSlot = false;
+try { SavedRoundEditor.CreatePlaceholder(extraClass, q1Slot, raceDay.Sessions); }
+catch (InvalidOperationException) { rejectedDuplicateSlot = true; }
+Equal(true, rejectedDuplicateSlot, "Cannot add the same class twice in the same round");
+var mainSlot = SavedRoundEditor.CreatePlaceholder(extraClass, new(SessionType.Race, 2), raceDay.Sessions);
+Equal((SessionType.Race, 2, 1, 0, 7, RaceFormat.Laps, 45),
+    (mainSlot.SessionType, mainSlot.MainLeg, mainSlot.Heat, mainSlot.RacerCount, mainSlot.MainCapacity, mainSlot.RaceFormat, mainSlot.TargetLaps),
+    "Reserved main respects the chosen leg and the class settings");
+
 if (args.Contains("--isolated-database"))
 {
     var db = new RaceControlDatabaseService();
@@ -517,6 +606,7 @@ if (args.Contains("--isolated-database"))
     var reopenedState = (await new RaceControlDatabaseService().LoadApplicationStateAsync())!;
     var reopenedEvent = reopenedState.Events.Single();
     var reopened = reopenedEvent.Sessions.Single(s => s.Id == pending.Id);
+    Equal(0, reopenedEvent.Sessions.Single(s => s.Id == reserved.Id).Entrants.Count, "SQLite reopen retains an empty reserved race");
     Equal(2, reopened.Entrants.Count, "SQLite reopen keeps added driver");
     Equal(lateDriver.Id, reopened.Entrants[0].DriverId, "SQLite reopen keeps lineup order");
     Equal("123456", reopened.Entrants[0].TransponderId, "SQLite reopen keeps transponder");
@@ -533,7 +623,7 @@ if (args.Contains("--isolated-database"))
     Equal(1, twice.Sessions.Single(s => s.Id == pending.Id).Entrants.Count, "Second edit survives second restart");
     Equal(firstDriver.Id, twice.Sessions.Single(s => s.Id == pending.Id).Entrants.Single().DriverId, "Correct remaining driver");
     Equal(2, twice.DriverAssignments.Count, "Race removal does not delete event registration");
-    Equal(4, twice.Sessions.Count, "Repeated edit does not duplicate heats");
+    Equal(5, twice.Sessions.Count, "Repeated edit keeps the reserve spot without duplicating heats");
 }
 var transferSource = new List<SessionEntrant> { new() { DriverId="one",TransponderId="123" } };
 var transferTarget = new List<SessionEntrant> { new() { DriverId="two",TransponderId="456" } };

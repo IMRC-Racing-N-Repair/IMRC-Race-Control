@@ -22,6 +22,7 @@
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
 
         <!-- Clean second-screen header: no app navigation / no controls. -->
@@ -327,6 +328,7 @@
         </ItemsControl>
         <TextBlock x:Name="PracticeEmptyText" Grid.Row="2" Text="Waiting for practice crossings" Visibility="Collapsed"
                    FontSize="24" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+        <controls:TrackRecordStrip x:Name="SpectatorTrackRecordStrip" Grid.Row="3"/>
     </Grid>
 <Border Grid.Row="1" Background="{DynamicResource DashboardPanelBrush}"><StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="8,3">
  <Button Content="−" Width="30" MinWidth="30" Padding="4" Click="PopoutZoomSliderOut_Click" ToolTip="Zoom out"/>

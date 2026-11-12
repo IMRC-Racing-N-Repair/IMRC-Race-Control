@@ -6,6 +6,8 @@ public sealed class AppSettings
     public RentalTransponderState RentalTransponders { get; set; } = new();
     public OnlinePublishingSettings OnlinePublishing { get; set; } = new();
     public TrackProfile Track { get; set; } = new();
+    public List<TrackProfile> ImportedTracks { get; set; } = [];
+    public Dictionary<string,string> LiveTimeImportLinks { get; set; } = [];
     public string DriverCrossingStyle { get; set; } = "Box";
     public string DriverCrossingColor { get; set; } = "#35C76F";
     public List<string>? SpectatorVisibleColumns { get; set; }
@@ -45,6 +47,7 @@ public sealed class AppSettings
     public string LastConnectionType { get; set; } = "USB / Serial (COM)";
     public string LastComPort { get; set; } = string.Empty;
     public int LastBaudRate { get; set; } = 115200;
+    public int? LastTrackmateBaudRate { get; set; }
     public string LastDataBits { get; set; } = "8";
     public string LastParity { get; set; } = "None";
     public string LastStopBits { get; set; } = "1";

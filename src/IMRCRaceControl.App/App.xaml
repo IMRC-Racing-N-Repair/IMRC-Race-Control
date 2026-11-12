@@ -210,6 +210,54 @@
             </Setter.Value></Setter>
         </Style>
 
+        <Style x:Key="ImportCategoryButtonStyle" TargetType="ToggleButton">
+            <Setter Property="Background" Value="{DynamicResource PanelAltBrush}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource BorderStrongBrush}"/>
+            <Setter Property="Foreground" Value="{DynamicResource TextBrush}"/>
+            <Setter Property="MinWidth" Value="140"/>
+            <Setter Property="Margin" Value="0,0,8,6"/>
+            <Setter Property="Padding" Value="18,9"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ToggleButton">
+                        <Border x:Name="Tile" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="1" CornerRadius="5" Padding="{TemplateBinding Padding}">
+                            <Grid>
+                                <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center">
+                                    <ContentPresenter.Resources>
+                                        <Style TargetType="TextBlock">
+                                            <Setter Property="Foreground" Value="{Binding Foreground, RelativeSource={RelativeSource AncestorType=ToggleButton}}"/>
+                                        </Style>
+                                    </ContentPresenter.Resources>
+                                </ContentPresenter>
+                                <Path x:Name="SelectedMark" Visibility="Collapsed" Data="M 0 4 L 3 7 L 9 0"
+                                      HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,1,-8,0"
+                                      StrokeThickness="1.6" Stroke="{TemplateBinding Foreground}"/>
+                            </Grid>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsChecked" Value="True">
+                                <Setter TargetName="Tile" Property="Background" Value="{DynamicResource AccentDarkBrush}"/>
+                                <Setter TargetName="Tile" Property="BorderBrush" Value="{DynamicResource AccentBrush}"/>
+                                <Setter TargetName="SelectedMark" Property="Visibility" Value="Visible"/>
+                                <Setter Property="Foreground" Value="#FFFFFF"/>
+                            </Trigger>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Tile" Property="BorderBrush" Value="{DynamicResource AccentBrush}"/>
+                                <Setter TargetName="Tile" Property="BorderThickness" Value="2"/>
+                                <Setter TargetName="Tile" Property="Padding" Value="17,8"/>
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter TargetName="Tile" Property="Opacity" Value="0.5"/>
+                                <Setter Property="Cursor" Value="Arrow"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
         <Style TargetType="ComboBox">
             <Setter Property="Background" Value="{DynamicResource InputBrush}"/>
             <Setter Property="Foreground" Value="{DynamicResource TextBrush}"/>
@@ -856,7 +904,8 @@
                                                                                FontWeight="Bold"
                                                                                TextTrimming="CharacterEllipsis"
                                                                                Foreground="{DynamicResource DashboardTextBrush}"/></Border>
-                                                                    <TextBlock Text="{Binding TransponderId, StringFormat='Transponder: {0}'}"
+                                                                    <TextBlock Text="{Binding TransponderDisplay}"
+                                                                               ToolTip="{Binding TransponderDisplay}"
                                                                                FontSize="10"
                                                                                Foreground="{DynamicResource MutedBrush}"
                                                                                TextTrimming="CharacterEllipsis"/>
