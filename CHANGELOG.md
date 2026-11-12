@@ -3,6 +3,7 @@
 Keep all release history in this file. Add each new version at the top; do not create version-specific changelog files.
 
 ## 0.16.30
+- Review existing LiveTime matches before importing. Merge, keep an intentional copy, or discard incoming records one at a time, with merge-all and discard-all options. Keep saved results and transponder assignments protected.
 - Show “No Event has started” in the Race tab until an event is selected.
 - Choose tracks when importing a multi-track LiveTime backup, then select drivers, classes, and race history from those venues. Track Info keeps each imported venue and its records separate.
 - Add Event class card zoom with a compact list at the smallest setting, support mouse-wheel scrolling over Track Records, and show progress while importing LiveTime data. Clarify Rating and SOF in the driver view and lineup reports.

@@ -21,7 +21,7 @@ profiles are not selected. Backups with no venue entries keep the full roster.
 
 Enable **Events & races** to import historical events, completed qualifying heats
 and mains, finishing results, and scored laps from schema 325. Expand **Choose
-events** to select individual events. Already imported events and races are not duplicated. Reimport the original
+events** to select individual events. Choose Merge for already imported events to avoid copying existing races. Reimport the original
 backup with **Events & races** enabled to fill in missing venue links.
 **Track Info → Track Records** lets you select an imported venue, even if you did
 not import its completed races. An imported
@@ -36,6 +36,20 @@ are retained. Review the imported settings before using them for a new race.
 
 Practice history, rental inventory, series, account data, and LiveTime-specific
 options such as audio, flags, bump-up and multi-main scoring are outside this import.
+
+## Review possible duplicates
+
+When a selected record matches saved Race Control data, **Review Matches & Import**
+opens a review window. **Merge** uses the saved record and adds supported missing
+information. **Keep Both** intentionally creates another record. **Discard
+Incoming** skips the incoming match and keeps the saved record. **Yes for All**
+merges the remaining matches with a single eligible target; ambiguous matches
+still require a choice. **No for All** discards the remaining matches. New,
+unmatched records still import. Canceling the review saves nothing.
+
+A completed event merge adds missing races and preserves existing results. A
+driver/class assignment stays unique; merging can add available personal
+transponder numbers without moving numbers from other drivers or rentals.
 
 ## Open original LiveTime backups
 

@@ -20,6 +20,7 @@
     <Compile Include="../../src/IMRCRaceControl.App/Services/LiveTimeRaceHistory.cs" Link="LiveTimeRaceHistory.cs" />
     <Compile Include="../../src/IMRCRaceControl.App/Services/LiveTimeVenues.cs" Link="LiveTimeVenues.cs" />
     <Compile Include="../../src/IMRCRaceControl.App/Services/LiveTimeRosterMerge.cs" Link="LiveTimeRosterMerge.cs" />
+    <Compile Include="../../src/IMRCRaceControl.App/Services/LiveTimeImportReview.cs" Link="LiveTimeImportReview.cs" />
     <Compile Include="../../src/IMRCRaceControl.App/Core/RaceAudioSchedule.cs" Link="RaceAudioSchedule.cs" />
     <Compile Include="../../src/IMRCRaceControl.App/Core/NextRacePreview.cs" Link="NextRacePreview.cs" />
     <Compile Include="../../src/IMRCRaceControl.App/Core/TrackmateProtocol.cs" Link="TrackmateProtocol.cs" />

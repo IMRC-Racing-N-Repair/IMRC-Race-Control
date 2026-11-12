@@ -7,6 +7,7 @@ public sealed class AppSettings
     public OnlinePublishingSettings OnlinePublishing { get; set; } = new();
     public TrackProfile Track { get; set; } = new();
     public List<TrackProfile> ImportedTracks { get; set; } = [];
+    public Dictionary<string,string> LiveTimeImportLinks { get; set; } = [];
     public string DriverCrossingStyle { get; set; } = "Box";
     public string DriverCrossingColor { get; set; } = "#35C76F";
     public List<string>? SpectatorVisibleColumns { get; set; }

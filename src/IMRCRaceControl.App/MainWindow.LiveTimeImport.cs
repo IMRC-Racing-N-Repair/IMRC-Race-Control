@@ -17,6 +17,8 @@ namespace IMRCRaceControl;
 
 public partial class MainWindow
 {
+    private sealed record LiveTimeReviewChoice(LiveTimeDecision Decision, bool ForAll);
+
     private void OpenLiveTimeImport(Window owner)
     {
         var dialog=new Window
@@ -41,7 +43,9 @@ public partial class MainWindow
         HashSet<long>? selectedDrivers = null, selectedClasses = null;
         List<TrackProfile> venuePlan = [];
         List<RaceDayEventDefinition> eventPlan = [];
-        List<(RaceDayEventDefinition Event, TrackProfile Track)> trackPlan = [];
+        List<LiveTimeEventUpdate> historyUpdates = [];
+        LiveTimeImportReview? importReview = null;
+        var reviewChoices = new Dictionary<string,LiveTimeDecision>(StringComparer.OrdinalIgnoreCase);
         LiveTimeRosterPlan? plan=null;
         var choices=new WrapPanel();
         var select=new Button {Content="CHOOSE LIVETIME DATABASE…"};
@@ -158,6 +162,9 @@ public partial class MainWindow
         content.Children.Add(progressOverlay);
 
         var busy=false;
+        bool HasImportChanges() => plan?.HasChanges == true || eventPlan.Count > 0 || historyUpdates.Count > 0 ||
+            venuePlan.Count > 0 || importReview?.Links.Count > 0;
+        bool HasPendingReview() => importReview?.Pending.Count > 0;
         void SetBusy(bool value, string stage = "")
         {
             stageText.Text = stage;
@@ -169,7 +176,8 @@ public partial class MainWindow
             chooseDrivers.IsEnabled = !value && scoped?.Roster.Drivers.Count > 0;
             chooseClasses.IsEnabled = !value && scoped?.Roster.Classes.Count > 0;
             eventSelector.IsEnabled = !value;
-            commit.IsEnabled=!value && (plan?.HasChanges==true || eventPlan.Count > 0 || trackPlan.Count > 0 || venuePlan.Count > 0);
+            commit.IsEnabled=!value && (HasImportChanges() || HasPendingReview());
+            commit.Content = HasPendingReview() ? "REVIEW MATCHES & IMPORT…" : "IMPORT SELECTED";
         }
         dialog.Closing+=(_,e)=>{if(busy)e.Cancel=true;else passwordBox.Clear();};
 
@@ -179,7 +187,7 @@ public partial class MainWindow
             return picker.ShowDialog(dialog)==true ? picker.FileName : null;
         }
 
-        async Task UpdatePreviewAsync()
+        async Task UpdatePreviewAsync(bool keepDecisions = false)
         {
             if (busy || scoped is not { } import) return;
             var rosterSelection = LiveTimeVenueSelection.FilterRoster(import.Roster, selectedDrivers, selectedClasses);
@@ -195,24 +203,26 @@ public partial class MainWindow
             var events = Events.ToList();
             var rentalNumbers = _settings.RentalTransponders.Inventory.Select(t => t.Number).ToList();
             var savedTrack = _settings.Track;
-            var knownTracks = _settings.ImportedTracks.ToList();
+            if (!keepDecisions) reviewChoices.Clear();
+            var knownTracks = _settings.ImportedTracks.Append(savedTrack).Concat(events.Select(e => e.Track).OfType<TrackProfile>()).ToList();
+            var review = new LiveTimeImportReview(reviewChoices.ToDictionary(), _settings.LiveTimeImportLinks.ToDictionary());
             var venues = selectedVenues.ToHashSet(StringComparer.OrdinalIgnoreCase);
             SetBusy(true, "Preparing the import preview…");
             try
             {
-                (plan, eventPlan, trackPlan, venuePlan) = await Task.Run(() =>
+                (plan, eventPlan, historyUpdates, venuePlan) = await Task.Run(() =>
                 {
-                    var roster = LiveTimeRosterMerge.Preview(rosterSelection, drivers, classes, assignments, rentalNumbers,
-                        selection, resolveForHistory: chosenIds.Count > 0);
-                    List<RaceDayEventDefinition> history = chosenIds.Count == 0 ? [] : LiveTimeHistoryMerge.Preview(
-                        import, chosenIds, events, roster, includeLaps: true, savedTrack: savedTrack);
-                    List<(RaceDayEventDefinition Event, TrackProfile Track)> links = chosenIds.Count == 0 ? [] :
-                        LiveTimeHistoryMerge.MissingTrackLinks(import, chosenIds, events, savedTrack);
-                    return (roster, history, links, LiveTimeHistoryMerge.NewTracks(import, venues, knownTracks, savedTrack));
+                    var roster = LiveTimeRosterMerge.PreviewReviewed(rosterSelection, drivers, classes, assignments, rentalNumbers,
+                        selection, resolveForHistory: chosenIds.Count > 0, review);
+                    var (newTracks, trackMap) = LiveTimeReviewedHistory.Tracks(import, venues, knownTracks, review);
+                    var history = LiveTimeReviewedHistory.Events(import, chosenIds, events, roster, trackMap, savedTrack, review);
+                    return (roster, history.Events, history.Updates, newTracks);
                 });
+                importReview = review;
                 if (includeHistory)
                     eventSelector.Header = $"Choose events ({chosen.Count:N0} selected • {chosen.Sum(e => e.RaceCount):N0} completed races)";
-                status.Text = plan.HasChanges || eventPlan.Count > 0 || trackPlan.Count > 0 || venuePlan.Count > 0 ? "Ready to import." :
+                status.Text = review.Pending.Count > 0 ? $"{review.Pending.Count:N0} possible matches to review before importing." :
+                    HasImportChanges() ? "Ready to import." :
                     selection == LiveTimeRosterSelection.None && !includeHistory ? "Select the categories to import." : "No new records to import with this selection.";
                 if (venuePlan.Count > 0)
                     status.Text += $" Add {venuePlan.Count:N0} tracks to Track Info.";
@@ -220,8 +230,8 @@ public partial class MainWindow
                     status.Text += $" Update settings on {plan.ClassUpdates.Count:N0} existing classes.";
                 if (includeHistory)
                     status.Text += $" Add {eventPlan.Count:N0} events, {eventPlan.Sum(e => e.Sessions.Count):N0} completed races and {eventPlan.Sum(e => e.Sessions.Sum(r => r.Laps.Count)):N0} scored laps.";
-                if (trackPlan.Count > 0)
-                    status.Text += $" Restore the saved venue on {trackPlan.Count:N0} previously imported events.";
+                if (historyUpdates.Count > 0)
+                    status.Text += $" Merge missing races or venue information into {historyUpdates.Count:N0} saved events.";
                 if (plan.SkippedMissingAssignments > 0)
                     status.Text += $" {plan.SkippedMissingAssignments:N0} assignments are missing a matching driver, class or existing assignment.";
                 if (plan.Issues.Count > 0)
@@ -231,7 +241,8 @@ public partial class MainWindow
             {
                 plan = null;
                 eventPlan = [];
-                trackPlan = [];
+                historyUpdates = [];
+                importReview = null;
                 venuePlan = [];
                 status.Text = "Could not prepare the preview: " + ex.Message;
             }
@@ -265,7 +276,8 @@ public partial class MainWindow
             scoped = null;
             plan = null;
             eventPlan = [];
-            trackPlan = [];
+            historyUpdates = [];
+            importReview = null;
             venuePlan = [];
             SetBusy(true, "Finding records for the selected tracks…");
             try
@@ -326,7 +338,7 @@ public partial class MainWindow
         async Task PreviewAsync(byte[]? password = null)
         {
             if(sourcePath is not { } path)return;
-            source=scoped=null;plan=null;eventPlan=[];trackPlan=[];venuePlan=[];
+            source=scoped=null;plan=null;eventPlan=[];historyUpdates=[];venuePlan=[];importReview=null;
             selectedVenues = new(StringComparer.OrdinalIgnoreCase);
             selectedDrivers = selectedClasses = null;
             SetBusy(true, password is null ? "Reading the backup…" : "Unlocking and reading the backup…");
@@ -425,11 +437,44 @@ public partial class MainWindow
         reference.Click+=async (_,_)=>{if(Pick("Select an older backup from the same LiveTime installation") is { } path){referencePath=path;await PreviewAsync();}};
         commit.Click+=async (_,_) =>
         {
-            if (busy || plan is not { } additions ||
-                (!additions.HasChanges && eventPlan.Count == 0 && trackPlan.Count == 0 && venuePlan.Count == 0) || !ApplicationUpdateAllowed) return;
+            if (busy || plan is null || !ApplicationUpdateAllowed) return;
+            LiveTimeConflictAction? bulk = null;
+            if (HasPendingReview())
+            {
+                while (importReview is { Pending.Count: > 0 } pending)
+                {
+                    var batch = pending.Pending.ToList();
+                    for (int i = 0; i < batch.Count; i++)
+                    {
+                        var match = batch[i];
+                        var eligible = match.Matches.Where(m => m.CanMerge).ToList();
+                        if (bulk == LiveTimeConflictAction.Discard)
+                            reviewChoices[match.Key] = new(LiveTimeConflictAction.Discard);
+                        else if (bulk == LiveTimeConflictAction.Merge && eligible.Count == 1)
+                            reviewChoices[match.Key] = new(LiveTimeConflictAction.Merge,eligible[0].Id);
+                        else
+                        {
+                            var answer = ReviewLiveTimeConflict(dialog,match,i + 1,batch.Count);
+                            if (answer is null)
+                            {
+                                await UpdatePreviewAsync();
+                                status.Text = "Review canceled. No records were imported.";
+                                return;
+                            }
+                            reviewChoices[match.Key] = answer.Decision;
+                            if (answer.ForAll) bulk = answer.Decision.Action;
+                        }
+                    }
+                    await UpdatePreviewAsync(keepDecisions:true);
+                }
+            }
+            if (plan is not { } additions || !HasImportChanges() || !ApplicationUpdateAllowed) return;
             var importedEvents = eventPlan;
-            var restoredTracks = trackPlan;
+            var mergedEvents = historyUpdates;
             var newVenues = venuePlan;
+            var oldLinks = _settings.LiveTimeImportLinks;
+            var updatedDrivers = new List<LiveTimeDriverUpdate>();
+            var updatedEvents = new List<(LiveTimeEventUpdate Update, TrackProfile? OldTrack, List<string> OldClasses)>();
             SetBusy(true, "Saving the current race data…");
             var applied=false;
             var updated = new List<(DriverClassAssignment Assignment, string PreviousTags)>();
@@ -443,15 +488,31 @@ public partial class MainWindow
                 applied=true;
                 _settings.ImportedTracks.AddRange(newVenues);
                 foreach(var driver in additions.Drivers)Drivers.Add(driver);
+                foreach (var change in additions.DriverUpdates)
+                {
+                    updatedDrivers.Add(LiveTimeDriverUpdate.Snapshot(change.Driver));
+                    change.Apply();
+                }
                 foreach(var cls in additions.Classes)Classes.Add(cls);
                 foreach (var change in additions.ClassUpdates) change.After.ApplyTo(change.Class);
                 foreach (var item in importedEvents) Events.Add(item);
-                foreach (var link in restoredTracks) link.Event.Track = link.Track;
+                foreach (var change in mergedEvents)
+                {
+                    var ev = change.Event;
+                    updatedEvents.Add((change,ev.Track,ev.ClassIds.ToList()));
+                    ev.Track = change.Track;
+                    ev.Sessions.AddRange(change.Sessions);
+                    foreach (var cls in change.Sessions.Select(r => r.ClassId).Distinct())
+                        if (!ev.ClassIds.Contains(cls)) ev.ClassIds.Add(cls);
+                }
+                _settings.LiveTimeImportLinks = new(oldLinks,StringComparer.OrdinalIgnoreCase);
+                if (importReview is { } approvedReview)
+                    foreach (var (key,id) in approvedReview.Links) _settings.LiveTimeImportLinks[key] = id;
                 foreach(var assignment in additions.Assignments)_driverAssignments.Add(assignment);
                 foreach (var fill in additions.TagFills)
                 {
                     var assignment = _driverAssignments.FirstOrDefault(a => a.Id == fill.AssignmentId);
-                    if (assignment is null || !string.IsNullOrWhiteSpace(assignment.TransponderId))
+                    if (assignment is null)
                         throw new InvalidOperationException("An assignment changed after the preview. Reopen the import to preview it again.");
                     updated.Add((assignment, assignment.TransponderId));
                     assignment.TransponderId = fill.Transponders;
@@ -464,11 +525,18 @@ public partial class MainWindow
                 if(applied)
                 {
                     foreach (var venue in newVenues) _settings.ImportedTracks.Remove(venue);
+                    foreach (var change in updatedDrivers) change.Apply();
                     foreach(var driver in additions.Drivers)Drivers.Remove(driver);
                     foreach(var cls in additions.Classes)Classes.Remove(cls);
                     foreach (var change in additions.ClassUpdates) change.Before.ApplyTo(change.Class);
                     foreach (var item in importedEvents) Events.Remove(item);
-                    foreach (var link in restoredTracks) link.Event.Track = null;
+                    foreach (var (change,oldTrack,oldClasses) in updatedEvents)
+                    {
+                        change.Event.Track = oldTrack;
+                        change.Event.ClassIds = oldClasses;
+                        foreach (var race in change.Sessions) change.Event.Sessions.Remove(race);
+                    }
+                    _settings.LiveTimeImportLinks = oldLinks;
                     _settings.Events = Events.ToList();
                     foreach(var assignment in additions.Assignments)_driverAssignments.Remove(assignment);
                     foreach (var (assignment, previous) in updated) assignment.TransponderId = previous;
@@ -483,6 +551,7 @@ public partial class MainWindow
             {
                 stageText.Text = "Refreshing the race and track views…";
                 await System.Windows.Threading.Dispatcher.Yield(DispatcherPriority.Background);
+                DriverGrid.Items.Refresh();
                 ClassGrid.Items.Refresh();
                 UpdateClassDetail(_editingClass);
                 RefreshAssignmentRows();
@@ -491,10 +560,57 @@ public partial class MainWindow
             }
             finally { SetBusy(false); }
             await UpdatePreviewAsync();
-            status.Text=$"Imported {additions.Drivers.Count} drivers, {additions.Classes.Count} classes and {additions.Assignments.Count} assignments. Filled transponders on {additions.TagFills.Count} existing assignments. Updated {additions.ClassUpdates.Count} existing class settings. Added {importedEvents.Count} events and {importedEvents.Sum(e => e.Sessions.Count)} completed races. Added {newVenues.Count} tracks. Restored tracks on {restoredTracks.Count} existing events.";
+            status.Text=$"Imported {additions.Drivers.Count} drivers, {additions.Classes.Count} classes and {additions.Assignments.Count} assignments. Updated transponders on {additions.TagFills.Count} existing assignments. Updated {additions.ClassUpdates.Count} existing class settings. Added {importedEvents.Count} events and {importedEvents.Sum(e => e.Sessions.Count)} completed races. Added {newVenues.Count} tracks. Merged {mergedEvents.Count} saved events and added {mergedEvents.Sum(e => e.Sessions.Count)} missing races.";
             FooterStatusText.Text="Selected LiveTime data imported.";
         };
         dialog.ShowDialog();
+    }
+
+    private static LiveTimeReviewChoice? ReviewLiveTimeConflict(Window owner, LiveTimeConflict conflict, int number, int count)
+    {
+        var dialog = new Window { Owner=owner, Title="Review LiveTime Match", SizeToContent=SizeToContent.Height,
+            MaxHeight=SystemParameters.WorkArea.Height * .88, Width=Math.Min(640, SystemParameters.WorkArea.Width * .92),
+            WindowStartupLocation=WindowStartupLocation.CenterOwner };
+        var panel = new StackPanel { Margin=new Thickness(18) };
+        dialog.Content = new ScrollViewer { Content=panel, VerticalScrollBarVisibility=ScrollBarVisibility.Auto };
+        panel.Children.Add(new TextBlock { Text=$"REVIEW LIVETIME MATCH  {number:N0} / {count:N0}", FontSize=20, FontWeight=FontWeights.Bold });
+        panel.Children.Add(new TextBlock { Text=$"Incoming {conflict.Kind.ToLowerInvariant()}: {conflict.Incoming}",
+            FontSize=15, TextWrapping=TextWrapping.Wrap, Margin=new Thickness(0,8,0,6) });
+        panel.Children.Add(new TextBlock { Text=conflict.Detail, TextWrapping=TextWrapping.Wrap });
+        panel.Children.Add(new TextBlock { Text="Saved record", Margin=new Thickness(0,10,0,3) });
+        var target = new ComboBox { ItemsSource=conflict.Matches, DisplayMemberPath=nameof(LiveTimeMatch.Label) };
+        if (conflict.Matches.Count == 1) target.SelectedIndex=0;
+        panel.Children.Add(target);
+        panel.Children.Add(new TextBlock { Text="Discard incoming leaves saved records in place. No changes are saved until review is complete.",
+            TextWrapping=TextWrapping.Wrap, Margin=new Thickness(0,8,0,8) });
+        LiveTimeReviewChoice? answer = null;
+        var actions = new WrapPanel();
+        var batch = new WrapPanel();
+        panel.Children.Add(actions);
+        panel.Children.Add(batch);
+        Button AddButton(WrapPanel row,string text,Action click)
+        {
+            var button = new Button { Content=text };
+            button.Click += (_,_) => click();
+            row.Children.Add(button);
+            return button;
+        }
+        void Choose(LiveTimeConflictAction action,bool all=false)
+        {
+            answer=new(new(action,action == LiveTimeConflictAction.Merge ? (target.SelectedItem as LiveTimeMatch)?.Id : null),all);
+            dialog.DialogResult=true;
+        }
+        var merge = AddButton(actions,"MERGE",() => Choose(LiveTimeConflictAction.Merge));
+        var copy = AddButton(actions,"KEEP BOTH",() => Choose(LiveTimeConflictAction.Copy));
+        copy.IsEnabled = conflict.CanCopy;
+        AddButton(actions,"DISCARD INCOMING",() => Choose(LiveTimeConflictAction.Discard));
+        var yesAll = AddButton(batch,"YES FOR ALL (MERGE)",() => Choose(LiveTimeConflictAction.Merge,true));
+        AddButton(batch,"NO FOR ALL (DISCARD)",() => Choose(LiveTimeConflictAction.Discard,true));
+        batch.Children.Add(new Button { Content="CANCEL IMPORT", IsCancel=true });
+        void Refresh() => merge.IsEnabled = yesAll.IsEnabled = target.SelectedItem is LiveTimeMatch { CanMerge:true };
+        target.SelectionChanged += (_,_) => Refresh();
+        Refresh();
+        return dialog.ShowDialog()==true ? answer : null;
     }
 
     private sealed record LiveTimePickerRow<T>(T Id, string Label);

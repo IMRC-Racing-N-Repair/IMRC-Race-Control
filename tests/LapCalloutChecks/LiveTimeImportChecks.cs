@@ -278,6 +278,73 @@ internal static class LiveTimeImportChecks
             var selectedShared = LiveTimeVenueSelection.Scope(shared, new HashSet<string> { homeVenue.Id });
             Check(LiveTimeRosterMerge.Preview(selectedShared.Roster, [], [], []).Assignments.Single().TransponderId == "2345678",
                 "a shared tag stays excluded when its other driver races at an unselected venue");
+            var reviewDriver = new DriverProfile { FirstName="Casey", LastName="Lane", Nickname="Saved nickname" };
+            var reviewClass = new ClassDefinition { Name="Stock" };
+            var reviewAssignment = new DriverClassAssignment { DriverId=reviewDriver.Id, ClassId=reviewClass.Id, TransponderId="1234567" };
+            var reviewRoster = decoded with { Drivers = decoded.Drivers.Where(d=>d.LocalId==1).ToList(),
+                Entries = decoded.Entries.Where(e=>e.DriverId==1).ToList() };
+            var reviewChoices = new Dictionary<string,LiveTimeDecision>();
+            var savedLinks = new Dictionary<string,string>();
+            var unresolved = new LiveTimeImportReview(reviewChoices,savedLinks);
+            var unattended = LiveTimeRosterMerge.PreviewReviewed(reviewRoster,[reviewDriver],[reviewClass],[reviewAssignment],
+                null,LiveTimeRosterSelection.All,false,unresolved);
+            Check(unresolved.Pending.Select(m=>m.Kind).ToHashSet().SetEquals(["Driver","Class","Class assignment"]) &&
+                !unattended.HasChanges, "review detects matches without writing or automatically duplicating them");
+            foreach (var conflict in unresolved.Pending)
+                reviewChoices[conflict.Key] = new(LiveTimeConflictAction.Merge,conflict.Matches.Single().Id);
+            var accepted = new LiveTimeImportReview(reviewChoices,savedLinks);
+            var mergedRoster = LiveTimeRosterMerge.PreviewReviewed(reviewRoster,[reviewDriver],[reviewClass],[reviewAssignment],
+                null,LiveTimeRosterSelection.All,false,accepted);
+            Check(accepted.Pending.Count==0 && mergedRoster.Drivers.Count==0 && mergedRoster.Classes.Count==0 &&
+                mergedRoster.DriverUpdates.Single().Nickname=="Saved nickname" &&
+                mergedRoster.DriverUpdates.Single().PhoneticName=="Kay-see" &&
+                mergedRoster.TagFills.Single().Transponders=="1234567;2345678" &&
+                reviewAssignment.TransponderId=="1234567", "approved merge retains saved fields and proposes only missing data");
+            var originalDriverKey = unresolved.Pending.Single(x=>x.Kind=="Driver").Key;
+            reviewChoices[originalDriverKey] = new(LiveTimeConflictAction.Copy);
+            var copyReview = new LiveTimeImportReview(reviewChoices,savedLinks);
+            var copiedRoster = LiveTimeRosterMerge.PreviewReviewed(reviewRoster,[reviewDriver],[reviewClass],[reviewAssignment],
+                null,LiveTimeRosterSelection.All,false,copyReview);
+            Check(copiedRoster.Drivers.Single().Id != reviewDriver.Id &&
+                copiedRoster.Assignments.Single().TransponderId=="2345678", "explicit copy never takes another driver's saved transponder");
+            var renamed = reviewRoster with { Drivers = [reviewRoster.Drivers.Single() with { FirstName="Renamed" }], Entries=[] };
+            var linked = new LiveTimeImportReview(new Dictionary<string,LiveTimeDecision>(),accepted.Links);
+            LiveTimeRosterMerge.PreviewReviewed(renamed,[reviewDriver],[reviewClass],[],null,LiveTimeRosterSelection.Drivers,false,linked);
+            Check(linked.Pending.Single().Matches.Single().Id==reviewDriver.Id, "saved source link recognizes a renamed driver on later imports");
+
+            var savedEvent = new RaceDayEventDefinition { Id="local-event", Name=sourceEvent.Name, EventDate=raceAt.Date, Status=EventStatus.Completed };
+            var earlier = LiveTimeHistoryMerge.Preview(archive,[sourceEvent.SourceId],[],clean,true).Single().Sessions.Single();
+            savedEvent.Sessions.Add(earlier);
+            var sourceRace = sourceEvent.Races.Single();
+            var nextRace = sourceRace with { SourceId=Guid.NewGuid(), Heat=2, MainLetter="B" };
+            var extended = archive with { History = [sourceEvent with { Races=[sourceRace,nextRace] }] };
+            var eventKey = LiveTimeHistoryMerge.EventId(sourceEvent.SourceId);
+            var eventChoices = new Dictionary<string,LiveTimeDecision>();
+            var eventReview = new LiveTimeImportReview(eventChoices,savedLinks);
+            var rejectedEvent = LiveTimeReviewedHistory.Events(extended,[sourceEvent.SourceId],[savedEvent],clean,
+                new Dictionary<string,TrackProfile?>(),savedTrack,eventReview);
+            Check(rejectedEvent.Events.Count==0 && rejectedEvent.Updates.Count==0 && eventReview.Pending.Single().Kind=="Event",
+                "a matching event requires a decision even with a different local event ID");
+            eventChoices[eventKey]=new(LiveTimeConflictAction.Merge,savedEvent.Id);
+            var eventMerge = LiveTimeReviewedHistory.Events(extended,[sourceEvent.SourceId],[savedEvent],clean,
+                new Dictionary<string,TrackProfile?>(),savedTrack,new(eventChoices,savedLinks));
+            Check(eventMerge.Events.Count==0 && eventMerge.Updates.Single().Sessions.Count==1 &&
+                eventMerge.Updates.Single().Sessions[0].Id != earlier.Id && savedEvent.Sessions.Count==1,
+                "event merge adds the missing race and leaves the previously saved race intact");
+            eventChoices[eventKey]=new(LiveTimeConflictAction.Copy);
+            var eventCopy=LiveTimeReviewedHistory.Events(extended,[sourceEvent.SourceId],[savedEvent],clean,
+                new Dictionary<string,TrackProfile?>(),savedTrack,new(eventChoices,savedLinks));
+            Check(eventCopy.Events.Single().Id != savedEvent.Id && eventCopy.Events[0].Sessions.Count==2 &&
+                eventCopy.Events[0].Sessions.All(r=>r.Id != earlier.Id), "explicit event copy has separate race identities");
+            eventChoices[eventKey]=new(LiveTimeConflictAction.Discard);
+            var eventDiscard=LiveTimeReviewedHistory.Events(extended,[sourceEvent.SourceId],[savedEvent],clean,
+                new Dictionary<string,TrackProfile?>(),savedTrack,new(eventChoices,savedLinks));
+            Check(eventDiscard.Events.Count==0 && eventDiscard.Updates.Count==0 && savedEvent.Sessions.Count==1,
+                "discard drops only incoming event data");
+            var trackReview = new LiveTimeImportReview(new Dictionary<string,LiveTimeDecision>(),savedLinks);
+            var tracksReviewed=LiveTimeReviewedHistory.Tracks(allVenues,new HashSet<string>{homeVenue.Id},[savedTrack],trackReview);
+            Check(trackReview.Pending.Single().Kind=="Track" && tracksReviewed.NewTracks.Count==0 &&
+                tracksReviewed.TrackMap[homeVenue.Id]?.Id==savedTrack.Id, "a matching venue is not duplicated by default");
             return checks;
         }
         finally {Directory.Delete(folder,true);}

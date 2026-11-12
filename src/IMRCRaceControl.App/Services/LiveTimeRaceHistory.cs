@@ -115,7 +115,7 @@ public static class LiveTimeHistoryMerge
 
     public static List<RaceDayEventDefinition> Preview(LiveTimeImportSource source, IEnumerable<Guid> chosen,
         IReadOnlyCollection<RaceDayEventDefinition> existing, LiveTimeRosterPlan roster, bool includeLaps,
-        TrackProfile? savedTrack = null)
+        TrackProfile? savedTrack = null, IReadOnlyDictionary<string,TrackProfile?>? trackMap = null)
     {
         var selection = chosen.ToHashSet();
         var eventIds = existing.Select(e => e.Id).ToHashSet(StringComparer.OrdinalIgnoreCase);
@@ -128,7 +128,8 @@ public static class LiveTimeHistoryMerge
             var ev = new RaceDayEventDefinition
             {
                 Id=EventId(history.SourceId), Name=string.IsNullOrWhiteSpace(history.Name) ? "LiveTime event" : history.Name,
-                EventDate=history.Date.Date, CreatedAt=history.Date, Track=ResolveTrack(source, history.Track, savedTrack),
+                EventDate=history.Date.Date, CreatedAt=history.Date, Track=history.Track is not null && trackMap is not null && trackMap.TryGetValue(history.Track.Id,out var mappedTrack)
+                    ? mappedTrack?.Snapshot() : ResolveTrack(source, history.Track, savedTrack),
                 CompletedAt=history.End ?? history.Races.Select(r => r.Finished).DefaultIfEmpty().Max(), Status=EventStatus.Completed
             };
             var sessionIds = new HashSet<Guid>();

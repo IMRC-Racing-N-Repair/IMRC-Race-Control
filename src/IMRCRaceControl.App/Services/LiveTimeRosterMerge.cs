@@ -80,13 +80,14 @@ public sealed class LiveTimeRosterPlan
     internal Dictionary<long,string> DriverIds { get; } = [];
     internal Dictionary<long,string> ClassIds { get; } = [];
     public List<LiveTimeTagFill> TagFills { get; } = [];
+    internal List<LiveTimeDriverUpdate> DriverUpdates { get; } = [];
     internal List<LiveTimeClassUpdate> ClassUpdates { get; } = [];
     public List<string> Issues { get; } = [];
     public int MatchedDrivers { get; internal set; }
     public int MatchedClasses { get; internal set; }
     public int MatchedAssignments { get; internal set; }
     public int SkippedMissingAssignments { get; internal set; }
-    public bool HasChanges => Drivers.Count + Classes.Count + Assignments.Count + TagFills.Count + ClassUpdates.Count > 0;
+    public bool HasChanges => Drivers.Count + Classes.Count + Assignments.Count + TagFills.Count + ClassUpdates.Count + DriverUpdates.Count > 0;
 }
 
 public static class LiveTimeRosterMerge
@@ -105,6 +106,11 @@ public static class LiveTimeRosterMerge
     public static LiveTimeRosterPlan Preview(LiveTimeRoster source, IReadOnlyList<DriverProfile> drivers,
         IReadOnlyList<ClassDefinition> classes, IReadOnlyList<DriverClassAssignment> assignments,
         IEnumerable<string>? rentalNumbers = null, LiveTimeRosterSelection selection = LiveTimeRosterSelection.All, bool resolveForHistory = false)
+        => PreviewReviewed(source, drivers, classes, assignments, rentalNumbers, selection, resolveForHistory, null);
+
+    internal static LiveTimeRosterPlan PreviewReviewed(LiveTimeRoster source, IReadOnlyList<DriverProfile> drivers,
+        IReadOnlyList<ClassDefinition> classes, IReadOnlyList<DriverClassAssignment> assignments,
+        IEnumerable<string>? rentalNumbers, LiveTimeRosterSelection selection, bool resolveForHistory, LiveTimeImportReview? review)
     {
         var plan = new LiveTimeRosterPlan();
         if (selection == LiveTimeRosterSelection.None && !resolveForHistory) return plan;
@@ -133,12 +139,42 @@ public static class LiveTimeRosterMerge
             var id = "livetime-class-"+item.SourceId.ToString("N");
             var direct = classes.FirstOrDefault(c=>IgnoreCase.Equals(c.Id,id));
             var named = classNames[name].ToList();
-            if (direct is null && (named.Count>1 || sourceClassNames[name].Count()>1))
+            if (review is null && direct is null && (named.Count>1 || sourceClassNames[name].Count()>1))
             { plan.Issues.Add($"Skipped ambiguous class: {name}."); continue; }
-            var match = direct ?? named.SingleOrDefault();
+            ClassDefinition? match;
+            bool discard = false, copy = false;
+            if (review is null)
+                match = direct ?? named.SingleOrDefault();
+            else
+            {
+                var pool = classes.Concat(plan.Classes).ToList();
+                direct = pool.FirstOrDefault(c => IgnoreCase.Equals(c.Id, review.LinkedId(id)));
+                var candidates = direct is not null ? [direct] : pool.Where(c => IgnoreCase.Equals(
+                    LiveTimeImportReview.NameKey(c.Name), LiveTimeImportReview.NameKey(name))).ToList();
+                match = candidates.Count == 1 ? candidates[0] : null;
+                if (candidates.Count > 0 && (includeClasses || includeSettings))
+                {
+                    var decision = review.Resolve(id, "Class", name, "Merge keeps the existing class and applies LiveTime settings only if Class settings is selected.",
+                        candidates.Select(c => new LiveTimeMatch(c.Id,c.Name)).ToList(), includeClasses);
+                    discard = decision.Action == LiveTimeConflictAction.Discard;
+                    copy = decision.Action == LiveTimeConflictAction.Copy;
+                    if (decision.Action == LiveTimeConflictAction.Merge)
+                    {
+                        match = candidates.Single(c => c.Id == decision.TargetId);
+                        review.Remember(id,match.Id);
+                    }
+                    if (copy)
+                    {
+                        match = null;
+                        id = LiveTimeImportReview.CopyId(id,pool.Select(c => c.Id));
+                        name = LiveTimeImportReview.CopyName(name,pool.Select(c => c.Name));
+                    }
+                }
+                else if (candidates.Count > 0) discard = true;
+            }
             if (match is null)
             {
-                if (!includeClasses) continue;
+                if (!includeClasses || discard) continue;
                 match = new ClassDefinition {Id=id,Name=name,PrintColor=PrintColor(item.Color)};
                 if(item.MinimumLapSeconds is >=0 and <=3600)
                     match.MinimumLapSeconds=item.MinimumLapSeconds.Value;
@@ -149,12 +185,13 @@ public static class LiveTimeRosterMerge
             else
             {
                 plan.MatchedClasses++;
-                if (includeSettings)
+                if (includeSettings && !discard)
                 {
-                    var before = LiveTimeClassValues.Capture(match);
-                    var after = before.WithSource(item);
-                    if (after != before)
-                        plan.ClassUpdates.Add(new(match, before, after));
+                    var prior = plan.ClassUpdates.FirstOrDefault(c => c.Class == match);
+                    var before = prior?.Before ?? LiveTimeClassValues.Capture(match);
+                    var after = (prior?.After ?? before).WithSource(item);
+                    if (prior is not null) plan.ClassUpdates.Remove(prior);
+                    if (after != before) plan.ClassUpdates.Add(new(match, before, after));
                 }
             }
             classMap.Add(item.LocalId,match);
@@ -169,18 +206,52 @@ public static class LiveTimeRosterMerge
             var id="livetime-driver-"+item.SourceId.ToString("N");
             var match=drivers.FirstOrDefault(d=>IgnoreCase.Equals(d.Id,id));
             var named=driverNames[name].ToList();
-            if (match is null && named.Count>0)
+            var tags=sourceTags[item.LocalId].SelectMany(t=>Tags(t.Transponders))
+                .Where(t=>!rentals.Contains(t) && !source.SharedTransponderNumbers.Contains(t)).ToHashSet(IgnoreCase);
+            bool discard = false;
+            if (review is null && match is null && named.Count>0)
             {
-                var tags=sourceTags[item.LocalId].SelectMany(t=>Tags(t.Transponders))
-                    .Where(t=>!rentals.Contains(t)).ToHashSet(IgnoreCase);
                 var confirmed=named.Where(d=>driverTags[d.Id].SelectMany(a=>Tags(a.TransponderId)).Any(tags.Contains)).ToList();
                 if(confirmed.Count!=1 || sourceDriverNames[name].Count()!=1)
                 { plan.Issues.Add($"Skipped {name}: same name already exists and no unique transponder match."); continue; }
                 match=confirmed[0];
             }
+            else if (review is not null)
+            {
+                var pool = drivers.Concat(plan.Drivers).ToList();
+                var direct = pool.FirstOrDefault(d=>IgnoreCase.Equals(d.Id,review.LinkedId(id)));
+                var candidates = direct is not null ? [direct] : pool.Where(d => IgnoreCase.Equals(
+                    LiveTimeImportReview.NameKey(d.FullName),LiveTimeImportReview.NameKey(name)) ||
+                    driverTags[d.Id].SelectMany(a=>Tags(a.TransponderId)).Any(tags.Contains)).ToList();
+                match = candidates.Count == 1 ? candidates[0] : null;
+                if (candidates.Count > 0 && includeDrivers)
+                {
+                    var decision = review.Resolve(id, "Driver", name, "Matched by source identity, name, or personal transponder. Merge fills blank nickname and pronunciation fields.",
+                        candidates.Select(d => new LiveTimeMatch(d.Id,d.FullName +
+                            (string.IsNullOrWhiteSpace(d.Nickname) ? "" : $" • {d.Nickname}") + $" • ID {d.Id[^Math.Min(d.Id.Length,8)..]}")).ToList(), true);
+                    discard = decision.Action == LiveTimeConflictAction.Discard;
+                    if (decision.Action == LiveTimeConflictAction.Merge)
+                    {
+                        match = candidates.Single(d => d.Id == decision.TargetId);
+                        review.Remember(id,match.Id);
+                        var prior = plan.DriverUpdates.FirstOrDefault(d => d.Driver == match);
+                        var saved = prior ?? LiveTimeDriverUpdate.Snapshot(match);
+                        var merged = saved with { Nickname = string.IsNullOrWhiteSpace(saved.Nickname) ? item.Nickname : saved.Nickname,
+                            PhoneticName = string.IsNullOrWhiteSpace(saved.PhoneticName) ? item.PhoneticName : saved.PhoneticName };
+                        if (prior is not null) plan.DriverUpdates.Remove(prior);
+                        if (merged != LiveTimeDriverUpdate.Snapshot(match)) plan.DriverUpdates.Add(merged);
+                    }
+                    else if (decision.Action == LiveTimeConflictAction.Copy)
+                    {
+                        match = null;
+                        id = LiveTimeImportReview.CopyId(id,pool.Select(d => d.Id));
+                    }
+                }
+                else if (candidates.Count > 0) discard = true;
+            }
             if (match is null)
             {
-                if (!includeDrivers) continue;
+                if (!includeDrivers || discard) continue;
                 match=new DriverProfile {Id=id,FirstName=item.FirstName,LastName=item.LastName,Nickname=item.Nickname,PhoneticName=item.PhoneticName};
                 match.SyncLegacyName();
                 plan.Drivers.Add(match);
@@ -222,9 +293,17 @@ public static class LiveTimeRosterMerge
                 continue;
             }
 
-            if (current is not null)
+            var existingTags = current is null ? new HashSet<string>(IgnoreCase) : Tags(current.TransponderId).ToHashSet(IgnoreCase);
+            if (current is not null && review is not null)
             {
-                var existingTags = Tags(current.TransponderId).ToHashSet(IgnoreCase);
+                if (tags.All(existingTags.Contains)) { plan.MatchedAssignments++; continue; }
+                var choice = review.Resolve($"assignment-{entry.DriverId}-{entry.ClassId}", "Class assignment", $"{driver.FullName} • {cls.Name}",
+                    $"Saved transponders: {(string.IsNullOrWhiteSpace(current.TransponderId) ? "none" : current.TransponderId)}. Incoming: {string.Join("; ",tags)}. Merge adds only available numbers. Each driver can have one assignment per class.",
+                    [new(current.Id,$"{driver.FullName} • {cls.Name}")],false);
+                if (choice.Action != LiveTimeConflictAction.Merge) continue;
+            }
+            else if (current is not null)
+            {
                 if (tags.All(existingTags.Contains))
                 {
                     plan.MatchedAssignments++;
@@ -240,6 +319,7 @@ public static class LiveTimeRosterMerge
             var usable=new List<string>();
             foreach(var tag in tags)
             {
+                if (existingTags.Contains(tag)) continue;
                 if(rentals.Contains(tag) || source.SharedTransponderNumbers.Contains(tag) || sourceTagOwners[tag].Distinct().Skip(1).Any() ||
                     tagOwners.TryGetValue(tag,out var owners) && owners.Any(owner=>!IgnoreCase.Equals(owner,driver.Id)))
                 { plan.Issues.Add($"Skipped shared or rental transponder {tag} for {driver.FullName} in {cls.Name}."); continue; }
@@ -249,8 +329,11 @@ public static class LiveTimeRosterMerge
             if (current is not null)
             {
                 if (usable.Count == 0) continue;
-                plan.TagFills.Add(new(current.Id, transponders));
-                RegisterTags(new DriverClassAssignment { DriverId = driver.Id, TransponderId = transponders });
+                var previous = plan.TagFills.FirstOrDefault(x => x.AssignmentId == current.Id);
+                var combined = string.Join(";", Tags(previous?.Transponders ?? current.TransponderId).Concat(usable).Distinct(IgnoreCase));
+                if (previous is not null) plan.TagFills.Remove(previous);
+                plan.TagFills.Add(new(current.Id, combined));
+                RegisterTags(new DriverClassAssignment { DriverId = driver.Id, TransponderId = combined });
                 continue;
             }
             var addition = new DriverClassAssignment {DriverId=driver.Id,ClassId=cls.Id,TransponderId=transponders};
