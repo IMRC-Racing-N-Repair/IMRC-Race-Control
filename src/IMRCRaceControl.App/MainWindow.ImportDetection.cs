@@ -42,7 +42,7 @@ public partial class MainWindow
             return;
         }
         if (inspection.Format == RaceImportFormat.RcScoringPro &&
-            path.EndsWith(".zip", StringComparison.OrdinalIgnoreCase))
+            (Directory.Exists(path) || path.EndsWith(".zip", StringComparison.OrdinalIgnoreCase)))
         {
             OpenLiveTimeImport(owner, path, rcsp: true);
             return;
