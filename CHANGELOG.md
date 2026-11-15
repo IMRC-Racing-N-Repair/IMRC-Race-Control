@@ -2,6 +2,11 @@
 
 Keep all release history in this file. Add each new version at the top; do not create version-specific changelog files.
 
+## 0.17.0
+- Prepare the next minor release from the complete 0.16.30 development source, preserving current LiveTime importing, race management, scoring, and installer functionality.
+- Update the application package version and visible dashboard version to 0.17.0.
+- Keep the existing published v0.16.30 release unchanged. This is a release preparation, pending validation and draft installer packaging.
+
 ## 0.16.30
 - Review existing LiveTime matches before importing. Merge, keep an intentional copy, or discard incoming records one at a time, with merge-all and discard-all options. Keep saved results and transponder assignments protected.
 - Show “No Event has started” in the Race tab until an event is selected.
