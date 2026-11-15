@@ -41,6 +41,12 @@ public partial class MainWindow
             OpenLiveTimeImport(owner, path);
             return;
         }
+        if (inspection.Format == RaceImportFormat.RcScoringPro &&
+            path.EndsWith(".zip", StringComparison.OrdinalIgnoreCase))
+        {
+            OpenLiveTimeImport(owner, path, rcsp: true);
+            return;
+        }
 
         // An RCSP table inventory is not proof that records and race history
         // can be converted. Do not silently import approximate/incomplete data.
