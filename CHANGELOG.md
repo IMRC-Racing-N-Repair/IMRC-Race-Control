@@ -2,6 +2,13 @@
 
 Keep all release history in this file. Add each new version at the top; do not create version-specific changelog files.
 
+## 0.17.1
+- Begin RC Scoring Pro (Advantage ADT) import support with automatic inspection of native Race Control SQLite, LiveTime SQLite, and RC Scoring Pro backups.
+- Add read-only validation of RCSP ADT record layouts, counts, active/deleted rows, and column metadata, including ZIP backup support.
+- Route recognized plain LiveTime databases directly to the existing selective import workflow.
+- Protect existing data: RCSP record conversion and cross-table race/lap association remain disabled until full fidelity is verified. Unknown source formats are not imported.
+- Add regression checks and preserve the published release.
+
 ## 0.17.0
 - Prepare the next minor release from the complete 0.16.30 development source, preserving current LiveTime importing, race management, scoring, and installer functionality.
 - Update the application package version and visible dashboard version to 0.17.0.
