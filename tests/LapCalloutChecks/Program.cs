@@ -4,6 +4,12 @@ using IMRCRaceControl.Models;
 using IMRCRaceControl.Services;
 
 
+if (args.Contains("--rcsp-only"))
+{
+    Console.WriteLine($"PASS: {RaceImportChecks.Run()} RCSP format and ADT decoding checks.");
+    return;
+}
+
 if (args is ["--inspect-livetime-backup", var backup])
 {
     var source = LiveTimeBackupReader.Read(backup);
