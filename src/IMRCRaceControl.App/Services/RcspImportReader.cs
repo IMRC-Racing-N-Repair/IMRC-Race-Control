@@ -265,7 +265,10 @@ public static class RcspImportReader
         var warnings=new List<string>();
         if (recoveredLaps<scoredLaps)
             warnings.Add($"RCSP has {scoredLaps:N0} officially scored laps but only {recoveredLaps:N0} can currently be linked to individual lap records. {scoredLaps-recoveredLaps:N0} are unverified/missing. Importing with laps selected will retain only verified crossings, while official summary results remain intact.");
-        warnings.Add("PracticeRuns history and ADM memo/image payloads are not yet converted by this importer. The original RCSP backup remains unchanged.");
+        var skippedResults=entriesTable.ActiveRows().Count()-entries.Count;
+        if (skippedResults>0)
+            warnings.Add($"{skippedResults:N0} live Entries rows could not be assigned to a numbered race/round and are excluded from scored race reconstruction.");
+        warnings.Add("Standalone PracticeRuns (practice history), historical BestLaps and racerrecords tables, and ADM memo/image payloads are not yet converted. The original RCSP backup remains unchanged.");
         var roster=new LiveTimeRoster(325,rosterDrivers,rosterClasses,rosterEntries,
             history.Count,history.Sum(e=>e.RaceCount),
             history.Sum(e=>e.LapCount),0,rentals.Count){RentalNumbers=rentals};
