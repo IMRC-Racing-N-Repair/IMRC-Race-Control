@@ -35,7 +35,7 @@ public sealed partial class TrackRecordsView
         foreach(var theme in Enum.GetValues<AppTheme>())
         {
             ThemeService.Apply(theme);
-            var view=new TrackRecordsView();view.Configure(()=>(track,new List<RaceDayEventDefinition>{ev},classes));
+            var view=new TrackRecordsView();view.Configure(()=>(track,Array.Empty<TrackProfile>(),new List<RaceDayEventDefinition>{ev},classes));
             var window=new Window { Width=900,Height=740,Content=view };window.Show();window.UpdateLayout();
             if(view._report?.Sections.Count!=2 || view._report.Sections.Any(s=>s.Rows.Count!=10))throw new InvalidDataException("Track records did not default to all classes/top ten.");
             view._count.Text="5";

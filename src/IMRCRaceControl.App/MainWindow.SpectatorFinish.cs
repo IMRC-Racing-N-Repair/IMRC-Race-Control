@@ -8,7 +8,7 @@ public partial class MainWindow
 {
     // Spectator output stays independent of operator navigation until NEXT RACE.
     private sealed record FinishedSpectatorFrame(string Header, string Subheader, string Event,
-        string Clock, string State, string Fastest, string Projection,
+        string Clock, string State, string Fastest, string Projection, string TrackRecord,
         ObservableCollection<StandingRow> Rows, ObservableCollection<RoundProjectionRow> Positions,
         string WebJson);
     private FinishedSpectatorFrame? _finishedSpectatorFrame;
@@ -23,9 +23,14 @@ public partial class MainWindow
         Services.RaceClassSections.Attach(rows);
         Services.RaceClassSections.Attach(positions);
         _finishedSpectatorFrame = new(SpectatorRaceHeader, SpectatorRaceSubheader, SpectatorEventText,
-            SpectatorMasterClock, SpectatorRaceState, SpectatorFastestText, SpectatorProjectionText,
+            SpectatorMasterClock, SpectatorRaceState, SpectatorFastestText, SpectatorProjectionText, SpectatorTrackRecordNotice,
             rows, positions, BuildWebSnapshot());
     }
 
-    private void ReleaseFinishedSpectatorFrame() => _finishedSpectatorFrame = null;
+    private void ReleaseFinishedSpectatorFrame()
+    {
+        _finishedSpectatorFrame = null;
+        _trackRecordRace = null;
+        DashboardTrackRecordStrip.Show(null);
+    }
 }

@@ -284,9 +284,9 @@ public partial class MainWindow
             return;
         }
 
-        if (_activeEvent.ClassIds.Count == 0)
+        if (Classes.Count == 0)
         {
-            MessageBox.Show(this, "Check at least one class into the event first.", "Rounds / mains",
+            MessageBox.Show(this, "Create at least one class before building a lineup.", "Rounds / mains",
                 MessageBoxButton.OK, MessageBoxImage.Information);
             return;
         }
@@ -414,6 +414,7 @@ public partial class MainWindow
         var affectedIds = existing.Where(s => s.ProgressStatus != EventSessionStatus.Completed)
             .Select(s => s.Id).ToHashSet(StringComparer.OrdinalIgnoreCase);
         var loadedId = _loadedSession?.Id;
+        var classCountBeforeSave = _activeEvent.ClassIds.Count;
         SavedRoundEditor.ReplaceScope(_activeEvent, existing, dialog.BuiltSessions);
         foreach(var session in _activeEvent.Sessions)
             if(dialog.PendingRaceOrder.TryGetValue(session.Id,out var position) && RaceLineupOrder.Movable(session))session.LineupOrder=position;
@@ -447,6 +448,7 @@ public partial class MainWindow
 
         RecalculateEventRankings();
         RebuildRemainingQueueFromClassOrder();
+        if (_activeEvent.ClassIds.Count != classCountBeforeSave) RefreshEventSetupCollections();
         RefreshPlannedSessions();
         RefreshRaceDayFlow();
         await CaptureAndSaveSettingsAsync();

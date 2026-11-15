@@ -1,4 +1,6 @@
 using System.Security.Cryptography;
+using System.Runtime.InteropServices;
+using System.Text;
 using IMRCRaceControl.Models;
 using IMRCRaceControl.Services;
 using Microsoft.Data.Sqlite;
@@ -26,8 +28,88 @@ internal static class LiveTimeImportChecks
             var plain=LiveTimeBackupReader.Read(fixture);
             Check(plain.SchemaVersion==193 && plain.Drivers.Count==2 && plain.Classes.Count==1,"recognizes active roster");
             Check(plain.Entries.First(e=>e.DriverId==1).Transponders=="1234567;2345678","keeps primary and additional transponders");
-            Check(plain.Events==1 && plain.Laps==2 && plain.PracticeLaps==1,"reports history without importing it");
+            Check(plain.Events==2 && plain.Laps==2 && plain.PracticeLaps==1,"reports history without importing it");
             Check(original.SequenceEqual(File.ReadAllBytes(fixture)),"plain database remains unchanged");
+
+            var sourceClass = plain.Classes.Single();
+            Check(sourceClass.Timing is { QualSeconds: 240, MainFormat: 2, MainLaps: 60, MainCapacity: 8 },
+                "uses settings from the latest event for each class");
+            var setupClass = new ClassDefinition { Name = sourceClass.Name, MinimumLapSeconds = 5 };
+            var settings = LiveTimeRosterMerge.Preview(plain, [], [setupClass], [],
+                selection: LiveTimeRosterSelection.ClassSettings);
+            var change = settings.ClassUpdates.Single();
+            Check(setupClass.MinimumLapSeconds == 5 && setupClass.RaceMinutes == 5,
+                "preview does not modify an existing class");
+            change.After.ApplyTo(setupClass);
+            Check(setupClass.MinimumLapSeconds == 3.5 && setupClass.RaceMinutes == 4 &&
+                setupClass.MainRaceFormat == RaceFormat.Laps && setupClass.MainTargetLaps == 60 &&
+                setupClass.MaxRacersPerHeat == 10 && setupClass.MainRules[0].MaxRacers == 8 &&
+                setupClass.QualStartStyle == StartStyle.IndividualCrossing && setupClass.RaceStartStyle == StartStyle.Tone,
+                "applies independently stored qualifying and mains settings");
+            Check(!LiveTimeRosterMerge.Preview(plain, [], [setupClass], [],
+                selection: LiveTimeRosterSelection.ClassSettings).HasChanges, "reimporting the same settings is a no-op");
+            change.Before.ApplyTo(setupClass);
+            Check(setupClass.MinimumLapSeconds == 5 && setupClass.MainRaceFormat is null && setupClass.MainRules[0].MaxRacers == 19,
+                "settings snapshot can restore the original class after a failed save");
+
+            var encrypted = Path.Combine(folder, "encrypted # fixture.db");
+            var password = "sample import password"u8.ToArray();
+            CreateEncryptedFixture(encrypted, password, "sqlcipher", "legacy", 4);
+            var encryptedBytes = File.ReadAllBytes(encrypted);
+            var needsPassword = false;
+            try { LiveTimeBackupReader.ReadImportRoster(encrypted); }
+            catch (LiveTimeBackupPasswordRequiredException) { needsPassword = true; }
+            Check(needsPassword, "encrypted .db prompts for its key");
+            var plainRoster = LiveTimeBackupReader.ReadImportRoster(fixture);
+            var encryptedRoster = LiveTimeBackupReader.ReadEncryptedRoster(encrypted, password);
+            Check(plainRoster.Drivers.SequenceEqual(encryptedRoster.Drivers) &&
+                plainRoster.Classes.SequenceEqual(encryptedRoster.Classes) &&
+                plainRoster.Entries.SequenceEqual(encryptedRoster.Entries) &&
+                plainRoster.Events == 0 && encryptedRoster.Laps == 0,
+                "both import paths supply the same roster without reading race history");
+            var countsRoster = encryptedRoster with
+            {
+                Entries = [.. encryptedRoster.Entries, new(1, 2, "01234567")],
+                RentalNumbers = ["03456789"]
+            };
+            Check(LiveTimeRosterMerge.CountPersonalTransponders(countsRoster) == 2,
+                "category count deduplicates personal transponders and excludes known rentals");
+            var unlocked = LiveTimeBackupReader.ReadEncryptedImport(encrypted, password);
+            Check(unlocked.Roster.Drivers.SequenceEqual(plain.Drivers) && unlocked.Roster.Entries.SequenceEqual(plain.Entries),
+                "original encrypted .db opens directly with its password");
+            var salt = encryptedBytes.AsSpan(0, 16);
+            var raw = Rfc2898DeriveBytes.Pbkdf2(password, salt, 256000, HashAlgorithmName.SHA512, 32);
+            var scopedKey = Encoding.ASCII.GetBytes("x'" + Convert.ToHexString(raw) + Convert.ToHexString(salt) + "'");
+            Check(LiveTimeBackupReader.ReadEncryptedImport(encrypted, scopedKey).Roster.Entries.SequenceEqual(plain.Entries),
+                "database-specific raw key opens the same encrypted backup");
+            var wrongPassword = false;
+            try { LiveTimeBackupReader.ReadEncryptedImport(encrypted, "incorrect"u8.ToArray()); }
+            catch (InvalidDataException) { wrongPassword = true; }
+            Check(wrongPassword, "wrong password rejects the backup");
+            var tampered = Path.Combine(folder, "tampered.db");
+            var altered = encryptedBytes.ToArray();
+            altered[altered.Length - 1000] ^= 0xff;
+            File.WriteAllBytes(tampered, altered);
+            var badPage = false;
+            try { LiveTimeBackupReader.ReadEncryptedImport(tampered, password); }
+            catch (InvalidDataException) { badPage = true; }
+            Check(badPage, "page authentication rejects a corrupted encrypted backup");
+            Check(encryptedBytes.SequenceEqual(File.ReadAllBytes(encrypted)) && !File.Exists(encrypted+"-wal") &&
+                !File.Exists(encrypted+"-shm") && !File.Exists(encrypted+"-journal"), "opening a backup never changes it or creates sidecars");
+
+            var rc4 = Path.Combine(folder, "rc4 fixture.db");
+            CreateEncryptedFixture(rc4, password, "rc4", "legacy_page_size", 512);
+            var rc4Bytes = File.ReadAllBytes(rc4);
+            var rc4Roster = LiveTimeBackupReader.ReadEncryptedRoster(rc4, password);
+            Check(rc4Roster.Drivers.SequenceEqual(plainRoster.Drivers) &&
+                rc4Roster.Classes.SequenceEqual(plainRoster.Classes) &&
+                rc4Roster.Entries.SequenceEqual(plainRoster.Entries), "same password imports the legacy RC4 roster");
+            var rc4WrongPassword = false;
+            try { LiveTimeBackupReader.ReadEncryptedRoster(rc4, "incorrect"u8.ToArray()); }
+            catch (InvalidDataException) { rc4WrongPassword = true; }
+            Check(rc4WrongPassword && rc4Bytes.SequenceEqual(File.ReadAllBytes(rc4)) &&
+                !File.Exists(rc4+"-wal") && !File.Exists(rc4+"-shm") && !File.Exists(rc4+"-journal"),
+                "RC4 rejects a wrong password and leaves the original backup unchanged");
 
             var codedPath=Path.Combine(folder,"coded.db");
             var codedRef=Path.Combine(folder,"coded-reference.db");
@@ -67,11 +149,202 @@ internal static class LiveTimeImportChecks
             Check(plan.Assignments.Single().TransponderId=="" && plan.Issues.Count==2,"flags the conflict and skips rental transponder");
             var clean=LiveTimeRosterMerge.Preview(decoded,[],[],[]);
             var again=LiveTimeRosterMerge.Preview(decoded,clean.Drivers,clean.Classes,clean.Assignments);
+            var driversOnly = LiveTimeRosterMerge.Preview(decoded, [], [], [], selection: LiveTimeRosterSelection.Drivers);
+            Check(driversOnly.Drivers.Count == 2 && driversOnly.Classes.Count == 0 && driversOnly.Assignments.Count == 0,
+                "drivers-only selection cannot add classes or assignments");
+            var classesOnly = LiveTimeRosterMerge.Preview(decoded, [], [], [], selection: LiveTimeRosterSelection.Classes);
+            Check(classesOnly.Classes.Count == 1 && classesOnly.Drivers.Count == 0 && classesOnly.Assignments.Count == 0,
+                "classes-only selection cannot add drivers or assignments");
+            var membershipsOnly = LiveTimeRosterMerge.Preview(decoded, clean.Drivers, clean.Classes, [],
+                selection: LiveTimeRosterSelection.ClassAssignments);
+            Check(membershipsOnly.Assignments.Count == 2 && membershipsOnly.Assignments.All(a => a.TransponderId == ""),
+                "class memberships can be imported without tag numbers");
+            var missing = LiveTimeRosterMerge.Preview(decoded, [], [], [],
+                selection: LiveTimeRosterSelection.ClassAssignments | LiveTimeRosterSelection.Transponders);
+            Check(!missing.HasChanges && missing.SkippedMissingAssignments == 2,
+                "assignment selection cannot silently create unselected drivers or classes");
+            var tagsOnly = LiveTimeRosterMerge.Preview(decoded, clean.Drivers, clean.Classes, membershipsOnly.Assignments,
+                selection: LiveTimeRosterSelection.Transponders);
+            Check(tagsOnly.Assignments.Count == 0 && tagsOnly.TagFills.Count == 2 &&
+                membershipsOnly.Assignments.All(a => a.TransponderId == ""),
+                "tags-only preview fills blank assignments without creating or mutating records");
+            var tagsMissingAssignment = LiveTimeRosterMerge.Preview(decoded, clean.Drivers, clean.Classes, [],
+                selection: LiveTimeRosterSelection.Transponders);
+            Check(!tagsMissingAssignment.HasChanges && tagsMissingAssignment.SkippedMissingAssignments == 2,
+                "tags-only selection does not create missing class memberships");
+            var tagsAlreadyAssigned = LiveTimeRosterMerge.Preview(decoded, [existingDriver], [existingClass], [existingEntry],
+                selection: LiveTimeRosterSelection.Transponders);
+            Check(!tagsAlreadyAssigned.HasChanges && existingEntry.TransponderId == "1234567",
+                "tags-only selection preserves existing personal transponders");
+            Check(!LiveTimeRosterMerge.Preview(decoded, [], [], [], selection: LiveTimeRosterSelection.None).HasChanges,
+                "no selected category results in no writes");
             Check(clean.Classes.Single().MinimumLapSeconds==3.5 && !again.HasChanges,"class minimum lap time and repeat import are stable");
             var sourceRental=LiveTimeRosterMerge.Preview(decoded with { RentalNumbers=["3456789"] },[],[],[]);
             Check(sourceRental.Assignments.Any(a=>a.TransponderId=="") && sourceRental.Issues.Count==1,"does not convert source rentals to personal tags");
             var sameName=LiveTimeRosterMerge.Preview(decoded,[existingDriver],[],[]);
             Check(sameName.Drivers.Count==1 && sameName.Issues.Count==1,"does not match on name alone");
+            var raceAt = DateTimeOffset.Parse("2025-08-03T12:00:00Z");
+            var sourceEvent = new LiveTimeEventHistory(1, Guid.NewGuid(), "Event A", raceAt, raceAt.AddHours(4),
+                [new(1, Guid.NewGuid(), 1, "Main", 2, 1, 2, 1, 1, "A", 1, 1, 2, 1, 300, 0, 3.5, raceAt, raceAt.AddMinutes(5),
+                    [new(1, 1, 1, 2, 1, 5.5, 5.5, 5.5, 0, 0, 0, false, true, false, "1234567",
+                        [new(1, 1, 5.5, 5.5, raceAt.AddSeconds(5.5))])])]);
+            sourceEvent = sourceEvent with { Track = new TrackProfile { Id = "livetime-track-home", Name = "Home" } };
+            var otherEvent = sourceEvent with { SourceId = Guid.NewGuid(), Name = "Event B",
+                Track = new TrackProfile { Id = "livetime-track-away", Name = "Away" } };
+            var emptyEvent = sourceEvent with { SourceId = Guid.NewGuid(), Name = "Event with no races", Races = [] };
+            var archive = new LiveTimeImportSource(decoded, [sourceEvent, otherEvent, emptyEvent]);
+            Check(LiveTimeHistoryMerge.Preview(archive, [emptyEvent.SourceId], [], clean, includeLaps:true)
+                .Single().Sessions.Count == 0, "preserves closed events that have no completed races");
+            var justOne = LiveTimeHistoryMerge.Preview(archive, [sourceEvent.SourceId], [], clean, includeLaps:true);
+            var race = justOne.Single().Sessions.Single();
+            Check(justOne[0].Name=="Event A" && race.ProgressStatus==EventSessionStatus.Completed &&
+                race.Results.Single().Position==2 && race.Results[0].Status=="DNF" && race.Laps.Single().LapTime.TotalSeconds==5.5,
+                "selected completed event retains source position, status and lap time");
+            var summaries = LiveTimeHistoryMerge.Preview(archive, [otherEvent.SourceId], [], clean, includeLaps:false);
+            Check(summaries.Single().Sessions.Single().Results.Count==1 && summaries[0].Sessions[0].Laps.Count==0,
+                "results-only history selection excludes individual laps");
+            Check(LiveTimeHistoryMerge.Preview(archive, [sourceEvent.SourceId], justOne, clean, includeLaps:true).Count==0,
+                "events already imported are not overwritten or duplicated");
+            var savedTrack = new TrackProfile { Id = "local-home", Name = " Home " };
+            var withTrack = LiveTimeHistoryMerge.Preview(archive, [sourceEvent.SourceId, otherEvent.SourceId], [], clean,
+                includeLaps:true, savedTrack:savedTrack);
+            Check(withTrack.Single(e => e.Name == "Event A").Track?.Id == savedTrack.Id &&
+                withTrack.Single(e => e.Name == "Event B").Track?.Id == "livetime-track-away",
+                "matches the saved venue and keeps other imported venues distinct");
+            justOne[0].Track = null;
+            var links = LiveTimeHistoryMerge.MissingTrackLinks(archive, [sourceEvent.SourceId], justOne, savedTrack);
+            Check(links.Single().Event == justOne[0] && links[0].Track.Id == savedTrack.Id &&
+                LiveTimeHistoryMerge.Preview(archive, [sourceEvent.SourceId], justOne, clean, includeLaps:true).Count == 0,
+                "reimport restores missing venue without duplicating history");
+            justOne[0].Track = new TrackProfile { Id = "manual" };
+            Check(LiveTimeHistoryMerge.MissingTrackLinks(archive, [sourceEvent.SourceId], justOne, savedTrack).Count == 0,
+                "never replaces a previously assigned venue");
+            var venueFixture = Path.Combine(folder, "venues.db");
+            CreateFixture(venueFixture, false);
+            using (var venueDb = new SqliteConnection(new SqliteConnectionStringBuilder
+                { DataSource = venueFixture, Pooling = false }.ToString()))
+            {
+                venueDb.Open();
+                using var sql = venueDb.CreateCommand();
+                sql.CommandText = """
+                    UPDATE SystemVersion SET [Database]=325;
+                    CREATE TABLE Track (LID INTEGER PRIMARY KEY, GUID TEXT, Name TEXT);
+                    INSERT INTO Track VALUES
+                        (1,'da742296-3726-441f-9286-19723f08c45e','Home'),
+                        (2,'0e563a18-df67-4581-b2fb-3fdd445d1850','Away'),
+                        (3,'0ac96e91-c8a6-4285-8b81-8f67b6340e30','No events yet');
+                    ALTER TABLE Event ADD COLUMN TrackLID INTEGER;
+                    UPDATE Event SET TrackLID=LID;
+                    INSERT INTO Event VALUES (3,1,'2025-03-02',NULL);
+                    CREATE TABLE EventRegistration (LID INTEGER PRIMARY KEY, EventLID INTEGER, DriverLID INTEGER, RaceClassLID INTEGER, IsRegistered INTEGER);
+                    INSERT INTO EventRegistration VALUES (1,1,1,1,1),(2,2,2,1,1),(3,1,2,1,0),(4,3,2,1,1);
+                    """;
+                sql.ExecuteNonQuery();
+            }
+            var allVenues = LiveTimeBackupReader.ReadImport(venueFixture);
+            var homeVenue = allVenues.Venues.Single(v => v.Name == "Home");
+            var awayVenue = allVenues.Venues.Single(v => v.Name == "Away");
+            var unusedVenue = allVenues.Venues.Single(v => v.Name == "No events yet");
+            Check(allVenues.Venues.Count == 4 && unusedVenue.EventIds.Count == 0 &&
+                allVenues.Venues.Single(v => v.Track is null).EventIds.SetEquals([3L]),
+                "finds named tracks without races and separates events without a track");
+            allVenues = allVenues with { History = [sourceEvent with { Track = homeVenue.Track },
+                otherEvent with { LocalId = 2, Track = awayVenue.Track }] };
+            var scopedHome = LiveTimeVenueSelection.Scope(allVenues, new HashSet<string> { homeVenue.Id });
+            Check(scopedHome.History.Single().SourceId == sourceEvent.SourceId &&
+                scopedHome.Roster.Drivers.Single().LocalId == 1 &&
+                scopedHome.Roster.Entries.Single().Transponders == "1234567;2345678" &&
+                scopedHome.Roster.Classes.Single().Timing?.QualSeconds == 300,
+                "uses only active registrations, personal tags, events and class settings at the selected venue");
+            var scopeBoth = LiveTimeVenueSelection.Scope(allVenues, new HashSet<string> { homeVenue.Id, awayVenue.Id });
+            Check(scopeBoth.Roster.Classes.Count == 1 && scopeBoth.Roster.Entries.Count == 2 &&
+                scopeBoth.History.Count == 2 && scopeBoth.Roster.Classes.Single().Timing?.QualSeconds == 240,
+                "combines selections without duplicating a class and uses the latest selected class setup");
+            var noDrivers = LiveTimeVenueSelection.FilterRoster(scopedHome.Roster, new HashSet<long>(), null);
+            var eventsOnly = LiveTimeHistoryMerge.Preview(scopedHome, [sourceEvent.SourceId], [],
+                LiveTimeRosterMerge.Preview(noDrivers, [], [], []), true);
+            Check(noDrivers.Drivers.Count == 0 && noDrivers.Entries.Count == 0 &&
+                eventsOnly.Single().Sessions.Single().Entrants.Single().DriverName == "Casey Lane",
+                "excluding roster drivers keeps original entrants in selected completed results");
+            Check(IMRCRaceControl.Core.TrackRecords.Calculate(homeVenue.Track!, eventsOnly,
+                [new ClassDefinition { Id = "unrelated", Name = "Other venue's class" }], includeUnracedClasses: false)
+                .All(c => c.Id != "unrelated"), "an imported venue's record view excludes unrelated classes");
+            var newTrack = LiveTimeHistoryMerge.NewTracks(allVenues, [unusedVenue.Id], [], savedTrack).Single();
+            Check(newTrack.Id == unusedVenue.Id && !LiveTimeHistoryMerge.NewTracks(allVenues,
+                [newTrack.Id, homeVenue.Id], [newTrack], savedTrack).Any(),
+                "saves a selected venue even without events and never duplicates it or the matched home track");
+            var shared = allVenues with { Roster = allVenues.Roster with
+                { Entries = [..allVenues.Roster.Entries.Where(e => e.DriverId == 1), new(2, 1, "1234567")] } };
+            var selectedShared = LiveTimeVenueSelection.Scope(shared, new HashSet<string> { homeVenue.Id });
+            Check(LiveTimeRosterMerge.Preview(selectedShared.Roster, [], [], []).Assignments.Single().TransponderId == "2345678",
+                "a shared tag stays excluded when its other driver races at an unselected venue");
+            var reviewDriver = new DriverProfile { FirstName="Casey", LastName="Lane", Nickname="Saved nickname" };
+            var reviewClass = new ClassDefinition { Name="Stock" };
+            var reviewAssignment = new DriverClassAssignment { DriverId=reviewDriver.Id, ClassId=reviewClass.Id, TransponderId="1234567" };
+            var reviewRoster = decoded with { Drivers = decoded.Drivers.Where(d=>d.LocalId==1).ToList(),
+                Entries = decoded.Entries.Where(e=>e.DriverId==1).ToList() };
+            var reviewChoices = new Dictionary<string,LiveTimeDecision>();
+            var savedLinks = new Dictionary<string,string>();
+            var unresolved = new LiveTimeImportReview(reviewChoices,savedLinks);
+            var unattended = LiveTimeRosterMerge.PreviewReviewed(reviewRoster,[reviewDriver],[reviewClass],[reviewAssignment],
+                null,LiveTimeRosterSelection.All,false,unresolved);
+            Check(unresolved.Pending.Select(m=>m.Kind).ToHashSet().SetEquals(["Driver","Class","Class assignment"]) &&
+                !unattended.HasChanges, "review detects matches without writing or automatically duplicating them");
+            foreach (var conflict in unresolved.Pending)
+                reviewChoices[conflict.Key] = new(LiveTimeConflictAction.Merge,conflict.Matches.Single().Id);
+            var accepted = new LiveTimeImportReview(reviewChoices,savedLinks);
+            var mergedRoster = LiveTimeRosterMerge.PreviewReviewed(reviewRoster,[reviewDriver],[reviewClass],[reviewAssignment],
+                null,LiveTimeRosterSelection.All,false,accepted);
+            Check(accepted.Pending.Count==0 && mergedRoster.Drivers.Count==0 && mergedRoster.Classes.Count==0 &&
+                mergedRoster.DriverUpdates.Single().Nickname=="Saved nickname" &&
+                mergedRoster.DriverUpdates.Single().PhoneticName=="Kay-see" &&
+                mergedRoster.TagFills.Single().Transponders=="1234567;2345678" &&
+                reviewAssignment.TransponderId=="1234567", "approved merge retains saved fields and proposes only missing data");
+            var originalDriverKey = unresolved.Pending.Single(x=>x.Kind=="Driver").Key;
+            reviewChoices[originalDriverKey] = new(LiveTimeConflictAction.Copy);
+            var copyReview = new LiveTimeImportReview(reviewChoices,savedLinks);
+            var copiedRoster = LiveTimeRosterMerge.PreviewReviewed(reviewRoster,[reviewDriver],[reviewClass],[reviewAssignment],
+                null,LiveTimeRosterSelection.All,false,copyReview);
+            Check(copiedRoster.Drivers.Single().Id != reviewDriver.Id &&
+                copiedRoster.Assignments.Single().TransponderId=="2345678", "explicit copy never takes another driver's saved transponder");
+            var renamed = reviewRoster with { Drivers = [reviewRoster.Drivers.Single() with { FirstName="Renamed" }], Entries=[] };
+            var linked = new LiveTimeImportReview(new Dictionary<string,LiveTimeDecision>(),accepted.Links);
+            LiveTimeRosterMerge.PreviewReviewed(renamed,[reviewDriver],[reviewClass],[],null,LiveTimeRosterSelection.Drivers,false,linked);
+            Check(linked.Pending.Single().Matches.Single().Id==reviewDriver.Id, "saved source link recognizes a renamed driver on later imports");
+
+            var savedEvent = new RaceDayEventDefinition { Id="local-event", Name=sourceEvent.Name, EventDate=raceAt.Date, Status=EventStatus.Completed };
+            var earlier = LiveTimeHistoryMerge.Preview(archive,[sourceEvent.SourceId],[],clean,true).Single().Sessions.Single();
+            savedEvent.Sessions.Add(earlier);
+            var sourceRace = sourceEvent.Races.Single();
+            var nextRace = sourceRace with { SourceId=Guid.NewGuid(), Heat=2, MainLetter="B" };
+            var extended = archive with { History = [sourceEvent with { Races=[sourceRace,nextRace] }] };
+            var eventKey = LiveTimeHistoryMerge.EventId(sourceEvent.SourceId);
+            var eventChoices = new Dictionary<string,LiveTimeDecision>();
+            var eventReview = new LiveTimeImportReview(eventChoices,savedLinks);
+            var rejectedEvent = LiveTimeReviewedHistory.Events(extended,[sourceEvent.SourceId],[savedEvent],clean,
+                new Dictionary<string,TrackProfile?>(),savedTrack,eventReview);
+            Check(rejectedEvent.Events.Count==0 && rejectedEvent.Updates.Count==0 && eventReview.Pending.Single().Kind=="Event",
+                "a matching event requires a decision even with a different local event ID");
+            eventChoices[eventKey]=new(LiveTimeConflictAction.Merge,savedEvent.Id);
+            var eventMerge = LiveTimeReviewedHistory.Events(extended,[sourceEvent.SourceId],[savedEvent],clean,
+                new Dictionary<string,TrackProfile?>(),savedTrack,new(eventChoices,savedLinks));
+            Check(eventMerge.Events.Count==0 && eventMerge.Updates.Single().Sessions.Count==1 &&
+                eventMerge.Updates.Single().Sessions[0].Id != earlier.Id && savedEvent.Sessions.Count==1,
+                "event merge adds the missing race and leaves the previously saved race intact");
+            eventChoices[eventKey]=new(LiveTimeConflictAction.Copy);
+            var eventCopy=LiveTimeReviewedHistory.Events(extended,[sourceEvent.SourceId],[savedEvent],clean,
+                new Dictionary<string,TrackProfile?>(),savedTrack,new(eventChoices,savedLinks));
+            Check(eventCopy.Events.Single().Id != savedEvent.Id && eventCopy.Events[0].Sessions.Count==2 &&
+                eventCopy.Events[0].Sessions.All(r=>r.Id != earlier.Id), "explicit event copy has separate race identities");
+            eventChoices[eventKey]=new(LiveTimeConflictAction.Discard);
+            var eventDiscard=LiveTimeReviewedHistory.Events(extended,[sourceEvent.SourceId],[savedEvent],clean,
+                new Dictionary<string,TrackProfile?>(),savedTrack,new(eventChoices,savedLinks));
+            Check(eventDiscard.Events.Count==0 && eventDiscard.Updates.Count==0 && savedEvent.Sessions.Count==1,
+                "discard drops only incoming event data");
+            var trackReview = new LiveTimeImportReview(new Dictionary<string,LiveTimeDecision>(),savedLinks);
+            var tracksReviewed=LiveTimeReviewedHistory.Tracks(allVenues,new HashSet<string>{homeVenue.Id},[savedTrack],trackReview);
+            Check(trackReview.Pending.Single().Kind=="Track" && tracksReviewed.NewTracks.Count==0 &&
+                tracksReviewed.TrackMap[homeVenue.Id]?.Id==savedTrack.Id, "a matching venue is not duplicated by default");
             return checks;
         }
         finally {Directory.Delete(folder,true);}
@@ -89,8 +362,48 @@ internal static class LiveTimeImportChecks
         using var db=new SqliteConnection(new SqliteConnectionStringBuilder{DataSource=file,Pooling=false}.ToString());
         db.Open();
         using var command=db.CreateCommand();
-        command.CommandText="""
-            PRAGMA page_size=1024;
+        command.CommandText="PRAGMA page_size=1024;"+FixtureSql;
+        command.ExecuteNonQuery();
+        if(freePages)
+        {
+            command.CommandText="PRAGMA secure_delete=ON; CREATE TABLE Spare(Data BLOB); INSERT INTO Spare VALUES (zeroblob(30000)); DROP TABLE Spare;";
+            command.ExecuteNonQuery();
+        }
+    }
+
+    private static void CreateEncryptedFixture(string path, byte[] password, string cipherName, string option, int value)
+    {
+        var result = NativeOpen(path, out var db, 6, IntPtr.Zero);
+        try
+        {
+            var cipher = NativeIndex(cipherName);
+            if (result != 0 || cipher <= 0 || NativeConfig(db, "cipher", cipher) != cipher ||
+                NativeConfigMode(db, cipherName, option, value) != value ||
+                NativeKey(db, password, password.Length) != 0 ||
+                NativeExec(db, FixtureSql, IntPtr.Zero, IntPtr.Zero, IntPtr.Zero) != 0)
+                throw new InvalidOperationException($"Could not create the synthetic {cipherName} backup.");
+        }
+        finally { if (db != IntPtr.Zero) NativeClose(db); }
+    }
+
+    private const string CipherLib = "sqlite3mc";
+    [DllImport(CipherLib, EntryPoint = "sqlite3_open_v2", CallingConvention = CallingConvention.Cdecl)]
+    private static extern int NativeOpen([MarshalAs(UnmanagedType.LPUTF8Str)] string path, out IntPtr db, int flags, IntPtr vfs);
+    [DllImport(CipherLib, EntryPoint = "sqlite3_close_v2", CallingConvention = CallingConvention.Cdecl)]
+    private static extern int NativeClose(IntPtr db);
+    [DllImport(CipherLib, EntryPoint = "sqlite3mc_cipher_index", CallingConvention = CallingConvention.Cdecl)]
+    private static extern int NativeIndex([MarshalAs(UnmanagedType.LPUTF8Str)] string name);
+    [DllImport(CipherLib, EntryPoint = "sqlite3mc_config", CallingConvention = CallingConvention.Cdecl)]
+    private static extern int NativeConfig(IntPtr db, [MarshalAs(UnmanagedType.LPUTF8Str)] string name, int value);
+    [DllImport(CipherLib, EntryPoint = "sqlite3mc_config_cipher", CallingConvention = CallingConvention.Cdecl)]
+    private static extern int NativeConfigMode(IntPtr db, [MarshalAs(UnmanagedType.LPUTF8Str)] string cipher,
+        [MarshalAs(UnmanagedType.LPUTF8Str)] string name, int value);
+    [DllImport(CipherLib, EntryPoint = "sqlite3_key", CallingConvention = CallingConvention.Cdecl)]
+    private static extern int NativeKey(IntPtr db, byte[] key, int length);
+    [DllImport(CipherLib, EntryPoint = "sqlite3_exec", CallingConvention = CallingConvention.Cdecl)]
+    private static extern int NativeExec(IntPtr db, [MarshalAs(UnmanagedType.LPUTF8Str)] string sql, IntPtr callback, IntPtr arg, IntPtr error);
+
+    private const string FixtureSql = """
             CREATE TABLE SystemVersion ([Database] INTEGER);
             INSERT INTO SystemVersion VALUES (193);
             CREATE TABLE Driver (LID INTEGER PRIMARY KEY, GUID TEXT, IsActive INTEGER, FirstName TEXT, LastName TEXT, NickName TEXT, PhoneticName TEXT);
@@ -103,8 +416,14 @@ internal static class LiveTimeImportChecks
             INSERT INTO RaceClassDefaultSetting VALUES (1,1,3.5);
             CREATE TABLE DriverRaceClassTransponder (LID INTEGER PRIMARY KEY, DriverLID INTEGER, RaceClassLID INTEGER, IsPrimary INTEGER, TransponderNumber INTEGER);
             INSERT INTO DriverRaceClassTransponder VALUES (1,1,1,0,2345678),(2,1,1,1,1234567),(3,2,1,1,3456789);
-            CREATE TABLE Event (LID INTEGER PRIMARY KEY);
-            INSERT INTO Event VALUES (1);
+            CREATE TABLE Event (LID INTEGER PRIMARY KEY, IsActive INTEGER, StartDateTime TEXT);
+            INSERT INTO Event VALUES (1,1,'2025-01-03'),(2,1,'2025-02-04');
+            CREATE TABLE EventRaceClassSetting (LID INTEGER PRIMARY KEY, EventLID INTEGER, RaceClassLID INTEGER,
+                MinimumLapTimeSeconds REAL, QualifyingStartTypeID INTEGER, QualifyingLengthTypeID INTEGER,
+                QualifyingLengthSeconds INTEGER, QualifyingLengthLaps INTEGER, QualifyingNumberOfDriversPerRace INTEGER,
+                MainStartTypeID INTEGER, MainLengthTypeID INTEGER, MainDefaultMainLengthSeconds INTEGER,
+                MainDefaultMainLengthLaps INTEGER, MainDefaultNumberOfDrivers INTEGER);
+            INSERT INTO EventRaceClassSetting VALUES (1,2,1,4,1,1,240,50,10,2,2,300,60,8),(2,1,1,2,2,1,300,50,9,2,1,300,50,10);
             CREATE TABLE Race (LID INTEGER PRIMARY KEY);
             INSERT INTO Race VALUES (1);
             CREATE TABLE RaceLap (LID INTEGER PRIMARY KEY);
@@ -112,11 +431,5 @@ internal static class LiveTimeImportChecks
             CREATE TABLE PracticeLap (LID INTEGER PRIMARY KEY);
             INSERT INTO PracticeLap VALUES (1);
             """;
-        command.ExecuteNonQuery();
-        if(freePages)
-        {
-            command.CommandText="PRAGMA secure_delete=ON; CREATE TABLE Spare(Data BLOB); INSERT INTO Spare VALUES (zeroblob(30000)); DROP TABLE Spare;";
-            command.ExecuteNonQuery();
-        }
-    }
+
 }

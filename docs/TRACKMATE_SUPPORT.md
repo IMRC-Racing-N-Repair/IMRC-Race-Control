@@ -1,7 +1,7 @@
 # Trackmate RC / Iridium support — v0.15.3
 
 ## Setup
-Choose Trackmate / USB Serial in Decoder, select its COM port, then Connect. The profile presets 9600 baud, 8-N-1, no handshake. Other timing applications must release the COM port. New blue boards use FTDI USB drivers; older red boards use a serial adapter and its driver. The network-style cable to the overhead sensors is not a PC Ethernet connection.
+Choose Trackmate / USB Serial in Decoder, select its COM port, then Connect. Race Control defaults to 115200 baud, 8-N-1, no handshake. If your decoder requires a different baud rate, select it before connecting. Race Control remembers the Trackmate rate separately. Other timing applications must release the COM port. New blue boards use FTDI USB drivers; older red boards use a serial adapter and its driver. The network-style cable to the overhead sensors is not a PC Ethernet connection.
 
 The startup bytes are `01 3F 2C 32 30 32 2C 30 2C 31 31 2C 0D 0A` (SOH followed by `?,202,0,11,` and CRLF). They are sent on connection/reconnection, not every race start. No proprietary software or third-party source is bundled.
 

@@ -9,14 +9,15 @@ public static class PracticeTracker
     public static string UnknownId(string tag) => "unknown:" + tag.Trim().ToUpperInvariant();
 
     public static PracticeCrossing Record(IList<PracticeCardViewModel> cards, DriverProfile? driver,
-        string transponder, string source, DateTimeOffset timestamp)
+        string transponder, string source, DateTimeOffset timestamp, string? className = null)
     {
         transponder = transponder.Trim();
         if (transponder.Length == 0) throw new ArgumentException("Transponder is required.");
         var unknownId = UnknownId(transponder);
         var identity = driver?.Id ?? unknownId;
         var card = cards.FirstOrDefault(c => !c.IsSaving && c.DriverId == unknownId)
-            ?? cards.FirstOrDefault(c => !c.IsSaving && c.DriverId == identity);
+            ?? cards.FirstOrDefault(c => !c.IsSaving && c.DriverId == identity &&
+                string.Equals(c.TransponderId, transponder, StringComparison.OrdinalIgnoreCase));
         if (card is null)
         {
             card = new PracticeCardViewModel
@@ -24,11 +25,12 @@ public static class PracticeTracker
                 DriverId = identity, DriverName = driver?.DisplayName ?? "Unknown driver",
                 TransponderId = transponder, StartedAt = timestamp, LastCrossingAt = timestamp
             };
+            if (driver is not null) card.ResolveDriver(driver.Id, driver.DisplayName, className);
             cards.Add(card);
             return new(card, true, false, driver is not null);
         }
         var resolved = driver is not null && card.DriverId == unknownId;
-        if (resolved) card.ResolveDriver(driver!.Id, driver.DisplayName);
+        if (resolved) card.ResolveDriver(driver!.Id, driver.DisplayName, className);
         var lap = timestamp - card.LastCrossingAt;
         if (lap < TimeSpan.FromMilliseconds(250)) return new(card, false, false, resolved);
         card.LastCrossingAt = timestamp;

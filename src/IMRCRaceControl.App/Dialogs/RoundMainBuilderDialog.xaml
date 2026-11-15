@@ -144,7 +144,7 @@
 
                             <TextBlock Text="ROUND / MAINS LINEUP" FontWeight="Bold" FontSize="15"/>
 
-                            <DataGrid x:Name="HeatGrid" SelectionMode="Extended" PreviewMouseRightButtonDown="HeatGrid_RightClick" AllowDrop="True"
+                            <DataGrid x:Name="HeatGrid" SelectionMode="Extended" PreviewMouseRightButtonDown="HeatGrid_RightClick" ContextMenuOpening="HeatGrid_ContextMenuOpening" AllowDrop="True"
                                       PreviewMouseLeftButtonDown="RaceDragStart" PreviewMouseMove="RaceDragMove"
                                       DragOver="RaceDragOver" Drop="RaceDrop"
                                       Grid.Row="1"
@@ -159,7 +159,15 @@
                                 <DataGrid.GroupStyle><GroupStyle><GroupStyle.HeaderTemplate><DataTemplate>
                                     <Border Background="{DynamicResource PanelBrush}" BorderBrush="{DynamicResource AccentBrush}" BorderThickness="4,0,0,0" Padding="10,9" Margin="0,10,0,3"><TextBlock Text="{Binding Name}" FontSize="15" FontWeight="Bold"/></Border>
                                 </DataTemplate></GroupStyle.HeaderTemplate><GroupStyle.Panel><ItemsPanelTemplate><DataGridRowsPresenter/></ItemsPanelTemplate></GroupStyle.Panel></GroupStyle></DataGrid.GroupStyle>
-                                <DataGrid.ContextMenu><ContextMenu><ContextMenu.Resources><Style TargetType="MenuItem"><Style.Triggers><DataTrigger Binding="{Binding PlacementTarget.SelectedItem.IsLocked, RelativeSource={RelativeSource AncestorType=ContextMenu}}" Value="True"><Setter Property="IsEnabled" Value="False"/></DataTrigger></Style.Triggers></Style></ContextMenu.Resources><MenuItem Style="{x:Null}" Header="Separate combined races" Click="SeparateCombined_Click"/><Separator/><MenuItem Header="Add heat / lower main for this class" Click="AddHeat_Click"/><MenuItem Header="Remove this heat / main…" Click="RemoveHeat_Click"/></ContextMenu></DataGrid.ContextMenu>
+                                <DataGrid.ContextMenu>
+                                    <ContextMenu>
+                                        <MenuItem x:Name="AddClassRaceMenuItem" Header="Add race for another class…" Click="AddClassRace_Click"/>
+                                        <MenuItem x:Name="SeparateRaceMenuItem" Style="{x:Null}" Header="Separate combined races" Click="SeparateCombined_Click"/>
+                                        <Separator x:Name="RaceActionsSeparator"/>
+                                        <MenuItem x:Name="AddRowHeatMenuItem" Header="Add heat / lower main for this class" Click="AddHeat_Click"/>
+                                        <MenuItem x:Name="RemoveRowHeatMenuItem" Header="Remove this heat / main…" Click="RemoveHeat_Click"/>
+                                    </ContextMenu>
+                                </DataGrid.ContextMenu>
                                 <DataGrid.Columns>
                                     <DataGridTextColumn Header="#" Binding="{Binding RaceNumberDisplay}" Width="30" MinWidth="30"/>
                                     <DataGridTemplateColumn Header="CLASS" Width="1.7*" MinWidth="145"><DataGridTemplateColumn.CellTemplate><DataTemplate><TextBlock Text="{Binding ClassDisplay}" TextTrimming="CharacterEllipsis" ToolTip="{Binding ClassName}" VerticalAlignment="Center"/></DataTemplate></DataGridTemplateColumn.CellTemplate></DataGridTemplateColumn>
@@ -223,7 +231,7 @@
                                 <Button x:Name="AutoSortMainsButton" Content="AUTO SORT MAINS" Visibility="Collapsed"
                                         Click="AutoSortMains_Click" Background="{DynamicResource AccentDarkBrush}"/>
                             </WrapPanel>
-                                <TextBlock Text="Hold Shift and click races to combine. Release Shift to confirm." Foreground="{DynamicResource MutedBrush}" Margin="3,4,0,0" TextWrapping="Wrap"/>
+                                <TextBlock Text="Right-click blank space to add a class race. Hold Shift and click races to combine. Release Shift to confirm." Foreground="{DynamicResource MutedBrush}" Margin="3,4,0,0" TextWrapping="Wrap"/>
                             </StackPanel>
                         </Grid>
                     </Border>

@@ -214,6 +214,58 @@ public partial class RoundMainBuilderDialog
         System.IO.File.WriteAllText(System.IO.Path.Combine(output,"Driver-Drag-Checks.txt"),"PASS: shared button/drop movement, renumbering, cancelled/self/wrong-class/completed/full/duplicate driver/duplicate transponder drops leave lineups intact; saved event unchanged before Save.");
         System.IO.File.WriteAllText(System.IO.Path.Combine(output,"Race-Order-Checks.txt"),"PASS: drag stages order, saved event unchanged before Save, completed race protected, round headers present, specific round filter works.");
         System.IO.File.WriteAllText(System.IO.Path.Combine(output,"Unified-Lineup-Checks.txt"),"PASS: one visible race list; stable Q1 Heat labels; completed and unrun rosters display on first selection; completed edit/remove/add/reorder controls disabled; saved completed data unchanged.");
+        CheckEmptyClassRace(output, ev, classes);
         System.IO.File.WriteAllText(System.IO.Path.Combine(output,"Lineup-Overview-Checks.txt"),"PASS: all classes/rounds remain visible while selecting, editing, adding and removing a heat; source sessions unchanged before saving.");
     }
+
+    private static void CheckEmptyClassRace(string output, RaceDayEventDefinition original, IReadOnlyList<ClassDefinition> classes)
+    {
+        var ev = CombinedRaces.Clone(original);
+        var extra = new ClassDefinition { Name = "Reserved Class" };
+        var available = classes.Append(extra).ToList();
+        var q1 = new DashboardRoundChoice(SessionType.Qualifying, 1);
+        var before = System.Text.Json.JsonSerializer.Serialize(ev);
+        var dialog = new RoundMainBuilderDialog(ev, available, []);
+        dialog.Show();
+        dialog.UpdateLayout();
+        dialog.ConfigureHeatContextMenu(null);
+        if (dialog.AddClassRaceMenuItem.Visibility != Visibility.Visible || dialog.AddRowHeatMenuItem.Visibility != Visibility.Collapsed)
+            throw new InvalidOperationException("Blank lineup context menu did not offer a new class race.");
+        dialog.ConfigureHeatContextMenu(dialog.HeatGrid.Items.Cast<HeatPlan>().First());
+        if (dialog.AddClassRaceMenuItem.Visibility != Visibility.Collapsed || dialog.AddRowHeatMenuItem.Visibility != Visibility.Visible)
+            throw new InvalidOperationException("Race context menu showed the blank-area action.");
+        if (!SavedRoundEditor.AvailablePlaceholderClasses(available, dialog.PreviewSessions, q1).SequenceEqual([extra]))
+            throw new InvalidOperationException("The class picker offered an already scheduled class.");
+        var race = dialog.StageClassRace(extra, q1);
+        if (dialog.HeatGrid.SelectedItem is not HeatPlan picked || picked.SourceSessionId != race.Id || picked.RacerCount != 0 ||
+            !dialog.RosterEditActions.IsEnabled || !dialog.SaveButton.IsEnabled || dialog.HeatGrid.Items.Count != ev.Sessions.Count + 1)
+            throw new InvalidOperationException("New placeholder was not visible, selected and editable.");
+        if (System.Text.Json.JsonSerializer.Serialize(ev) != before)
+            throw new InvalidOperationException("A staged class race changed the saved event before Save.");
+        dialog.PrepareSaveBatch();
+        SavedRoundEditor.ReplaceScope(ev, ev.Sessions.Where(dialog.ReplacesLineup).ToList(), dialog.BuiltSessions);
+        if (!ev.ClassIds.Contains(extra.Id) || ev.Sessions.Single(s => s.Id == race.Id).Entrants.Count != 0)
+            throw new InvalidOperationException("Saving did not keep the empty race and its class.");
+        dialog._stagedLineups.Clear();
+        dialog._pendingRaceOrder.Clear();
+        dialog._lineupSnapshot = null;
+        dialog.Close();
+
+        var reopened = new RoundMainBuilderDialog(ev, available, [], editSessionId: race.Id);
+        reopened.Show();
+        if (reopened.HeatGrid.SelectedItem is not HeatPlan plan || plan.SourceSessionId != race.Id || !reopened.RosterEditActions.IsEnabled)
+            throw new InvalidOperationException("Reopening the empty race did not allow drivers to be added.");
+        plan.Entrants.Add(new SessionEntrant { DriverId = "late-slot-driver", DriverName = "Late racer" });
+        reopened.PrepareSaveBatch();
+        SavedRoundEditor.ReplaceScope(ev, ev.Sessions.Where(reopened.ReplacesLineup).ToList(), reopened.BuiltSessions);
+        if (ev.Sessions.Single(s => s.Id == race.Id).Entrants.Single().CarNumber != 1 ||
+            !ev.DriverAssignments.Any(a => a.ClassId == extra.Id && a.DriverId == "late-slot-driver"))
+            throw new InvalidOperationException("A driver added later did not stay in the reserved race.");
+        reopened._stagedLineups.Clear();
+        reopened._lineupSnapshot = null;
+        reopened.Close();
+        System.IO.File.WriteAllText(System.IO.Path.Combine(output, "Empty-Class-Race-Checks.txt"),
+            "PASS: blank and race context menus, unavailable duplicate classes, staged empty race, class check-in on Save, reopening and adding a driver.");
+    }
+
 }

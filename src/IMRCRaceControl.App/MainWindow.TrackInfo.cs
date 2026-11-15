@@ -7,7 +7,7 @@ public partial class MainWindow
 {
     private void LoadTrackInfo()
     {
-        TrackRecordsPanel.Configure(() => (_settings.Track, Events.ToList(), Classes.ToList()));
+        TrackRecordsPanel.Configure(() => (_settings.Track, _settings.ImportedTracks, Events.ToList(), Classes.ToList()));
         var track = _settings.Track;
         TrackIdText.Text = track.Id;
         TrackTimeZoneCombo.ItemsSource = TimeZoneInfo.GetSystemTimeZones();

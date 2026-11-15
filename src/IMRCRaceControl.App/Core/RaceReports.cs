@@ -237,7 +237,7 @@ public static class RaceReports
             var raceHeading = $"RACE #{s.RaceNumber} - {s.ClassName} - " +
                 (s.SessionType == SessionType.Race ? $"{s.HeatMainDisplay}-MAIN" : $"HEAT {s.Heat}");
             if(s.CombinedRaceId.Length>0)raceHeading += " • COMBINED — " + string.Join(" + ",CombinedRaces.Members(ev.Sessions,s).Select(m=>m.ClassName).Distinct()) + " (scored separately)";
-            report.Sections.Add(new ReportSection(raceHeading, ["Car","Driver","Transponder",s.SessionType == SessionType.Qualifying ? "Best qual · laps / time" : "Last round · laps / time","SOF / SR"],
+            report.Sections.Add(new ReportSection(raceHeading, ["Car","Driver","Transponder",s.SessionType == SessionType.Qualifying ? "Best qual · laps / time" : "Last round · laps / time","Rating / SR"],
                 s.Entrants.OrderBy(e=>e.CarNumber).Select(e=>new[] { CombinedRaces.TrackCar(ev.Sessions,s,e.CarNumber).ToString(),e.DisplayName,rentalLabels.Format(e.TransponderId),s.SessionType == SessionType.Qualifying ? BestQualifyingResult(ev,s.ClassId,e.DriverId) : PreviousRoundResult(ev,s,e.DriverId),RatingFor(s,e) }).ToList(),
                 RoundHeading: roundHeading, ClassColor: classes?.FirstOrDefault(c => c.Id == s.ClassId)?.PrintColor ?? ClassPrintColors.Choices[0].Hex, RaceNumber: s.RaceNumber));
         }

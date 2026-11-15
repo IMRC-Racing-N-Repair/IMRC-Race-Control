@@ -15,7 +15,12 @@
     <Compile Include="../../src/IMRCRaceControl.App/Services/ApplicationDataPaths.cs" Link="ApplicationDataPaths.cs" />
     <Compile Include="../../src/IMRCRaceControl.App/Services/DataProtectionService.cs" Link="DataProtectionService.cs" />
     <Compile Include="../../src/IMRCRaceControl.App/Services/LiveTimeBackupReader.cs" Link="LiveTimeBackupReader.cs" />
+    <Compile Include="../../src/IMRCRaceControl.App/Services/LiveTimePasswordBundle.cs" Link="LiveTimePasswordBundle.cs" />
+    <Compile Include="../../src/IMRCRaceControl.App/Services/LiveTimeEncryptedBackup.cs" Link="LiveTimeEncryptedBackup.cs" />
+    <Compile Include="../../src/IMRCRaceControl.App/Services/LiveTimeRaceHistory.cs" Link="LiveTimeRaceHistory.cs" />
+    <Compile Include="../../src/IMRCRaceControl.App/Services/LiveTimeVenues.cs" Link="LiveTimeVenues.cs" />
     <Compile Include="../../src/IMRCRaceControl.App/Services/LiveTimeRosterMerge.cs" Link="LiveTimeRosterMerge.cs" />
+    <Compile Include="../../src/IMRCRaceControl.App/Services/LiveTimeImportReview.cs" Link="LiveTimeImportReview.cs" />
     <Compile Include="../../src/IMRCRaceControl.App/Core/RaceAudioSchedule.cs" Link="RaceAudioSchedule.cs" />
     <Compile Include="../../src/IMRCRaceControl.App/Core/NextRacePreview.cs" Link="NextRacePreview.cs" />
     <Compile Include="../../src/IMRCRaceControl.App/Core/TrackmateProtocol.cs" Link="TrackmateProtocol.cs" />
@@ -52,5 +57,6 @@
     <Compile Include="../../src/IMRCRaceControl.App/Services/PracticeHistoryService.cs" Link="PracticeHistoryService.cs" />
     <Compile Include="../../src/IMRCRaceControl.App/Services/RaceControlDatabaseService.cs" Link="RaceControlDatabaseService.cs" />
     <PackageReference Include="Microsoft.Data.Sqlite" Version="10.0.12" />
+    <PackageReference Include="SQLite3MC.PCLRaw.lib" Version="2.6.1" />
   </ItemGroup>
 </Project>

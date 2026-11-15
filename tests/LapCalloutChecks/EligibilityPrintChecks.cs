@@ -126,7 +126,8 @@ public static class EligibilityPrintChecks
         Eq("—",RaceReports.PreviousRoundResult(printEvent,prior,"stable"),"First round has no invented prior result");
         Eq("—",RaceReports.PreviousRoundResult(printEvent,next,"new"),"New driver has no invented result");
         var rated = RaceReports.Lineups(printEvent,scope:new(SessionType.Qualifying,2),ratings:[new() { ClassId="other",DriverId="stable",Rating=999,Safety=1 },new() { ClassId="print",DriverId="stable",Rating=1674,Safety=4.21 }]);
-        Eq("1674 / 4.21",rated.Sections[0].Rows[0][4],"SOF/SR uses individual class rating and safety");
+        Eq("Rating / SR",rated.Sections[0].Columns[4],"Lineup labels individual Rating/SR");
+        Eq("1674 / 4.21",rated.Sections[0].Rows[0][4],"Rating/SR uses individual class rating and safety");
         Eq(false,rated.Sections[0].Columns.Contains("Seed"),"Seed replaced by ratings");
         Eq("1500 / 3.00*",RaceReports.Lineups(printEvent,scope:new(SessionType.Qualifying,2)).Sections[0].Rows[0][4],"Unrated driver starting values marked provisional");
         var m1 = new EventSessionDefinition { ClassId="print",SessionType=SessionType.Race,MainLeg=1,Entrants=[new() { DriverId="stable",CarNumber=2 }] };

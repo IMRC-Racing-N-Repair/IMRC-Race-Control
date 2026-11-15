@@ -124,6 +124,7 @@ public partial class MainWindow
         }
 
         _lapSpeech.Stop();
+        _practiceRentalAssignments.Clear();
         _practiceActive = true;
         PracticeToggleButton.Content = "STOP PRACTICE";
         PracticeToggleButton.SetResourceReference(Control.BackgroundProperty, "AccentDarkBrush");
@@ -183,9 +184,10 @@ public partial class MainWindow
         var assignment = _driverAssignments.FirstOrDefault(a => a.DriverId == driver.Id);
         RegisterPracticeCrossing(
             driver,
-            assignment?.TransponderId ?? "MANUAL",
+            SplitTransponders(assignment?.TransponderId).FirstOrDefault() ?? "MANUAL",
             "Manual Practice",
-            DateTimeOffset.Now);
+            DateTimeOffset.Now,
+            Classes.FirstOrDefault(c => c.Id == assignment?.ClassId)?.Name);
     }
 
     private void RegisterPracticeTransponder(string transponderId, string source, DateTimeOffset timestamp)
@@ -194,19 +196,29 @@ public partial class MainWindow
             return;
 
         var normalized = transponderId.Trim();
-        var assignment = _driverAssignments.FirstOrDefault(a =>
-            SplitTransponders(a.TransponderId)
-                .Any(t => string.Equals(t, normalized, StringComparison.OrdinalIgnoreCase)));
+        if (_practiceCardBeingAssigned is { } pending &&
+            string.Equals(pending.TransponderId, normalized, StringComparison.OrdinalIgnoreCase) &&
+            pending.DriverId == PracticeTracker.UnknownId(normalized))
+        {
+            RegisterPracticeCrossing(null, normalized, source, timestamp);
+            return;
+        }
 
-        var driver = assignment is null ? null : Drivers.FirstOrDefault(d => d.Id == assignment.DriverId);
-        RegisterPracticeCrossing(driver, normalized, source, timestamp);
+        var eventAssignment = PracticeEventAssignments.FirstOrDefault(a => HasPracticeTag(a.TransponderId, normalized));
+        var assignment = _driverAssignments.FirstOrDefault(a => HasPracticeTag(a.TransponderId, normalized));
+        var driverId = eventAssignment?.DriverId ?? assignment?.DriverId;
+        var classId = eventAssignment?.ClassId ?? assignment?.ClassId;
+        if (_practiceRentalAssignments.TryGetValue(normalized, out var rental))
+            (driverId, classId) = rental;
+        var driver = Drivers.FirstOrDefault(d => d.Id == driverId);
+        RegisterPracticeCrossing(driver, normalized, source, timestamp, Classes.FirstOrDefault(c => c.Id == classId)?.Name);
     }
 
     private void RegisterPracticeCrossing(
-        DriverProfile? driver, string transponderId, string source, DateTimeOffset timestamp)
+        DriverProfile? driver, string transponderId, string source, DateTimeOffset timestamp, string? className = null)
     {
         if (!_practiceActive) return;
-        var crossing = PracticeTracker.Record(PracticeCards, driver, transponderId, source, timestamp);
+        var crossing = PracticeTracker.Record(PracticeCards, driver, transponderId, source, timestamp, className);
         var card = crossing.Card;
         if (crossing.Created || crossing.LapAdded) card.IsLastPassing = true;
         if (crossing.Created)
@@ -238,7 +250,7 @@ public partial class MainWindow
             }
 
             var inactive = PracticeCards
-                .Where(card => !card.IsSaving && now - card.LastCrossingAt >= card.InactivityTimeout)
+                .Where(card => !card.IsSaving && card != _practiceCardBeingAssigned && now - card.LastCrossingAt >= card.InactivityTimeout)
                 .ToList();
 
             foreach (var card in inactive)
@@ -252,7 +264,7 @@ public partial class MainWindow
 
     private async Task FinalizePracticeCardAsync(PracticeCardViewModel card, DateTimeOffset endedAt)
     {
-        if (card.IsSaving)
+        if (card.IsSaving || card == _practiceCardBeingAssigned)
             return;
 
         card.IsSaving = true;
