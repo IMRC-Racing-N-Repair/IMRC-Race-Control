@@ -19,7 +19,7 @@ public partial class MainWindow
 {
     private sealed record LiveTimeReviewChoice(LiveTimeDecision Decision, bool ForAll);
 
-    private void OpenLiveTimeImport(Window owner)
+    private void OpenLiveTimeImport(Window owner, string? initialPath = null)
     {
         var dialog=new Window
         {
@@ -563,6 +563,8 @@ public partial class MainWindow
             status.Text=$"Imported {additions.Drivers.Count} drivers, {additions.Classes.Count} classes and {additions.Assignments.Count} assignments. Updated transponders on {additions.TagFills.Count} existing assignments. Updated {additions.ClassUpdates.Count} existing class settings. Added {importedEvents.Count} events and {importedEvents.Sum(e => e.Sessions.Count)} completed races. Added {newVenues.Count} tracks. Merged {mergedEvents.Count} saved events and added {mergedEvents.Sum(e => e.Sessions.Count)} missing races.";
             FooterStatusText.Text="Selected LiveTime data imported.";
         };
+        if (initialPath is not null)
+            dialog.Loaded += async (_, _) => { sourcePath = initialPath; await PreviewAsync(); };
         dialog.ShowDialog();
     }
 
