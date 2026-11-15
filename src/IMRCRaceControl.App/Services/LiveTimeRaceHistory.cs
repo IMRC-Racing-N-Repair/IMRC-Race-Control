@@ -11,6 +11,7 @@ public sealed record LiveTimeImportSource(LiveTimeRoster Roster, IReadOnlyList<L
     internal IReadOnlyList<LiveTimeEventClassTiming> VenueTimings { get; init; } = [];
     public IReadOnlyList<LiveTimeDriver> HistoryDrivers { get; init; } = [];
     public IReadOnlyList<LiveTimeClass> HistoryClasses { get; init; } = [];
+    public IReadOnlyList<string> ImportWarnings { get; init; } = [];
 }
 public sealed record LiveTimeEventHistory(long LocalId, Guid SourceId, string Name, DateTimeOffset Date,
     DateTimeOffset? End, List<LiveTimeRaceHistory> Races)
