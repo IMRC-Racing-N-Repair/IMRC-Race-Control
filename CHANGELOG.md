@@ -3,10 +3,10 @@
 Keep all release history in this file. Add each new version at the top; do not create version-specific changelog files.
 
 ## 0.17.1
-- Begin RC Scoring Pro (Advantage ADT) import support with automatic inspection of native Race Control SQLite, LiveTime SQLite, and RC Scoring Pro backups.
+- Detect IMRC Race Control SQLite, plain LiveTime SQLite, and RC Scoring Pro Advantage ADT backups (ZIP or extracted Data folder), then route supported sources to the appropriate import/recovery workflow.
 - Add read-only validation of RCSP ADT record layouts, counts, active/deleted rows, and column metadata, including ZIP backup support.
 - Route recognized plain LiveTime databases directly to the existing selective import workflow.
-- Protect existing data: RCSP record conversion and cross-table race/lap association remain disabled until full fidelity is verified. Unknown source formats are not imported.
+- Reconstruct RCSP drivers, classes, class assignments, transponders, tracks, qualifying and main results, and validated per-lap crossings through the existing selective import/review/duplicate-handling workflow. Back up Race Control data before import.\n- Explicitly report incomplete RCSP lap associations and unsupported PracticeRuns/ADM payloads and require confirmation before importing. Unknown formats remain blocked.
 - Add regression checks and preserve the published release.
 
 ## 0.17.0
