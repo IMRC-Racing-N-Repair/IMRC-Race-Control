@@ -3,7 +3,7 @@
 Keep all release history in this file. Add each new version at the top; do not create version-specific changelog files.
 
 ## 0.17.2
-- Keep Trackmate RC decoder on 9600 baud by default, with 8-N-1 and no handshake. Preserve manually configured Trackmate baud rates independently of other decoder profiles.
+- Keep Trackmate RC decoder on 9600 baud by default, with 8-N-1 and no handshake. One-time migrate previously saved 115200 default selections to 9600, while preserving future manual overrides and other decoder profiles.
 - Include both LiveTime selective import (including supported encrypted backups) and RC Scoring Pro Advantage ADT selective import (ZIP or extracted Data folder), with automatic file-format inspection, conflict review, source-preserving import and backup-first safety.
 - Correct Personal Bests to reflect **race results**, not fastest individual laps: timed races rank by most completed laps then shortest elapsed time; fixed-lap races rank by shortest completion time after reaching the required lap target.
 - Keep PB records separate for driver, class, race format, and configured race duration/target, preserving achieved date, track, event and session for a future live PB indicator.
