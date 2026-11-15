@@ -141,7 +141,10 @@ public partial class MainWindow : Window
             RaceClassCombo.SelectedItem = Classes.FirstOrDefault(c => c.Id == _settings.LastClassId) ?? Classes.FirstOrDefault();
             SelectComboByText(SessionTypeCombo, _settings.LastSessionType.ToString());
 
-            var selectedEvent = Events.FirstOrDefault(e => e.Id == _settings.LastEventId) ?? Events.FirstOrDefault();
+            // Only restore an active race day on startup. Completed/imported events remain
+            // available in Event history but must never appear as the live event.
+            var selectedEvent = Events.FirstOrDefault(e => e.Status == EventStatus.Active && e.Id == _settings.LastEventId)
+                ?? Events.FirstOrDefault(e => e.Status == EventStatus.Active);
             EventSelectCombo.SelectedItem = selectedEvent;
             _activeEvent = selectedEvent;
         }
