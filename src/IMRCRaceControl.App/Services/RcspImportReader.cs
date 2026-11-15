@@ -233,7 +233,7 @@ public static class RcspImportReader
                     Key($"race/{key.Track}/{key.Date}/{key.Race}/{key.Round}/{key.Class}/{key.Heat}/{key.Type}"),
                     key.Class,
                     $"{rosterClasses.FirstOrDefault(c=>c.LocalId==key.Class)?.Name??"RCSP class"} {key.Type}{key.Round} {key.Heat}",
-                    type,key.Round,key.Round,key.Race,key.Race,
+                    type,key.Round,key.Round,key.Race,
                     int.TryParse(key.Heat,out var heat)?heat:1,
                     letter,mainLeg,1,2,lengthLaps>0?2:1,lengthSeconds,lengthLaps,
                     Valid(min)>0?Valid(min):null,null,null,raceEntries));
