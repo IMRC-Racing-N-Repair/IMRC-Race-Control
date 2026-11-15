@@ -75,7 +75,7 @@ var lengthClass = new ClassDefinition { RaceMinutes=5, TargetLaps=50, MainRaceMi
 if(lengthClass.MinutesFor(SessionType.Qualifying)!=5 || lengthClass.MinutesFor(SessionType.Race)!=8 || lengthClass.LapsFor(SessionType.Race)!=100) throw new Exception("Separate lengths failed");
 var roundOverride = new EventSessionDefinition { RaceMinutesOverride=7, RaceFormat=RaceFormat.Timed };
 if(JsonSerializer.Deserialize<EventSessionDefinition>(JsonSerializer.Serialize(roundOverride))!.RaceMinutesOverride!=7) throw new Exception("Override persistence failed");
-var checks = 0;
+var checks = RaceImportChecks.Run();
 void Equal<T>(T expected, T actual, string label)
 {
     if (!EqualityComparer<T>.Default.Equals(expected, actual))
