@@ -86,7 +86,18 @@ public static class RaceImportDetector
                 && !n.Contains("/debug/", StringComparison.OrdinalIgnoreCase))
             .Where(n => n.EndsWith(".adt", StringComparison.OrdinalIgnoreCase))
             .Select(n => n[(n.LastIndexOf('/') + 1)..]).ToArray();
-        return InspectRcspNames(core, "RC Scoring Pro backup ZIP");
+        var identified = InspectRcspNames(core, "RC Scoring Pro backup ZIP");
+        if (identified.Format != RaceImportFormat.RcScoringPro) return identified;
+        var notes = identified.Notes.ToList();
+        foreach (var name in new[] { "Driver", "Classes", "DriverClasses", "Entries",
+                                     "Practice", "PracticeRuns", "Tracks", "LoanerTransponders" })
+        {
+            if (!core.Contains(name + ".adt", StringComparer.OrdinalIgnoreCase)) continue;
+            var table = RcspAdvantageTable.FromZip(zip, name);
+            var active = table.ActiveRows().Count();
+            notes.Add($"{name}: {active:N0} live records / {table.PhysicalRecordCount:N0} physical, {table.Fields.Count} fields.");
+        }
+        return identified with { Notes = notes };
     }
 
     private static RaceImportInspection InspectRcspNames(IEnumerable<string> fileNames, string description)
