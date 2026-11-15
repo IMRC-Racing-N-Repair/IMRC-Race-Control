@@ -224,6 +224,8 @@ public partial class MainWindow
                 status.Text = review.Pending.Count > 0 ? $"{review.Pending.Count:N0} possible matches to review before importing." :
                     HasImportChanges() ? "Ready to import." :
                     selection == LiveTimeRosterSelection.None && !includeHistory ? "Select the categories to import." : "No new records to import with this selection.";
+                if (rcsp && import.ImportWarnings.Count > 0)
+                    status.Text += "\nRCSP DATA COVERAGE: " + string.Join(" ", import.ImportWarnings);
                 if (venuePlan.Count > 0)
                     status.Text += $" Add {venuePlan.Count:N0} tracks to Track Info.";
                 if (plan.ClassUpdates.Count > 0)
@@ -469,6 +471,14 @@ public partial class MainWindow
                 }
             }
             if (plan is not { } additions || !HasImportChanges() || !ApplicationUpdateAllowed) return;
+            if (rcsp && source is { ImportWarnings.Count: > 0 } rcspSource &&
+                MessageBox.Show(dialog,
+                    "RC Scoring Pro backup coverage limitations:\n\n" +
+                    string.Join("\n\n",rcspSource.ImportWarnings) +
+                    "\n\nImport only the selected data with these limitations? A Race Control database backup will be created first.",
+                    "Review RCSP import limitations",MessageBoxButton.YesNo,MessageBoxImage.Warning,
+                    MessageBoxResult.No) != MessageBoxResult.Yes)
+                return;
             var importedEvents = eventPlan;
             var mergedEvents = historyUpdates;
             var newVenues = venuePlan;
@@ -561,7 +571,7 @@ public partial class MainWindow
             finally { SetBusy(false); }
             await UpdatePreviewAsync();
             status.Text=$"Imported {additions.Drivers.Count} drivers, {additions.Classes.Count} classes and {additions.Assignments.Count} assignments. Updated transponders on {additions.TagFills.Count} existing assignments. Updated {additions.ClassUpdates.Count} existing class settings. Added {importedEvents.Count} events and {importedEvents.Sum(e => e.Sessions.Count)} completed races. Added {newVenues.Count} tracks. Merged {mergedEvents.Count} saved events and added {mergedEvents.Sum(e => e.Sessions.Count)} missing races.";
-            FooterStatusText.Text="Selected LiveTime data imported.";
+            FooterStatusText.Text=rcsp ? "Selected RC Scoring Pro data imported." : "Selected LiveTime data imported.";
         };
         if (initialPath is not null)
             dialog.Loaded += async (_, _) => { sourcePath = initialPath; await PreviewAsync(); };
