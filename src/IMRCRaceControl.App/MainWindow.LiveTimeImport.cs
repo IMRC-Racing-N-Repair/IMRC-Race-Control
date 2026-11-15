@@ -19,21 +19,21 @@ public partial class MainWindow
 {
     private sealed record LiveTimeReviewChoice(LiveTimeDecision Decision, bool ForAll);
 
-    private void OpenLiveTimeImport(Window owner, string? initialPath = null)
+    private void OpenLiveTimeImport(Window owner, string? initialPath = null, bool rcsp = false)
     {
         var dialog=new Window
         {
-            Owner=owner,Title="Import LiveTime data",Width=Math.Min(700, SystemParameters.WorkArea.Width * 0.95),SizeToContent=SizeToContent.Height,MaxHeight=SystemParameters.WorkArea.Height*0.90,
+            Owner=owner,Title=rcsp ? "Import RC Scoring Pro data" : "Import LiveTime data",Width=Math.Min(700, SystemParameters.WorkArea.Width * 0.95),SizeToContent=SizeToContent.Height,MaxHeight=SystemParameters.WorkArea.Height*0.90,
             WindowStartupLocation=WindowStartupLocation.CenterOwner
         };
         var panel=new StackPanel {Margin=new Thickness(20)};
         var content = new Grid();
         content.Children.Add(new ScrollViewer { Content=panel, VerticalScrollBarVisibility=ScrollBarVisibility.Auto });
         dialog.Content = content;
-        panel.Children.Add(new TextBlock {Text="IMPORT LIVETIME DATA",FontSize=22,FontWeight=FontWeights.Bold});
+        panel.Children.Add(new TextBlock {Text=rcsp ? "IMPORT RC SCORING PRO" : "IMPORT LIVETIME DATA",FontSize=22,FontWeight=FontWeights.Bold});
         panel.Children.Add(new TextBlock
         {
-            Text="Open a LiveTime backup, then select the categories you want to import. The buttons show how many records are in the backup.",
+            Text=rcsp ? "Select the tracks, drivers, classes, transponders, completed races and scored laps to import. RCSP history is reconstructed from Advantage ADT tables and reviewed before saving." : "Open a LiveTime backup, then select the categories you want to import. The buttons show how many records are in the backup.",
             TextWrapping=TextWrapping.Wrap,Margin=new Thickness(0,8,0,12)
         });
 
@@ -48,8 +48,8 @@ public partial class MainWindow
         var reviewChoices = new Dictionary<string,LiveTimeDecision>(StringComparer.OrdinalIgnoreCase);
         LiveTimeRosterPlan? plan=null;
         var choices=new WrapPanel();
-        var select=new Button {Content="CHOOSE LIVETIME DATABASE…"};
-        var reference=new Button {Content="REFERENCE FOR OLDER BACKUPS…"};
+        var select=new Button {Content=rcsp ? "CHOOSE RCSP BACKUP ZIP…" : "CHOOSE LIVETIME DATABASE…"};
+        var reference=new Button {Content="REFERENCE FOR OLDER BACKUPS…", Visibility=rcsp ? Visibility.Collapsed : Visibility.Visible};
         choices.Children.Add(select);choices.Children.Add(reference);panel.Children.Add(choices);
         var sourceLabel=new TextBlock {Text="No backup selected.",TextWrapping=TextWrapping.Wrap,Margin=new Thickness(0,9,0,4)};
         var status=new TextBlock {TextWrapping=TextWrapping.Wrap,Margin=new Thickness(0,4,0,8)};
@@ -183,7 +183,7 @@ public partial class MainWindow
 
         string? Pick(string title)
         {
-            var picker=new OpenFileDialog {Title=title,Filter="LiveTime database or backup (*.db;*.bak;*.sqlite)|*.db;*.bak;*.sqlite|All files (*.*)|*.*"};
+            var picker=new OpenFileDialog {Title=title,Filter=rcsp ? "RC Scoring Pro backup ZIP (*.zip)|*.zip|All files (*.*)|*.*" : "LiveTime database or backup (*.db;*.bak;*.sqlite)|*.db;*.bak;*.sqlite|All files (*.*)|*.*"};
             return picker.ShowDialog(dialog)==true ? picker.FileName : null;
         }
 
@@ -353,8 +353,8 @@ public partial class MainWindow
             sourceLabel.Text=Path.GetFileName(sourcePath)+(referencePath is null ? "" : $" • Reference: {Path.GetFileName(referencePath)}");
             try
             {
-                source=await Task.Run(()=>password is null
-                    ? LiveTimeBackupReader.ReadImport(path,referencePath)
+                source=await Task.Run(()=>rcsp ? RcspImportReader.ReadImport(path)
+                    : password is null ? LiveTimeBackupReader.ReadImport(path,referencePath)
                     : LiveTimeBackupReader.ReadEncryptedImport(path,password));
                 unlockPanel.Visibility = Visibility.Collapsed;
                 UpdateScopeLabels();
@@ -433,7 +433,7 @@ public partial class MainWindow
             e.Handled = true;
             await UnlockAsync();
         };
-        select.Click+=async (_,_)=>{if(Pick("Select a LiveTime database or backup") is { } path){sourcePath=path;referencePath=null;await PreviewAsync();}};
+        select.Click+=async (_,_)=>{if(Pick(rcsp ? "Select an RC Scoring Pro backup ZIP" : "Select a LiveTime database or backup") is { } path){sourcePath=path;referencePath=null;await PreviewAsync();}};
         reference.Click+=async (_,_)=>{if(Pick("Select an older backup from the same LiveTime installation") is { } path){referencePath=path;await PreviewAsync();}};
         commit.Click+=async (_,_) =>
         {
