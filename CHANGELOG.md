@@ -2,6 +2,15 @@
 
 Keep all release history in this file. Add each new version at the top; do not create version-specific changelog files.
 
+## 0.17.1
+- Restore Trackmate RC serial default to 9600 baud (8-N-1) following the independent RC interoperability reference and previous working setup. Preserve explicitly selected Trackmate baud overrides independently of other serial decoders; manual reconnection at 9600 may be required for systems that saved the earlier 115200 default.
+- Detect IMRC Race Control SQLite, plain LiveTime SQLite, and RC Scoring Pro Advantage ADT backups (ZIP or extracted Data folder), then route supported sources to the appropriate import/recovery workflow.
+- Store a per-driver/per-class fastest eligible lap index across completed race history and imported results; use official best-lap summaries when individual source crossings are missing. Retain source event/track and timestamp for future live PB indicators.
+- Add read-only validation of RCSP ADT record layouts, counts, active/deleted rows, and column metadata, including ZIP backup support.
+- Route recognized plain LiveTime databases directly to the existing selective import workflow.
+- Reconstruct RCSP drivers, classes, class assignments, transponders, tracks, qualifying and main results, and validated per-lap crossings through the existing selective import/review/duplicate-handling workflow. Back up Race Control data before import.\n- Explicitly report incomplete RCSP lap associations and unsupported PracticeRuns/ADM payloads and require confirmation before importing. Unknown formats remain blocked.
+- Add regression checks and preserve the published release.
+
 ## 0.17.0
 - Prepare the next minor release from the complete 0.16.30 development source, preserving current LiveTime importing, race management, scoring, and installer functionality.
 - Update the application package version and visible dashboard version to 0.17.0.

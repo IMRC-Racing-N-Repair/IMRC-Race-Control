@@ -2,8 +2,8 @@ name: Build draft release
 on:
   workflow_dispatch:
   push:
-    branches: [main, master, prepare-v0.17.0]
-    paths: ['src/IMRCRaceControl.App/IMRCRaceControl.App.csproj', 'scripts/Build-Installer.ps1', 'src/IMRCRaceControl.Installer/**', 'src/IMRCRaceControl.App/MainWindow.xaml.cs', 'src/IMRCRaceControl.App/MainWindow.NextRace.cs', '.github/workflows/release.yml']
+    branches: [main, master, prepare-v0.17.0, prepare-v0.17.1-rcsp-import]
+    paths: ['src/IMRCRaceControl.App/IMRCRaceControl.App.csproj', 'scripts/Build-Installer.ps1', 'src/IMRCRaceControl.Installer/**', 'src/IMRCRaceControl.App/MainWindow.xaml.cs', 'src/IMRCRaceControl.App/MainWindow.NextRace.cs', 'src/IMRCRaceControl.App/Services/Rcsp*.cs', 'src/IMRCRaceControl.App/Services/RaceImportDetector.cs', 'src/IMRCRaceControl.App/Core/TrackmateProtocol.cs', '.github/workflows/release.yml']
     tags: ['v*']
 permissions:
   contents: write

@@ -81,6 +81,9 @@ public partial class MainWindow : Window
         RaceControlDatabaseService database, string? startupWarning = null)
     {
         _settings = settings;
+        // Rebuild historical PBs from the saved race results, including older
+        // native backups that predate the dedicated personal-best index.
+        _settings.DriverPersonalBests = PersonalBests.FromEvents(_settings.Events);
         _settingsService = settingsService;
         _database = database;
         _startupWarning = startupWarning;
@@ -222,6 +225,7 @@ public partial class MainWindow : Window
             _settings.Drivers = Drivers.ToList();
             _settings.DriverClassAssignments = _driverAssignments.ToList();
             _settings.Events = Events.ToList();
+            _settings.DriverPersonalBests = PersonalBests.FromEvents(_settings.Events);
             _settings.Series = SeriesDefinitions.ToList();
             _settings.LastSeriesId = _activeSeries?.Id ?? string.Empty;
             _settings.LastClassId = (RaceClassCombo.SelectedItem as ClassDefinition)?.Id ?? _settings.LastClassId;

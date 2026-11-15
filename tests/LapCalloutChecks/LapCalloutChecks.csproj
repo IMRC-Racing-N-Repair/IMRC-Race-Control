@@ -9,12 +9,15 @@
     <Compile Include="../../src/IMRCRaceControl.App/Core/RaceLineupOrder.cs" Link="RaceLineupOrder.cs" />
     <Compile Include="../../src/IMRCRaceControl.App/Core/HeatDriverTransfer.cs" Link="HeatDriverTransfer.cs" />
     <Compile Include="../../src/IMRCRaceControl.App/Core/TrackRecords.cs" Link="TrackRecords.cs" />
+    <Compile Include="../../src/IMRCRaceControl.App/Core/PersonalBests.cs" Link="PersonalBests.cs" />
     <Compile Include="../../src/IMRCRaceControl.App/Core/EventRegistration.cs" Link="EventRegistration.cs" />
     <Compile Include="../../src/IMRCRaceControl.App/Core/RentalPrintFormatting.cs" Link="RentalPrintFormatting.cs" />
     <Compile Include="../../src/IMRCRaceControl.App/Core/RentalTransponderRegistry.cs" Link="RentalTransponderRegistry.cs" />
     <Compile Include="../../src/IMRCRaceControl.App/Services/ApplicationDataPaths.cs" Link="ApplicationDataPaths.cs" />
     <Compile Include="../../src/IMRCRaceControl.App/Services/DataProtectionService.cs" Link="DataProtectionService.cs" />
     <Compile Include="../../src/IMRCRaceControl.App/Services/LiveTimeBackupReader.cs" Link="LiveTimeBackupReader.cs" />
+    <Compile Include="../../src/IMRCRaceControl.App/Services/RaceImportDetector.cs" Link="RaceImportDetector.cs" />
+    <Compile Include="../../src/IMRCRaceControl.App/Services/RcspAdvantageTable.cs" Link="RcspAdvantageTable.cs" />
     <Compile Include="../../src/IMRCRaceControl.App/Services/LiveTimePasswordBundle.cs" Link="LiveTimePasswordBundle.cs" />
     <Compile Include="../../src/IMRCRaceControl.App/Services/LiveTimeEncryptedBackup.cs" Link="LiveTimeEncryptedBackup.cs" />
     <Compile Include="../../src/IMRCRaceControl.App/Services/LiveTimeRaceHistory.cs" Link="LiveTimeRaceHistory.cs" />
