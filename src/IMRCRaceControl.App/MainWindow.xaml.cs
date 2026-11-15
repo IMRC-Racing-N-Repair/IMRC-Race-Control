@@ -89,7 +89,7 @@ public partial class MainWindow : Window
         }
         // Rebuild historical PBs from the saved race results, including older
         // native backups that predate the dedicated personal-best index.
-        _settings.DriverPersonalBests = PersonalBests.FromEvents(_settings.Events);
+        _settings.DriverPersonalBests = PersonalBests.FromEvents(_settings.Events, _settings.Classes);
         _settingsService = settingsService;
         _database = database;
         _startupWarning = startupWarning;
