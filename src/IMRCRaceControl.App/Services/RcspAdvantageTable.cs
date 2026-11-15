@@ -138,7 +138,7 @@ public sealed class RcspAdvantageRow
     public double? Number(string name)
     {
         var source = Raw(name);
-        if (source is not { Type: 10, Value.Length: 8 } v) return Integer(name);
+        if (source is not { } v || v.Type != 10 || v.Value.Length != 8) return Integer(name);
         var number = BinaryPrimitives.ReadDoubleLittleEndian(v.Value.Span);
         if (!double.IsFinite(number) || (number < 0 && Math.Abs(number) < 1e-300))
             return null;
@@ -148,7 +148,7 @@ public sealed class RcspAdvantageRow
     public DateOnly? Date(string name)
     {
         var source = Raw(name);
-        if (source is not { Type: 3, Value.Length: 4 } v) return null;
+        if (source is not { } v || v.Type != 3 || v.Value.Length != 4) return null;
         var day = BinaryPrimitives.ReadUInt32LittleEndian(v.Value.Span);
         // Advantage ADT DATE stores Julian day numbers.
         var dayNumber = (long)day - 1721426;
@@ -159,7 +159,7 @@ public sealed class RcspAdvantageRow
     public TimeSpan? Time(string name)
     {
         var source = Raw(name);
-        if (source is not { Type: 13, Value.Length: 4 } v) return null;
+        if (source is not { } v || v.Type != 13 || v.Value.Length != 4) return null;
         var milliseconds = BinaryPrimitives.ReadUInt32LittleEndian(v.Value.Span);
         return milliseconds < 86_400_000 ? TimeSpan.FromMilliseconds(milliseconds) : null;
     }
