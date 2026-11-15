@@ -16,6 +16,7 @@
     <Compile Include="../../src/IMRCRaceControl.App/Services/DataProtectionService.cs" Link="DataProtectionService.cs" />
     <Compile Include="../../src/IMRCRaceControl.App/Services/LiveTimeBackupReader.cs" Link="LiveTimeBackupReader.cs" />
     <Compile Include="../../src/IMRCRaceControl.App/Services/RaceImportDetector.cs" Link="RaceImportDetector.cs" />
+    <Compile Include="../../src/IMRCRaceControl.App/Services/RcspAdvantageTable.cs" Link="RcspAdvantageTable.cs" />
     <Compile Include="../../src/IMRCRaceControl.App/Services/LiveTimePasswordBundle.cs" Link="LiveTimePasswordBundle.cs" />
     <Compile Include="../../src/IMRCRaceControl.App/Services/LiveTimeEncryptedBackup.cs" Link="LiveTimeEncryptedBackup.cs" />
     <Compile Include="../../src/IMRCRaceControl.App/Services/LiveTimeRaceHistory.cs" Link="LiveTimeRaceHistory.cs" />
