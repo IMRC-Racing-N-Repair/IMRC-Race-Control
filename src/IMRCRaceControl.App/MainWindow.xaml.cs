@@ -81,6 +81,12 @@ public partial class MainWindow : Window
         RaceControlDatabaseService database, string? startupWarning = null)
     {
         _settings = settings;
+        if (!_settings.Trackmate9600MigrationApplied)
+        {
+            if (_settings.LastTrackmateBaudRate == 115200)
+                _settings.LastTrackmateBaudRate = TrackmateProtocol.BaudRate;
+            _settings.Trackmate9600MigrationApplied = true;
+        }
         // Rebuild historical PBs from the saved race results, including older
         // native backups that predate the dedicated personal-best index.
         _settings.DriverPersonalBests = PersonalBests.FromEvents(_settings.Events);
