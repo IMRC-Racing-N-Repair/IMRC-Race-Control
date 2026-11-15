@@ -3,7 +3,7 @@ on:
   workflow_dispatch:
   push:
     branches: [main, master, prepare-v0.17.0]
-    paths: ['src/IMRCRaceControl.App/IMRCRaceControl.App.csproj', 'scripts/Build-Installer.ps1', '.github/workflows/release.yml']
+    paths: ['src/IMRCRaceControl.App/IMRCRaceControl.App.csproj', 'scripts/Build-Installer.ps1', 'src/IMRCRaceControl.Installer/**', '.github/workflows/release.yml']
     tags: ['v*']
 permissions:
   contents: write
