@@ -16,6 +16,7 @@ public sealed class RcspAdvantageTable
     private readonly byte[] _buffer;
     private readonly int _dataOffset;
     private readonly int _recordSize;
+    private readonly IReadOnlyDictionary<string, Field> _fieldLookup;
     public string Name { get; }
     public int PhysicalRecordCount { get; }
     public IReadOnlyList<Field> Fields { get; }
@@ -25,6 +26,7 @@ public sealed class RcspAdvantageTable
     {
         Name = name; _buffer = buffer; PhysicalRecordCount = count;
         Fields = fields; _dataOffset = dataOffset; _recordSize = recordSize;
+        _fieldLookup = fields.ToDictionary(f => f.Name, StringComparer.OrdinalIgnoreCase);
     }
 
     public static RcspAdvantageTable Read(string name, byte[] bytes)
@@ -68,7 +70,7 @@ public sealed class RcspAdvantageTable
             // are excluded from all previews and conversion counts.
             if (_buffer[start] != 4) continue;
             yield return new RcspAdvantageRow(
-                _buffer.AsMemory(start, _recordSize), Fields, index + 1);
+                _buffer.AsMemory(start, _recordSize), _fieldLookup, index + 1);
         }
     }
 
@@ -95,13 +97,13 @@ public sealed class RcspAdvantageTable
 public sealed class RcspAdvantageRow
 {
     private readonly ReadOnlyMemory<byte> _bytes;
-    private readonly Dictionary<string, RcspAdvantageTable.Field> _fields;
+    private readonly IReadOnlyDictionary<string, RcspAdvantageTable.Field> _fields;
     public int PhysicalIndex { get; }
-    internal RcspAdvantageRow(ReadOnlyMemory<byte> bytes, IReadOnlyList<RcspAdvantageTable.Field> fields, int index)
+    internal RcspAdvantageRow(ReadOnlyMemory<byte> bytes, IReadOnlyDictionary<string, RcspAdvantageTable.Field> fields, int index)
     {
         _bytes = bytes;
         PhysicalIndex = index;
-        _fields = fields.ToDictionary(f => f.Name, StringComparer.OrdinalIgnoreCase);
+        _fields = fields;
     }
 
     private (byte Type, ReadOnlyMemory<byte> Value)? Raw(string name)
