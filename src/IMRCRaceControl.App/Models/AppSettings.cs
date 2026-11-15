@@ -36,6 +36,8 @@ public sealed class AppSettings
     public List<DriverProfile> Drivers { get; set; } = [];
     public List<DriverClassAssignment> DriverClassAssignments { get; set; } = [];
     public List<RaceDayEventDefinition> Events { get; set; } = [];
+    // Historical PB index; rebuilt from completed races and imported results when saving.
+    public List<IMRCRaceControl.Core.DriverPersonalBest> DriverPersonalBests { get; set; } = [];
     public DriverRatingSettings DriverRatingSettings { get; set; } = new();
     public List<DriverRatingReview> DriverRatingReviews { get; set; } = [];
     public List<RaceSeriesDefinition> Series { get; set; } = [];
