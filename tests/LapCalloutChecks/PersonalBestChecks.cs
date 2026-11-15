@@ -12,7 +12,7 @@ public static class PersonalBestChecks
             return new EventSessionDefinition
             {
                 Id=id, ClassId=cls, ClassName=cls, RaceFormat=format,
-                RaceMinutesOverride=format==RaceFormat.Timed?distance/60.0:null,
+                RaceMinutesOverride=format==RaceFormat.Timed && distance>0?distance/60.0:null,
                 TargetLaps=format==RaceFormat.Laps?distance:50,
                 ProgressStatus=EventSessionStatus.Completed,
                 Entrants=[new SessionEntrant { DriverId="driver1", CarNumber=5 }],
