@@ -13,7 +13,7 @@ public partial class MainWindow
         var picker = new OpenFileDialog
         {
             Title = "Select race data - automatically identify source",
-            Filter = "Race databases or RCSP backups (*.db;*.sqlite;*.zip;*.adt)|*.db;*.sqlite;*.zip;*.adt|All files (*.*)|*.*"
+            Filter = "Race databases or RCSP backups (*.db;*.bak;*.sqlite;*.zip;*.adt)|*.db;*.bak;*.sqlite;*.zip;*.adt|All files (*.*)|*.*"
         };
         if (picker.ShowDialog(owner) != true) return;
         ShowDetectedRaceImport(owner, picker.FileName);
