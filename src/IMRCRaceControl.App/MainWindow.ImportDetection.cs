@@ -86,6 +86,18 @@ public partial class MainWindow
         foreach (var note in inspection.Notes)
             panel.Children.Add(new TextBlock { Text = "• " + note,
                 Margin = new Thickness(0, 8, 0, 0), TextWrapping = TextWrapping.Wrap });
+        if (inspection.Format == RaceImportFormat.Unknown && File.Exists(path) &&
+            (path.EndsWith(".db", StringComparison.OrdinalIgnoreCase) ||
+             path.EndsWith(".bak", StringComparison.OrdinalIgnoreCase) ||
+             path.EndsWith(".sqlite", StringComparison.OrdinalIgnoreCase)))
+        {
+            var encrypted = new Button { Content = "TRY LIVETIME BACKUP / UNLOCK…",
+                Margin = new Thickness(0, 12, 0, 0) };
+            encrypted.Click += (_, _) => { dialog.Close(); OpenLiveTimeImport(owner, path); };
+            panel.Children.Add(encrypted);
+            panel.Children.Add(new TextBlock { Text = "Encrypted LiveTime files cannot always be identified by header alone. This option opens the existing password/key flow without changing the source.",
+                TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 5, 0, 0) });
+        }
         var close = new Button { Content = "CLOSE", Margin = new Thickness(0, 14, 0, 0),
             HorizontalAlignment = HorizontalAlignment.Right, MinWidth = 110 };
         close.Click += (_, _) => dialog.Close();
