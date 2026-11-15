@@ -1,7 +1,7 @@
 # Trackmate RC / Iridium support — v0.15.3
 
 ## Setup
-Choose Trackmate / USB Serial in Decoder, select its COM port, then Connect. Race Control defaults to 115200 baud, 8-N-1, no handshake. If your decoder requires a different baud rate, select it before connecting. Race Control remembers the Trackmate rate separately. Other timing applications must release the COM port. New blue boards use FTDI USB drivers; older red boards use a serial adapter and its driver. The network-style cable to the overhead sensors is not a PC Ethernet connection.
+Choose Trackmate / USB Serial in Decoder, select its COM port, then Connect. Race Control defaults to 9600 baud, 8-N-1, no handshake. If your decoder requires a different baud rate, select it before connecting. Race Control remembers an explicitly selected Trackmate rate separately. Earlier builds incorrectly defaulted to 115200; if you previously connected with that value, manually select 9600 and reconnect, because the existing saved rate may still be 115200. Other timing applications must release the COM port. New blue boards use FTDI USB drivers; older red boards use a serial adapter and its driver. The network-style cable to the overhead sensors is not a PC Ethernet connection.
 
 The startup bytes are `01 3F 2C 32 30 32 2C 30 2C 31 31 2C 0D 0A` (SOH followed by `?,202,0,11,` and CRLF). They are sent on connection/reconnection, not every race start. No proprietary software or third-party source is bundled.
 
@@ -10,7 +10,7 @@ The independently implemented parser uses RC AMB-style SOH/tab/CRLF messages. Pa
 
 Only the known RC layout is accepted. Optional checksum-shaped trailers are format-checked, not verified: a reliable Trackmate checksum contract was not available in the references. Other firmware layouts require a hardware traffic sample rather than guessed field positions. A backward clock jump greater than two seconds resets the clock anchor; connection reset clears partial bytes and duplicate history because the startup resets the device timer.
 
-Tests construct representative protocol messages; these are not real captured packets. Tests cover every message split, byte-by-byte reception, simultaneous cars, batched passings, exact duplicates, decoder-time lap intervals, malformed data, status records, oversized data, reconnects and ordered ingress routing. Windows UI and physical hardware remain unverified.
+Tests construct representative protocol messages; these are not real captured packets. Tests cover every message split, byte-by-byte reception, simultaneous cars, batched passings, exact duplicates, decoder-time lap intervals, malformed data, status records, oversized data, reconnects and ordered ingress routing. Windows UI and physical hardware remain unverified. The manufacturer's RC manuals don't state an explicit baud rate; the 9600 default is drawn from the independent RC interoperability reference and the reported working legacy configuration.
 
 ## References consulted
 - Trackmate manufacturer support: https://trackmateracing.com/shop/en/content/17-rc-car-lap-counter
