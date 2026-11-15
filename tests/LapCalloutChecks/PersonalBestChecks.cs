@@ -37,8 +37,8 @@ public static class PersonalBestChecks
                 Session("timed-without-distance","classD",RaceFormat.Timed,0,40,"5:00.000")
             ]
         };
-        var list=PersonalBests.FromEvents([a]);
-        if(list.Count!=5) throw new Exception("PB group count or invalid-result rejection incorrect");
+        var list=PersonalBests.FromEvents([a], [new ClassDefinition { Id="classD", RaceMinutes=5 }]);
+        if(list.Count!=6) throw new Exception("PB group count or invalid-result rejection incorrect");
         var timed=PersonalBests.Lookup(list,"driver1","classA",RaceFormat.Timed,300);
         var lapped=PersonalBests.Lookup(list,"driver1","classA",RaceFormat.Laps,50);
         if(timed?.Laps!=41 || Math.Abs(timed.TotalSeconds-303)>0.0001 ||
@@ -55,7 +55,7 @@ public static class PersonalBestChecks
             throw new Exception("Race format and distance PB threshold comparison failed");
         var saved=JsonSerializer.Deserialize<AppSettings>(JsonSerializer.Serialize(
             new AppSettings { DriverPersonalBests=list }))!;
-        if(saved.DriverPersonalBests.Count!=5 ||
+        if(saved.DriverPersonalBests.Count!=6 ||
             PersonalBests.Lookup(saved.DriverPersonalBests,"driver1","classA",RaceFormat.Laps,50)?.TotalSeconds!=259.5)
             throw new Exception("PB persistence round-trip failed");
         return 5;
