@@ -14,9 +14,9 @@ internal static class TrackmateChecks
         var first = Bytes("\u0001@\t202\t1\t0001234\t10.000\t7\r\n");
         var second = Bytes("\u0001@\t202\t2\t0001234\t14.339\t9\r\n");
         Check(Convert.ToHexString(TrackmateProtocol.StartCommand)=="013F2C3230322C302C31312C0D0A", "RC startup wire bytes");
-        Check(TrackmateProtocol.ResolveBaudRate(null) == 115200, "new Trackmate selection defaults to 115200");
-        Check(TrackmateProtocol.ResolveBaudRate(null, 9600) == 115200, "old Trackmate preset upgrades to 115200");
-        Check(TrackmateProtocol.ResolveBaudRate(null, 57600) == 57600, "legacy custom Trackmate rate is kept");
+        Check(TrackmateProtocol.ResolveBaudRate(null) == 9600, "new Trackmate selection defaults to 9600");
+        Check(TrackmateProtocol.ResolveBaudRate(null, 9600) == 9600, "Trackmate default remains 9600");
+        Check(TrackmateProtocol.ResolveBaudRate(null, 57600) == 9600, "shared decoder rate is not treated as Trackmate override");
         Check(TrackmateProtocol.ResolveBaudRate(9600, 115200) == 9600, "explicit Trackmate override takes precedence");
         var settings = new IMRCRaceControl.Models.AppSettings { LastBaudRate = 38400, LastTrackmateBaudRate = 19200 };
         var reopened = System.Text.Json.JsonSerializer.Deserialize<IMRCRaceControl.Models.AppSettings>(
