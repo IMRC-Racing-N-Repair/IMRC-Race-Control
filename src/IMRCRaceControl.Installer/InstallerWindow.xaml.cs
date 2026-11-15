@@ -97,7 +97,13 @@ public partial class InstallerWindow : Window
     {
         Directory.CreateDirectory(output);
         var target = Installation.BuildVersion;
-        var older = new Version(target.Major, target.Minor, Math.Max(0, target.Build - 1));
+        var older = target.Build > 0
+            ? new Version(target.Major, target.Minor, target.Build - 1)
+            : target.Minor > 0
+                ? new Version(target.Major, target.Minor - 1, 0)
+                : target.Major > 0
+                    ? new Version(target.Major - 1, 0, 0)
+                    : throw new InvalidOperationException("There is no earlier version to preview.");
         foreach (var (name, current) in new (string, Version?)[] { ("Install", null), ("Update", older), ("Repair", target), ("Newer", new Version(target.Major, target.Minor, target.Build + 1)) })
         {
             var window = new InstallerWindow(new Installation(@"C:\Users\Racer\AppData\Local\IMRCRaceControl.App", current, target), true);
