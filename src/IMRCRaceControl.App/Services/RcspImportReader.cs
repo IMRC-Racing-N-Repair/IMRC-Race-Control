@@ -24,10 +24,12 @@ public static class RcspImportReader
 
     public static LiveTimeImportSource ReadImport(string path)
     {
-        if (!File.Exists(path) || !path.EndsWith(".zip", StringComparison.OrdinalIgnoreCase))
-            throw new InvalidDataException("Select an original RC Scoring Pro ZIP backup.");
-        using var archive = ZipFile.OpenRead(path);
-        RcspAdvantageTable Table(string name) => RcspAdvantageTable.FromZip(archive,name);
+        if (!Directory.Exists(path) && (!File.Exists(path) || !path.EndsWith(".zip", StringComparison.OrdinalIgnoreCase)))
+            throw new InvalidDataException("Select an original RC Scoring Pro ZIP backup or Data directory.");
+        using var archive = Directory.Exists(path) ? null : ZipFile.OpenRead(path);
+        RcspAdvantageTable Table(string name) => archive is not null
+            ? RcspAdvantageTable.FromZip(archive,name)
+            : RcspAdvantageTable.Read(name,File.ReadAllBytes(Path.Combine(path,name+".adt")));
         var tracksTable = Table("Tracks");
         var driversTable = Table("Driver");
         var classesTable = Table("Classes");
