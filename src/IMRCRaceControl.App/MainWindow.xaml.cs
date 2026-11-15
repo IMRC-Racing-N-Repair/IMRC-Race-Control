@@ -222,6 +222,7 @@ public partial class MainWindow : Window
             _settings.Drivers = Drivers.ToList();
             _settings.DriverClassAssignments = _driverAssignments.ToList();
             _settings.Events = Events.ToList();
+            _settings.DriverPersonalBests = PersonalBests.FromEvents(_settings.Events);
             _settings.Series = SeriesDefinitions.ToList();
             _settings.LastSeriesId = _activeSeries?.Id ?? string.Empty;
             _settings.LastClassId = (RaceClassCombo.SelectedItem as ClassDefinition)?.Id ?? _settings.LastClassId;
