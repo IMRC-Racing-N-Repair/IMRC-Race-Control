@@ -258,9 +258,15 @@ public static class RcspImportReader
         var rentals=rentalsTable.ActiveRows()
             .Select(r=>r.Text("Transponder")).Where(s=>s.Length>0&&s!="0")
             .Distinct().ToList();
+        var scoredLaps=history.Sum(e=>e.Races.Sum(r=>r.Entries.Sum(x=>x.CompletedLaps)));
+        var recoveredLaps=history.Sum(e=>e.LapCount);
+        var warnings=new List<string>();
+        if (recoveredLaps<scoredLaps)
+            warnings.Add($"RCSP has {scoredLaps:N0} officially scored laps but only {recoveredLaps:N0} can currently be linked to individual lap records. {scoredLaps-recoveredLaps:N0} are unverified/missing. Importing with laps selected will retain only verified crossings, while official summary results remain intact.");
+        warnings.Add("PracticeRuns history and ADM memo/image payloads are not yet converted by this importer. The original RCSP backup remains unchanged.");
         var roster=new LiveTimeRoster(325,rosterDrivers,rosterClasses,rosterEntries,
             history.Count,history.Sum(e=>e.RaceCount),
             history.Sum(e=>e.LapCount),0,rentals.Count){RentalNumbers=rentals};
-        return new LiveTimeImportSource(roster,history){Venues=venues};
+        return new LiveTimeImportSource(roster,history){Venues=venues,ImportWarnings=warnings};
     }
 }
