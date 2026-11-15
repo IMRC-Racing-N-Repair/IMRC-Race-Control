@@ -2,6 +2,14 @@
 
 Keep all release history in this file. Add each new version at the top; do not create version-specific changelog files.
 
+## 0.17.2
+- Keep Trackmate RC decoder on 9600 baud by default, with 8-N-1 and no handshake. One-time migrate previously saved 115200 default selections to 9600, while preserving future manual overrides and other decoder profiles.
+- Include both LiveTime selective import (including supported encrypted backups) and RC Scoring Pro Advantage ADT selective import (ZIP or extracted Data folder), with automatic file-format inspection, conflict review, source-preserving import and backup-first safety.
+- Correct Personal Bests to reflect **race results**, not fastest individual laps: timed races rank by most completed laps then shortest elapsed time; fixed-lap races rank by shortest completion time after reaching the required lap target.
+- Keep PB records separate for driver, class, race format, and configured race duration/target, preserving achieved date, track, event and session for a future live PB indicator.
+- Exclude DNS/DNF/DQ, invalid results, missing official elapsed times, and unmatched race lengths from PB records.
+- RCSP historical practice runs, track-record tables and unmatched lap crossings remain incomplete; review limitations before importing. Do not treat this draft as a lossless conversion.
+
 ## 0.17.1
 - Restore Trackmate RC serial default to 9600 baud (8-N-1) following the independent RC interoperability reference and previous working setup. Preserve explicitly selected Trackmate baud overrides independently of other serial decoders; manual reconnection at 9600 may be required for systems that saved the earlier 115200 default.
 - Detect IMRC Race Control SQLite, plain LiveTime SQLite, and RC Scoring Pro Advantage ADT backups (ZIP or extracted Data folder), then route supported sources to the appropriate import/recovery workflow.
