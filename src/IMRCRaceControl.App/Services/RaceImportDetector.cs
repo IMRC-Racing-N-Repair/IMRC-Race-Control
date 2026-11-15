@@ -9,7 +9,7 @@ public enum RaceImportFormat { RaceControl, LiveTime, RcScoringPro, Unknown }
 public sealed record RaceImportInspection(RaceImportFormat Format, string Description,
     IReadOnlyList<string> Tables, IReadOnlyList<string> Notes)
 {
-    public bool IsImportSupported => Format == RaceImportFormat.LiveTime;
+    public bool IsImportSupported => Format is RaceImportFormat.LiveTime or RaceImportFormat.RcScoringPro;
 }
 
 /// <summary>
