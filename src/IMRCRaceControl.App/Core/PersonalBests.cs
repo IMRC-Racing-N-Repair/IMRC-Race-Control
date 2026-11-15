@@ -43,9 +43,11 @@ public static class PersonalBests
             : elapsedSeconds < previous.TotalSeconds - 0.0000001;
     }
 
-    public static List<DriverPersonalBest> FromEvents(IEnumerable<RaceDayEventDefinition> events)
+    public static List<DriverPersonalBest> FromEvents(IEnumerable<RaceDayEventDefinition> events,
+        IEnumerable<ClassDefinition>? classes = null)
     {
         var best = new Dictionary<(string Driver, string Class, RaceFormat Format, int Distance), DriverPersonalBest>();
+        var classRules = (classes ?? []).GroupBy(c => c.Id).ToDictionary(g => g.Key, g => g.First());
         foreach (var ev in events)
         foreach (var session in ev.Sessions)
         {
@@ -55,10 +57,12 @@ public static class PersonalBests
 
             // Unknown race length is NOT assumed to be five minutes or 50 laps.
             // Imported sources must provide actual race rules to qualify for PBs.
+            var classRule = classRules.GetValueOrDefault(session.ClassId);
+            var minutes = session.RaceMinutesOverride ?? classRule?.MinutesFor(session.SessionType);
             var distance = session.RaceFormat == RaceFormat.Timed
-                ? session.RaceMinutesOverride is > 0 and < 10080
-                    ? (int)Math.Round(session.RaceMinutesOverride.Value * 60, MidpointRounding.AwayFromZero) : 0
-                : session.TargetLaps > 0 ? session.TargetLaps : 0;
+                ? minutes is > 0 and < 10080
+                    ? (int)Math.Round(minutes.Value * 60, MidpointRounding.AwayFromZero) : 0
+                : session.TargetLaps > 0 ? session.TargetLaps : classRule?.LapsFor(session.SessionType) ?? 0;
             if (distance == 0) continue;
 
             foreach (var entrant in session.Entrants)
