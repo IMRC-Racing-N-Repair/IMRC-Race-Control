@@ -49,18 +49,44 @@ internal static class DatabaseIncrementalChecks
             var class2 = await Row("Classes","Id",cls2.Id);
             if(lap1==0 || lap2==0 || class2==0)
                 throw new Exception("Fixture was not persisted.");
+            // A trigger observes DELETE operations even when SQLite reuses rowids.
+            await using (var audit = new SqliteConnection($"Data Source={path};Pooling=False"))
+            {
+                await audit.OpenAsync();
+                await using var cmd = audit.CreateCommand();
+                cmd.CommandText = """
+                    CREATE TABLE AuditLapDeletes(EventId TEXT NOT NULL);
+                    CREATE TRIGGER log_lap_removal AFTER DELETE ON EventSessionLaps
+                    BEGIN INSERT INTO AuditLapDeletes(EventId) VALUES(old.EventId); END;
+                    """;
+                await cmd.ExecuteNonQueryAsync();
+            }
+            async Task<string[]> DeletedEvents()
+            {
+                await using var conn = new SqliteConnection($"Data Source={path};Mode=ReadOnly;Pooling=False");
+                await conn.OpenAsync();
+                await using var cmd = conn.CreateCommand();
+                cmd.CommandText = "SELECT EventId FROM AuditLapDeletes";
+                var result = new List<string>();
+                await using var reader = await cmd.ExecuteReaderAsync();
+                while (await reader.ReadAsync()) result.Add(reader.GetString(0));
+                return result.ToArray();
+            }
             cls1.Name = "Stock Updated";
             await db.SaveApplicationStateAsync(settings);
             if(lap1!=await Row("EventSessionLaps","EventId",a.Id) ||
                lap2!=await Row("EventSessionLaps","EventId",c.Id) ||
                class2!=await Row("Classes","Id",cls2.Id))
                 throw new Exception("Class edit rewrote unchanged classes or historical laps.");
+            if ((await DeletedEvents()).Length != 0)
+                throw new Exception("Editing only class settings deleted historic lap rows.");
             a.Sessions[0].Laps.Add(new LapRecord(2,1,"Driver",2,TimeSpan.FromSeconds(5.1),
                 TimeSpan.FromSeconds(10.223),
                 DateTimeOffset.Parse("2026-11-15T15:00:06Z"),"test",false));
             await db.SaveApplicationStateAsync(settings);
             if(lap2 != await Row("EventSessionLaps","EventId",c.Id) ||
-               class2 != await Row("Classes","Id",cls2.Id))
+               class2 != await Row("Classes","Id",cls2.Id) ||
+               (await DeletedEvents()).Any(id => id != a.Id))
                 throw new Exception("One-event edit changed unrelated events or classes.");
             var loaded = await db.LoadApplicationStateAsync();
             if(loaded is null || loaded.Events.Count!=2 ||
