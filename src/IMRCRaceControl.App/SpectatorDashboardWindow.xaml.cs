@@ -85,6 +85,7 @@ public partial class SpectatorDashboardWindow : Window
         }
         RaceHeaderText.Text = _raceControl.SpectatorRaceHeader;
         RaceSubheaderText.Text = _raceControl.SpectatorRaceSubheader;
+        ClockCaptionText.Text = _raceControl.SpectatorShowsLapProgress ? "LAP PROGRESS" : "MASTER CLOCK";
         MasterClockText.Text = _raceControl.SpectatorMasterClock;
         ProjectionInfoText.Text = _raceControl.SpectatorProjectionText;
     }
