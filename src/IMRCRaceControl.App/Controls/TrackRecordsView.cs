@@ -96,7 +96,7 @@ public sealed partial class TrackRecordsView : UserControl
             includeUnracedClasses: track.Id == data.Track.Id);
         _report=TrackRecords.Report(track.Name,classes,count); _print.IsEnabled=classes.Count>0;
         var unassigned=data.Events.Count(e=>e.Track is null && e.Sessions.Any(s=>s.ProgressStatus==EventSessionStatus.Completed));
-        _status.Text=$"{(string.IsNullOrWhiteSpace(track.Name)?"Your track":track.Name)} • {data.Events.Count(e => e.Track?.Id == track.Id):N0} events • {classes.Sum(c=>c.Records.Count)} records • Top {count} per class"+
+        _status.Text=$"{(string.IsNullOrWhiteSpace(track.Name)?"Your track":track.Name)} • {data.Events.Count(e => e.Track?.Id == track.Id):N0} events • {classes.Sum(c=>c.Records.Count)} records • Top 3 shown per class • Top {count} available for print/PDF"+
             (unassigned>0 ? $"\n{unassigned} event(s) have no track assigned. For older LiveTime imports, reimport Events & races from the original backup to restore venue links without duplicating races. For other events, assign a track in Track Details." : "");
         if(classes.Count==0) _records.Children.Add(new TextBlock { Text="No completed races recorded at this track yet.", TextWrapping=TextWrapping.Wrap });
         foreach(var c in classes)
