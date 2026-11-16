@@ -2,6 +2,15 @@
 
 Keep all release history in this file. Add each new version at the top; do not create version-specific changelog files.
 
+## 0.17.4
+- Replace expensive full-history database rewrites with transactionally scoped updates: only modified classes and their main rules, changed race events and their result/lap rows, and modified driver/assignment/series groups are rewritten; unchanged historical events are retained.
+- Reduce class-click delays by skipping redundant event-registration rebuilds, enabling virtualized/recycled driver roster rows, and batching large roster list updates into a single UI notification.
+- Add isolated SQLite regression checks verifying class changes do not delete historical lap records and editing one race event preserves unrelated data.
+- Keep lap-based races running until the leader first reaches the configured target; trailing racers finish on their next valid crossing. Add a dedicated 100-lap regression scenario.
+- Package the common LiveTime backup unlock key through the private LIVETIME_IMPORT_PASSWORD Actions secret; fail the draft installer build if the secret is absent rather than silently shipping a build without automatic unlocking.
+- Retain automatic Race Control / LiveTime / RC Scoring Pro source recognition, Trackmate 9600 defaults and timed/fixed-lap result-based Personal Bests.
+- Still requires Windows testing and safe data/backups review before publishing.
+
 ## 0.17.3
 - Show the top three Track Records per class on the Track Info screen, without changing stored records or the adjustable print/PDF record count.
 - Display a centered IMRC Race Control logo loading screen immediately at launch, with progress shown through database initialization and main dashboard setup.
