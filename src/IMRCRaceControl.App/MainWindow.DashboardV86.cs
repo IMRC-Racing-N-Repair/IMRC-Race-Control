@@ -26,6 +26,13 @@ public partial class MainWindow
 
         ThemeService.ApplyDashboard(_settings);
 
+        // Upgrade only the untouched, former "show everything" defaults.
+        // Preserve deliberate user column selections and reordered layouts.
+        if (DashboardColumnCatalog.IsLegacyDefaultVisibility(_settings.DashboardVisibleColumns))
+            _settings.DashboardVisibleColumns = DashboardColumnCatalog.DefaultVisibleColumns.ToList();
+        if (DashboardColumnCatalog.IsLegacyDefault(_settings.DashboardColumnOrder))
+            _settings.DashboardColumnOrder = DashboardColumnCatalog.OptionalColumns.ToList();
+
         var columns = StandingsGrid.Columns
             .Where(c => c.Header is not null)
             .ToDictionary(c => c.Header.ToString() ?? string.Empty, c => c, StringComparer.OrdinalIgnoreCase);
