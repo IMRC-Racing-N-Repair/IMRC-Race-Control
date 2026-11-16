@@ -103,11 +103,13 @@ public partial class MainWindow
         RefreshEventDriverChoices();
     }
 
-    private void RefreshEventDriverChoices(string? selectDriverId = null)
+    private void RefreshEventDriverChoices(string? selectDriverId = null, bool refreshRegistration = true)
     {
-        RefreshEventRegistrationView();
+        // Switching class views does not change registrations. Avoid rebuilding
+        // the large event-registration table on every selected-class click.
+        if (refreshRegistration) RefreshEventRegistrationView();
         selectDriverId ??= (EventDriverChecklist?.SelectedItem as EventDriverChoice)?.DriverId;
-        EventDriverChoices.Clear();
+        // Avoid hundreds of per-row change notifications during class switching.
 
         SelectedEventDriverText.Text = "Select a checked driver";
         SelectedEventDriverFullNameText.Text = "—";
@@ -152,8 +154,7 @@ public partial class MainWindow
         .ThenBy(choice => choice.DisplayName, StringComparer.OrdinalIgnoreCase)
         .ToList();
 
-        foreach (var choice in choices)
-            EventDriverChoices.Add(choice);
+        EventDriverChoices.ReplaceAll(choices);
 
         if (!string.IsNullOrWhiteSpace(selectDriverId))
         {
@@ -283,8 +284,10 @@ public partial class MainWindow
         if (_suppressUiEvents || EventClassChecklist.SelectedItem is not EventClassChoice choice || !choice.Included)
             return;
 
+        if (string.Equals(_eventRosterClassId, choice.ClassId, StringComparison.OrdinalIgnoreCase))
+            return;
         _eventRosterClassId = choice.ClassId;
-        RefreshEventDriverChoices();
+        RefreshEventDriverChoices(refreshRegistration: false);
     }
 
     private async void MoveEventClassUp_Click(object sender, RoutedEventArgs e) => await MoveSelectedEventClassAsync(-1);

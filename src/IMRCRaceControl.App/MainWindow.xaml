@@ -31,7 +31,7 @@
 
                 <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                     <controls:BrandLogo Width="165" Height="64" ToolTip="IMRC Race Control"/>
-                    <TextBlock Text="  v0.17.3" Margin="4,2,0,0"
+                    <TextBlock Text="  v0.17.4" Margin="4,2,0,0"
                                Foreground="{DynamicResource MutedBrush}" FontSize="10"
                                VerticalAlignment="Center"/>
                 </StackPanel>
@@ -987,6 +987,9 @@
 
                                     <ListBox x:Name="EventDriverChecklist" Grid.Row="1"
                                              ItemsSource="{Binding EventDriverChoices}"
+                                             VirtualizingPanel.IsVirtualizing="True"
+                                             VirtualizingPanel.VirtualizationMode="Recycling"
+                                             ScrollViewer.CanContentScroll="True"
                                              SelectionChanged="EventDriverChecklist_SelectionChanged"
                                              ScrollViewer.VerticalScrollBarVisibility="Auto"
                                              Margin="0,5,0,0"

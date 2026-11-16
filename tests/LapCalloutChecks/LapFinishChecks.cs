@@ -48,6 +48,24 @@ internal static class LapFinishChecks
         late.RegisterPassing(2, "test", now.AddSeconds(3));
         Check(late.AllDriversFinished && late.State == RaceState.Complete, "Unstarted entrant finishes at first crossing after target");
         Check(late.GetStandings(now.AddSeconds(3)).Single(r => r.CarNumber == 2).Laps == 0, "Unstarted entrant receives no phantom lap");
+        // The race director's 100-lap scenario: as soon as the leader completes
+        // lap 100, everyone else gets one final crossing and then the race ends.
+        var longRace = new RaceEngine();
+        longRace.Start(racers.Take(2), TimeSpan.FromMinutes(30), 100, RaceFormat.Laps,
+            TimeSpan.FromSeconds(1), SessionType.Race, StartStyle.Tone, now);
+        for (var n = 1; n <= 99; n++)
+        {
+            longRace.RegisterPassing(1, "test", now.AddSeconds(2 * n));
+            longRace.RegisterPassing(2, "test", now.AddSeconds(2 * n + 1));
+        }
+        Check(!longRace.LapTargetReached, "A 100-lap race stays running before lap 100");
+        var winningPass = longRace.RegisterPassing(1, "test", now.AddSeconds(200));
+        Check(winningPass.Accepted && winningPass.Lap?.LapNumber == 100 &&
+            longRace.LapTargetReached, "Leader reaching lap 100 triggers finish");
+        Check(longRace.State == RaceState.Running, "Trailing racer has a final crossing");
+        var finalPass = longRace.RegisterPassing(2, "test", now.AddSeconds(201));
+        Check(finalPass.Lap?.Finished == true && longRace.State == RaceState.Complete,
+            "Last crossing automatically closes the 100-lap race");
         return checks;
     }
 }

@@ -23,7 +23,17 @@ public sealed class RaceControlDatabaseService
     private readonly SemaphoreSlim _initializeGate = new(1, 1);
     private volatile bool _initialized;
 
-    public string DatabasePath { get; } = ApplicationDataPaths.DatabasePath;
+    public string DatabasePath { get; }
+    private readonly string _backupDirectory;
+
+    // Isolated test databases must not write to a user's ordinary race-day folder.
+    public RaceControlDatabaseService(string? databasePath = null, string? backupDirectory = null)
+    {
+        DatabasePath = databasePath ?? ApplicationDataPaths.DatabasePath;
+        _backupDirectory = backupDirectory ?? (databasePath is null
+            ? ApplicationDataPaths.BackupDirectory
+            : Path.Combine(Path.GetDirectoryName(DatabasePath)!, "Backups"));
+    }
 
     private string ConnectionString => new SqliteConnectionStringBuilder
     {
@@ -46,7 +56,7 @@ public sealed class RaceControlDatabaseService
 
             Directory.CreateDirectory(Path.GetDirectoryName(DatabasePath)!);
             if (File.Exists(DatabasePath))
-                await DataProtectionService.BackupAsync(DatabasePath,ApplicationDataPaths.BackupDirectory);
+                await DataProtectionService.BackupAsync(DatabasePath,_backupDirectory);
 
             await using var connection = new SqliteConnection(ConnectionString);
             await connection.OpenAsync();
@@ -408,22 +418,96 @@ public sealed class RaceControlDatabaseService
             catch (JsonException) { return true; }
         }
         var rewriteDrivers = Changed("Drivers", JsonSerializer.Serialize(settings.Drivers, JsonOptions));
-        var rewriteClasses = Changed("Classes", JsonSerializer.Serialize(settings.Classes, JsonOptions));
+        // Track changed classes individually; historic imported classes remain untouched.
+        var previousClasses = new Dictionary<string, JsonElement>(StringComparer.OrdinalIgnoreCase);
+        if (!string.IsNullOrEmpty(previousState))
+        {
+            try
+            {
+                using var savedClasses = JsonDocument.Parse(previousState);
+                if (savedClasses.RootElement.TryGetProperty("Classes", out var array) &&
+                    array.ValueKind == JsonValueKind.Array)
+                    foreach (var item in array.EnumerateArray())
+                        if (item.TryGetProperty("Id", out var id) && id.GetString() is { Length: > 0 } value)
+                            previousClasses[value] = item.Clone();
+            }
+            catch (JsonException) { previousClasses.Clear(); }
+        }
+        var changedClassIds = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var cls in settings.Classes)
+        {
+            var current = JsonSerializer.SerializeToElement(cls, JsonOptions);
+            if (!previousClasses.TryGetValue(cls.Id, out var old) || !JsonElement.DeepEquals(old, current))
+                changedClassIds.Add(cls.Id);
+        }
+        var currentClassIds = settings.Classes.Select(c => c.Id)
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var removedClassIds = previousClasses.Keys.Where(id => !currentClassIds.Contains(id)).ToArray();
         var rewriteAssignments = Changed("DriverClassAssignments", JsonSerializer.Serialize(settings.DriverClassAssignments, JsonOptions));
-        var rewriteEvents = Changed("Events", JsonSerializer.Serialize(settings.Events, JsonOptions));
+        // Diff events by stable ID rather than replacing all race history.
+        // A class edit or a single active heat must not rewrite historical laps.
+        var previousEvents = new Dictionary<string, JsonElement>(StringComparer.OrdinalIgnoreCase);
+        if (!string.IsNullOrEmpty(previousState))
+        {
+            try
+            {
+                using var saved = JsonDocument.Parse(previousState);
+                if (saved.RootElement.TryGetProperty("Events", out var array) &&
+                    array.ValueKind == JsonValueKind.Array)
+                    foreach (var item in array.EnumerateArray())
+                        if (item.TryGetProperty("Id", out var id) && id.GetString() is { Length: > 0 } value)
+                            previousEvents[value] = item.Clone();
+            }
+            catch (JsonException) { previousEvents.Clear(); }
+        }
+        var changedEventIds = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var ev in settings.Events)
+        {
+            var current = JsonSerializer.SerializeToElement(ev, JsonOptions);
+            if (!previousEvents.TryGetValue(ev.Id, out var old) || !JsonElement.DeepEquals(old, current))
+                changedEventIds.Add(ev.Id);
+        }
+        var currentEventIds = settings.Events.Select(e => e.Id)
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var removedEventIds = previousEvents.Keys.Where(id => !currentEventIds.Contains(id)).ToArray();
         var rewriteSeries = Changed("Series", JsonSerializer.Serialize(settings.Series, JsonOptions));
         foreach (var (table, rewrite) in new (string Table, bool Rewrite)[]
         {
-            ("Drivers", rewriteDrivers), ("Classes", rewriteClasses), ("ClassMainRules", rewriteClasses),
+            ("Drivers", rewriteDrivers),
             ("DriverClassAssignments", rewriteAssignments),
-            ("Events", rewriteEvents), ("EventClasses", rewriteEvents),
-            ("EventDriverAssignments", rewriteEvents), ("EventSessions", rewriteEvents),
-            ("EventSessionEntrants", rewriteEvents), ("EventSessionResults", rewriteEvents),
-            ("EventSessionLaps", rewriteEvents), ("EventSessionBreakouts", rewriteEvents),
-            ("EventRankings", rewriteEvents),
-            ("SeriesEvents", rewriteSeries), ("Series", rewriteSeries)
+                                ("SeriesEvents", rewriteSeries), ("Series", rewriteSeries)
         })
             if (rewrite) await ExecuteAsync(connection, transaction, $"DELETE FROM {table};");
+
+        foreach (var id in changedClassIds.Concat(removedClassIds).Distinct(StringComparer.OrdinalIgnoreCase))
+        {
+            foreach (var table in new[] { "ClassMainRules", "Classes" })
+            {
+                await using var cmd = connection.CreateCommand();
+                cmd.Transaction = transaction;
+                cmd.CommandText = $"DELETE FROM {table} WHERE {(table == "Classes" ? "Id" : "ClassId")} = $id;";
+                cmd.Parameters.AddWithValue("$id", id);
+                await cmd.ExecuteNonQueryAsync();
+            }
+        }
+
+        // Remove only modified/deleted event IDs and their dependent rows.
+        // Historical events that did not change retain their row IDs and indexes.
+        foreach (var id in changedEventIds.Concat(removedEventIds).Distinct(StringComparer.OrdinalIgnoreCase))
+        {
+            foreach (var table in new[]
+                     { "EventSessionLaps", "EventSessionBreakouts", "EventSessionResults",
+                       "EventSessionEntrants", "EventSessions", "EventDriverAssignments",
+                       "EventClasses", "EventRankings", "Events" })
+            {
+                await using var cmd = connection.CreateCommand();
+                cmd.Transaction = transaction;
+                cmd.CommandText = $"DELETE FROM {table} WHERE EventId = $id;";
+                if (table == "Events") cmd.CommandText = "DELETE FROM Events WHERE Id = $id;";
+                cmd.Parameters.AddWithValue("$id", id);
+                await cmd.ExecuteNonQueryAsync();
+            }
+        }
 
         if (rewriteDrivers)
         foreach (var driver in settings.Drivers)
@@ -443,8 +527,7 @@ public sealed class RaceControlDatabaseService
                 ("$json", JsonSerializer.Serialize(driver, JsonOptions)));
         }
 
-        if (rewriteClasses)
-        foreach (var cls in settings.Classes)
+        foreach (var cls in settings.Classes.Where(c => changedClassIds.Contains(c.Id)))
         {
             await ExecuteAsync(
                 connection,
@@ -508,8 +591,7 @@ public sealed class RaceControlDatabaseService
                 ("$json", JsonSerializer.Serialize(assignment, JsonOptions)));
         }
 
-        if (rewriteEvents)
-        foreach (var ev in settings.Events)
+        foreach (var ev in settings.Events.Where(e => changedEventIds.Contains(e.Id)))
         {
             await ExecuteAsync(
                 connection,
@@ -744,7 +826,7 @@ public sealed class RaceControlDatabaseService
         }
 
         transaction.Commit();
-        try { await DataProtectionService.BackupAsync(DatabasePath,ApplicationDataPaths.BackupDirectory); }
+        try { await DataProtectionService.BackupAsync(DatabasePath,_backupDirectory); }
         catch (Exception ex) { AppCrashLogger.Log("Automatic database backup",ex); }
     }
 
