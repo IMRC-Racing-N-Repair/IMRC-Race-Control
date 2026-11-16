@@ -42,7 +42,7 @@ public static class TrackRecords
                 if (!bestByClass.TryGetValue(session.ClassId, out var records))
                     bestByClass[session.ClassId] = records =
                         new Dictionary<string,(LapRecord,RaceDayEventDefinition)>(StringComparer.OrdinalIgnoreCase);
-                var entrants = session.Entrants.ToDictionary(e => e.CarNumber);
+                var entrants = session.Entrants.GroupBy(e => e.CarNumber).ToDictionary(g => g.Key, g => g.First());
                 foreach (var lap in session.Laps)
                 {
                     if (!EligibleLap(lap)) continue;
