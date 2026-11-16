@@ -817,10 +817,28 @@
         <DataTemplate x:Key="RaceDriverNameTemplate">
             <Border Style="{StaticResource RaceDriverBorderStyle}">
                 <Border Style="{StaticResource ClassDriverAccent}">
-                    <TextBlock Text="{Binding DriverName}" FontWeight="Bold" TextAlignment="Center"
-                               TextTrimming="CharacterEllipsis" ToolTip="{Binding DriverName}"/>
+                    <StackPanel VerticalAlignment="Center">
+                        <TextBlock Text="{Binding DriverName}" FontWeight="Bold" TextAlignment="Center"
+                                   TextTrimming="CharacterEllipsis" ToolTip="{Binding DriverName}"/>
+                        <TextBlock x:Name="RacePBLine"
+                                   Text="{Binding RacePersonalBestText}"
+                                   Foreground="{DynamicResource DashboardTextBrush}"
+                                   FontSize="11" FontWeight="Normal"
+                                   TextAlignment="Center" TextTrimming="CharacterEllipsis"
+                                   Visibility="Visible"/>
+                    </StackPanel>
                 </Border>
             </Border>
+            <DataTemplate.Triggers>
+                <DataTrigger Binding="{Binding RacePersonalBestText}" Value="">
+                    <Setter TargetName="RacePBLine" Property="Visibility" Value="Collapsed"/>
+                </DataTrigger>
+                <DataTrigger Binding="{Binding IsNewRacePersonalBest}" Value="True">
+                    <Setter TargetName="RacePBLine" Property="Foreground" Value="{DynamicResource DashboardRacePersonalBestBrush}"/>
+                    <Setter TargetName="RacePBLine" Property="FontWeight" Value="Bold"/>
+                    <Setter TargetName="RacePBLine" Property="FontSize" Value="14"/>
+                </DataTrigger>
+            </DataTemplate.Triggers>
         </DataTemplate>
         <Style x:Key="SharedDashboardCellStyle" TargetType="DataGridCell">
             <Setter Property="Foreground" Value="{Binding Foreground, RelativeSource={RelativeSource AncestorType=DataGridRow}}"/>
