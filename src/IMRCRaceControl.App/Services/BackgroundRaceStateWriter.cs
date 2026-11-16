@@ -16,15 +16,16 @@ public sealed class BackgroundRaceStateWriter : IAsyncDisposable
     private readonly Channel<Job> _jobs = Channel.CreateUnbounded<Job>(
         new UnboundedChannelOptions { SingleReader = true, SingleWriter = false,
             AllowSynchronousContinuations = false });
-    private readonly RaceControlDatabaseService _database;
-    private readonly SettingsService _settings;
+    private readonly Func<AppSettings, Task> _saveDatabase;
+    private readonly Func<AppSettings, Task> _saveRecovery;
     private readonly Task _worker;
     private bool _stopping;
 
-    public BackgroundRaceStateWriter(RaceControlDatabaseService database, SettingsService settings)
+    public BackgroundRaceStateWriter(Func<AppSettings, Task> saveDatabase,
+        Func<AppSettings, Task> saveRecovery)
     {
-        _database = database;
-        _settings = settings;
+        _saveDatabase = saveDatabase;
+        _saveRecovery = saveRecovery;
         _worker = Task.Run(ProcessAsync);
     }
 
@@ -47,8 +48,8 @@ public sealed class BackgroundRaceStateWriter : IAsyncDisposable
                     ?? throw new InvalidDataException("Race state snapshot could not be decoded.");
                 // Historical PB calculations no longer occupy the UI thread.
                 state.DriverPersonalBests = PersonalBests.FromEvents(state.Events, state.Classes);
-                await _database.SaveApplicationStateAsync(state).ConfigureAwait(false);
-                try { await _settings.SaveAsync(state).ConfigureAwait(false); }
+                await _saveDatabase(state).ConfigureAwait(false);
+                try { await _saveRecovery(state).ConfigureAwait(false); }
                 catch (Exception backupError)
                 {
                     AppCrashLogger.Log("Settings JSON recovery backup", backupError);
