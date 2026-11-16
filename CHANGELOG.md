@@ -4,7 +4,7 @@ Keep all release history in this file. Add each new version at the top; do not c
 
 ## 0.17.4
 - Replace expensive full-history database rewrites with transactionally scoped updates: only modified classes and their main rules, changed race events and their result/lap rows, and modified driver/assignment/series groups are rewritten; unchanged historical events are retained.
-- Reduce class-click delays by skipping redundant event-registration rebuilds, enabling virtualized/recycled driver roster rows, and batching large roster list updates into a single UI notification.
+- Reduce class-click delays by skipping redundant event-registration rebuilds, enabling virtualized/recycled driver roster rows, and batching large roster list updates into a single UI notification. Default to background SQLite serialization and saves so large histories do not block WPF while persisting changes.
 - Add isolated SQLite regression checks verifying class changes do not delete historical lap records and editing one race event preserves unrelated data.
 - Keep lap-based races running until the leader first reaches the configured target; trailing racers finish on their next valid crossing. Add a dedicated 100-lap regression scenario.
 - Package the common LiveTime backup unlock key through the private LIVETIME_IMPORT_PASSWORD Actions secret; fail the draft installer build if the secret is absent rather than silently shipping a build without automatic unlocking.
