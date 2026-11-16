@@ -30,6 +30,7 @@
         <SolidColorBrush x:Key="DashboardFastestLapHighlightTextBrush" Color="#FFFFFF"/>
         <SolidColorBrush x:Key="DashboardNewBestLapHighlightBrush" Color="#0E5B45"/>
         <SolidColorBrush x:Key="DashboardNewBestLapHighlightTextBrush" Color="#FFFFFF"/>
+        <SolidColorBrush x:Key="DashboardRacePersonalBestBrush" Color="#39FF65"/>
 
         <DrawingBrush x:Key="HoneycombPatternBrush"
                       TileMode="Tile"
