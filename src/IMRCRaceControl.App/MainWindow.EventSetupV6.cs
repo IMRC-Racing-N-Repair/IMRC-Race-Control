@@ -52,7 +52,7 @@ public partial class MainWindow
     {
         _eventClassRosterTimer ??= new DispatcherTimer(DispatcherPriority.Background)
         {
-            Interval = TimeSpan.FromMilliseconds(250)
+            Interval = TimeSpan.FromMilliseconds(600)
         };
         _eventClassRosterTimer.Tick -= DeferredEventClassRosterRefresh;
         _eventClassRosterTimer.Tick += DeferredEventClassRosterRefresh;
@@ -76,6 +76,19 @@ public partial class MainWindow
         {
             choice.Included = order.ContainsKey(choice.ClassId);
             choice.Order = order.TryGetValue(choice.ClassId, out var n) ? n : 0;
+        }
+        // Small event-class summary only; do not rebuild race heat rows or
+        // hundreds of driver registrations for a checkbox toggle.
+        EventSelectedClasses.Clear();
+        foreach (var classId in _activeEvent.ClassIds)
+        {
+            var cls = Classes.FirstOrDefault(c => c.Id == classId);
+            if (cls is null) continue;
+            EventSelectedClasses.Add(new EventClassRow
+            {
+                Order = order[classId], ClassId = classId, ClassName = cls.Name,
+                RacersPerHeat = cls.MaxRacersPerHeat
+            });
         }
     }
 
@@ -348,7 +361,9 @@ public partial class MainWindow
         // bindings. Keep UI input responsive, even with years of imported laps.
         UpdateEventClassChoicesInPlace();
         ScheduleEventClassRosterRefresh();
-        ScheduleEventClassRefresh(sessionsChanged: removedPendingSessions);
+        // Only removals of unrun heats require a queue/projection rebuild.
+        // Adding or removing an unused class must not touch historical data.
+        if (removedPendingSessions) ScheduleEventClassRefresh(sessionsChanged: true);
         _ = CaptureAndSaveSettingsAsync();
     }
 
