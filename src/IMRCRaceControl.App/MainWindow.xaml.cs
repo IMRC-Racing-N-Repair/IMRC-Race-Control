@@ -301,21 +301,25 @@ public partial class MainWindow : Window
 
             try
             {
-                // SQLite is authoritative. This saves the complete application
-                // snapshot and synchronizes the queryable racing tables atomically.
-                // Microsoft.Data.Sqlite performs database I/O synchronously.
+                // Copy on the UI thread after the edit-quiet interval. The
+                // background writer must never serialize a live mutable event
+                // while another click is changing the roster or scoring data.
+                var snapshotJson = System.Text.Json.JsonSerializer.Serialize(_settings);
+                var snapshot = System.Text.Json.JsonSerializer.Deserialize<AppSettings>(snapshotJson)
+                    ?? throw new InvalidOperationException("Could not snapshot race settings.");
+                // Only immutable captured data is used by background database I/O.
                 if (backgroundWrite)
-                    await Task.Run(() => _database.SaveApplicationStateAsync(_settings));
+                    await Task.Run(() => _database.SaveApplicationStateAsync(snapshot));
                 else
-                    await _database.SaveApplicationStateAsync(_settings);
+                    await _database.SaveApplicationStateAsync(snapshot);
 
                 // Keep settings.json as a readable migration/disaster-recovery backup.
                 try
                 {
                     if (backgroundWrite)
-                        await Task.Run(() => _settingsService.SaveAsync(_settings));
+                        await Task.Run(() => _settingsService.SaveAsync(snapshot));
                     else
-                        await _settingsService.SaveAsync(_settings);
+                        await _settingsService.SaveAsync(snapshot);
                 }
                 catch (Exception backupError)
                 {
