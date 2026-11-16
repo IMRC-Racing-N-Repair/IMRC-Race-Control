@@ -2,6 +2,14 @@
 
 Keep all release history in this file. Add each new version at the top; do not create version-specific changelog files.
 
+## 0.17.13
+- Show a compact "PB: laps/time" line directly beneath the driver name only when the driver's current projected race pace is better than their previous overall race-result PB for the same driver/class/format/distance.
+- On a confirmed completed result that beats the prior PB, replace that line with the newly achieved laps/time in larger, bold, bright green text. An initial completed result also establishes a first PB.
+- Preserve the existing lap-time highlight as a distinct feature. PB predictions are not official records before race finish; ties, slower pace and incomplete fixed-lap distances do not count.
+- Add a separately configurable "New completed-race PB text" color under Settings > Appearance > Dashboard Colors, default #39FF65; live preview, validation and save persist it without forcing the other dashboard theme colors to custom.
+- Update the in-memory historical PB index as completed races are saved so subsequent heats compare against freshly achieved records without waiting for restart.
+- Add automated timed/fixed-lap race PB presentation checks. Draft only pending Windows build and live race-day testing.
+
 ## 0.17.12
 - Speed up Track Info records: one pass through completed qualifying/main laps for all classes instead of repeatedly traversing all imported laps for every class.
 - Cache the ranked track records when changing class, track and print count; explicitly pressing REFRESH or editing track assignment invalidates the cache.
