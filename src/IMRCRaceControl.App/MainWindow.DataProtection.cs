@@ -37,9 +37,8 @@ public partial class MainWindow
         };
         var detected = new Button { Content="IMPORT RACE DATA…" };
         detected.Click += (_,_) => OpenDetectedRaceImport(dialog);
-        var rcspFolder = new Button { Content="INSPECT RCSP DATA FOLDER…" };
-        rcspFolder.Click += (_,_) => OpenRcspDirectoryImport(dialog);
-        actions.Children.Add(backup); actions.Children.Add(open); actions.Children.Add(restore); actions.Children.Add(detected); actions.Children.Add(rcspFolder); panel.Children.Add(actions);
+        // One import entry point automatically identifies LiveTime, RCSP and Race Control.
+        actions.Children.Add(backup); actions.Children.Add(open); actions.Children.Add(restore); actions.Children.Add(detected); panel.Children.Add(actions);
         panel.Children.Add(new TextBlock { Text="If an older repair already removed the old database, a surviving database or backup is needed to recover those records. An installer cannot recreate deleted results.",TextWrapping=TextWrapping.Wrap,Margin=new Thickness(0,12,0,0) });
         dialog.Content=panel; dialog.ShowDialog();
     }
