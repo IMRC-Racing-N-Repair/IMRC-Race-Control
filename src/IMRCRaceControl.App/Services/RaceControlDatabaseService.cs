@@ -367,6 +367,121 @@ public sealed class RaceControlDatabaseService
     }
 
     /// <summary>
+    /// Update only one event's class/driver registrations. Existing race laps,
+    /// completed sessions and unrelated events are never rewritten.
+    /// Optional entrant patches carry array positions for planned/loaded heats,
+    /// allowing their transponder numbers to remain in sync with registration.
+    /// </summary>
+    public async Task UpdateEventRegistrationAsync(
+        string eventId, string classIdsJson, string assignmentsJson, string entrantPatchesJson)
+    {
+        if (string.IsNullOrWhiteSpace(eventId)) throw new ArgumentException("Event ID required", nameof(eventId));
+        using var classIds = JsonDocument.Parse(classIdsJson);
+        using var assignments = JsonDocument.Parse(assignmentsJson);
+        using var entrantPatches = JsonDocument.Parse(entrantPatchesJson);
+        if (classIds.RootElement.ValueKind != JsonValueKind.Array ||
+            assignments.RootElement.ValueKind != JsonValueKind.Array ||
+            entrantPatches.RootElement.ValueKind != JsonValueKind.Array)
+            throw new ArgumentException("Invalid event registration snapshot.");
+
+        await InitializeAsync();
+        await using var connection = new SqliteConnection(ConnectionString);
+        await connection.OpenAsync();
+        using var tx = connection.BeginTransaction();
+        // Do not serialize AppSettings on the UI thread. SQLite JSON1 changes
+        // exactly these two small arrays in its already-persisted state.
+        await using (var cmd = connection.CreateCommand())
+        {
+            cmd.Transaction = tx;
+            cmd.CommandText = """
+                UPDATE AppState SET
+                    Json = json_set(Json,
+                        '$.Events[' ||
+                          (SELECT key FROM json_each(AppState.Json, '$.Events')
+                           WHERE json_extract(value, '$.Id') = $id LIMIT 1)
+                        || '].ClassIds', json($classes),
+                        '$.Events[' ||
+                          (SELECT key FROM json_each(AppState.Json, '$.Events')
+                           WHERE json_extract(value, '$.Id') = $id LIMIT 1)
+                        || '].DriverAssignments', json($assignments)),
+                    UpdatedAt = $now
+                WHERE StateKey = 'Current'
+                  AND EXISTS (SELECT 1 FROM json_each(AppState.Json, '$.Events')
+                              WHERE json_extract(value, '$.Id') = $id);
+                """;
+            cmd.Parameters.AddWithValue("$id", eventId);
+            cmd.Parameters.AddWithValue("$classes", classIdsJson);
+            cmd.Parameters.AddWithValue("$assignments", assignmentsJson);
+            cmd.Parameters.AddWithValue("$now", DateTimeOffset.UtcNow.ToString("O"));
+            if (await cmd.ExecuteNonQueryAsync() != 1)
+                throw new InvalidOperationException("Event not found in saved race database.");
+        }
+        await ExecuteAsync(connection, tx,
+            "UPDATE Events SET Json=json_set(Json, '$.ClassIds', json($classes), '$.DriverAssignments', json($assignments)) WHERE Id=$id;",
+            ("$id",eventId), ("$classes",classIdsJson), ("$assignments",assignmentsJson));
+
+        // Recreate only membership indices, never sessions, results or laps.
+        await ExecuteAsync(connection, tx, "DELETE FROM EventClasses WHERE EventId=$id;", ("$id",eventId));
+        int order=0;
+        foreach (var cls in classIds.RootElement.EnumerateArray())
+            await ExecuteAsync(connection, tx,
+                "INSERT INTO EventClasses(EventId,ClassId,RunOrder) VALUES($id,$class,$order);",
+                ("$id",eventId), ("$class",cls.GetString()), ("$order",++order));
+
+        await ExecuteAsync(connection,tx,"DELETE FROM EventDriverAssignments WHERE EventId=$id;",("$id",eventId));
+        foreach(var assignment in assignments.RootElement.EnumerateArray())
+            await ExecuteAsync(connection,tx,
+                "INSERT INTO EventDriverAssignments(Id,EventId,DriverId,ClassId,TransponderId,SeedRank,Json) VALUES($id,$event,$driver,$class,$tx,$seed,$json);",
+                ("$id",assignment.GetProperty("Id").GetString()),
+                ("$event",eventId),
+                ("$driver",assignment.GetProperty("DriverId").GetString()),
+                ("$class",assignment.GetProperty("ClassId").GetString()),
+                ("$tx",assignment.GetProperty("TransponderId").GetString()??""),
+                ("$seed",assignment.GetProperty("SeedRank").GetInt32()),
+                ("$json",assignment.GetRawText()));
+
+        foreach (var patch in entrantPatches.RootElement.EnumerateArray())
+        {
+            var sessionIndex = patch.GetProperty("SessionIndex").GetInt32();
+            var entrantIndex = patch.GetProperty("EntrantIndex").GetInt32();
+            var sessionId = patch.GetProperty("SessionId").GetString()!;
+            var carNumber = patch.GetProperty("CarNumber").GetInt32();
+            var number = patch.GetProperty("Transponder").GetString() ?? "";
+            if (sessionIndex < 0 || entrantIndex < 0)
+                throw new InvalidDataException("Invalid pending entrant index.");
+            var path = $"$.Sessions[{sessionIndex}].Entrants[{entrantIndex}].TransponderId";
+            await ExecuteAsync(connection,tx,
+                """
+                UPDATE Events SET Json=json_set(Json,$path,$number) WHERE Id=$id;
+                """,
+                ("$path",path),("$number",number),("$id",eventId));
+            // Locate the event by its stable ID; never assume event array order.
+            await using (var appPatch = connection.CreateCommand())
+            {
+                appPatch.Transaction=tx;
+                appPatch.CommandText="""
+                    UPDATE AppState SET Json=json_set(Json,
+                        '$.Events[' || (SELECT key FROM json_each(AppState.Json,'$.Events')
+                        WHERE json_extract(value,'$.Id')=$event LIMIT 1) || ']' || substr($path,2),
+                        $number)
+                    WHERE StateKey='Current';
+                    """;
+                appPatch.Parameters.AddWithValue("$event",eventId);
+                appPatch.Parameters.AddWithValue("$path",path);
+                appPatch.Parameters.AddWithValue("$number",number);
+                await appPatch.ExecuteNonQueryAsync();
+            }
+            await ExecuteAsync(connection,tx,
+                "UPDATE EventSessions SET Json=json_set(Json,$path,$number) WHERE Id=$session;",
+                ("$path",$"$.Entrants[{entrantIndex}].TransponderId"),("$number",number),("$session",sessionId));
+            await ExecuteAsync(connection,tx,
+                "UPDATE EventSessionEntrants SET TransponderId=$number, Json=json_set(Json,'$.TransponderId',$number) WHERE SessionId=$session AND CarNumber=$car;",
+                ("$number",number),("$session",sessionId),("$car",carNumber));
+        }
+        tx.Commit();
+    }
+
+    /// <summary>
     /// Persist a change to event membership without serializing or rebuilding
     /// any imported event results or lap history. The authoritative AppState
     /// JSON, event JSON and ordered membership table change atomically.
