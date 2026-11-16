@@ -243,9 +243,12 @@ public partial class MainWindow : Window
 
     private DispatcherTimer CreateCoalescedSaveTimer()
     {
-        var timer = new DispatcherTimer(DispatcherPriority.Background)
+        // Run noncritical snapshot capture only after the operator has been
+        // idle. Input/rendering take priority; rapid class clicks restart this
+        // timer instead of interrupting the next click with large JSON work.
+        var timer = new DispatcherTimer(DispatcherPriority.ApplicationIdle)
         {
-            Interval = TimeSpan.FromMilliseconds(700)
+            Interval = TimeSpan.FromMilliseconds(1500)
         };
         timer.Tick += async (_, _) =>
         {
