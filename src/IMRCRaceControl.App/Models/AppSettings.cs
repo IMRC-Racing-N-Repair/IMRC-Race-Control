@@ -133,6 +133,7 @@ public sealed class AppSettings
     public string DashboardPassingHighlightColor { get; set; } = string.Empty;
     public string DashboardFastestLapHighlightColor { get; set; } = string.Empty;
     public string DashboardNewBestLapHighlightColor { get; set; } = string.Empty;
+    public string DashboardRacePersonalBestColor { get; set; } = "#39FF65";
     public string DashboardCheckInGlowColor { get; set; } = string.Empty;
     public string DashboardMinimumLapGlowColor { get; set; } = string.Empty;
     public double DashboardMinimumLapGlowSeconds { get; set; } = 1.0;
