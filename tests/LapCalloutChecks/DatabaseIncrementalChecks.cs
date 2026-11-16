@@ -118,7 +118,26 @@ internal static class DatabaseIncrementalChecks
                 if (Convert.ToInt64(await cmd.ExecuteScalarAsync()) != 2)
                     throw new Exception("Targeted membership update did not synchronize EventClasses.");
             }
-            return 5;
+            // Regression: editing driver registration must not delete or
+            // recreate results from unrelated historical races.
+            var originalDeletes=(await DeletedEvents()).Length;
+            var oldLap1=await Row("EventSessionLaps","EventId",a.Id);
+            var oldLap2=await Row("EventSessionLaps","EventId",c.Id);
+            var registration=new EventDriverAssignment {
+                Id="registration-1",DriverId="driver-1",ClassId="stock",TransponderId="1234567"
+            };
+            await db.UpdateEventRegistrationAsync(a.Id,
+                System.Text.Json.JsonSerializer.Serialize(new[]{"stock","pro"}),
+                System.Text.Json.JsonSerializer.Serialize(new[]{registration}),"[]");
+            var reloaded=await db.LoadApplicationStateAsync();
+            if(reloaded?.Events.Single(e=>e.Id==a.Id).DriverAssignments.Count!=1 ||
+                reloaded.Events.Single(e=>e.Id==a.Id).DriverAssignments[0].TransponderId!="1234567" ||
+                reloaded.Events.Single(e=>e.Id==c.Id).DriverAssignments.Count!=0 ||
+                (await DeletedEvents()).Length!=originalDeletes ||
+                await Row("EventSessionLaps","EventId",a.Id)!=oldLap1 ||
+                await Row("EventSessionLaps","EventId",c.Id)!=oldLap2)
+                throw new Exception("Targeted registration edit changed historical results or failed to persist.");
+            return 6;
         }
         finally { try { Directory.Delete(root,true); } catch { } }
     }
