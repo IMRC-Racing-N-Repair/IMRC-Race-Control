@@ -154,8 +154,7 @@ public partial class MainWindow
         .ThenBy(choice => choice.DisplayName, StringComparer.OrdinalIgnoreCase)
         .ToList();
 
-        foreach (var choice in choices)
-            EventDriverChoices.Add(choice);
+        EventDriverChoices.ReplaceAll(choices);
 
         if (!string.IsNullOrWhiteSpace(selectDriverId))
         {
