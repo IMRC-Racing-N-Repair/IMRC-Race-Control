@@ -221,7 +221,7 @@ public partial class MainWindow : Window
         UpdateConnectionPanelVisibility();
     }
 
-    private async Task CaptureAndSaveSettingsAsync(bool reportFailureToCaller = false, bool backgroundWrite = false)
+    private async Task CaptureAndSaveSettingsAsync(bool reportFailureToCaller = false, bool backgroundWrite = true)
     {
         await _settingsSaveGate.WaitAsync();
         try
