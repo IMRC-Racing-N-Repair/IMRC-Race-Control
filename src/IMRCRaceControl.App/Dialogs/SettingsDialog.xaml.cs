@@ -151,7 +151,7 @@ public partial class SettingsDialog : Window
             DashboardHighlightText.Text = settings.DashboardPassingHighlightColor;
             DashboardFastestLapText.Text = settings.DashboardFastestLapHighlightColor;
             DashboardNewBestLapText.Text = settings.DashboardNewBestLapHighlightColor;
-            DashboardRacePersonalBestText.Text = ThemeService.IsValidColor(settings.DashboardRacePersonalBestColor) ? settings.DashboardRacePersonalBestColor : "#39FF65";
+
             DashboardCheckInGlowText.Text = settings.DashboardCheckInGlowColor;
             DashboardMinimumLapGlowText.Text = settings.DashboardMinimumLapGlowColor;
             DashboardPositionUpText.Text = settings.DashboardPositionUpColor;
