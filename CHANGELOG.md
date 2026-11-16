@@ -2,6 +2,13 @@
 
 Keep all release history in this file. Add each new version at the top; do not create version-specific changelog files.
 
+## 0.17.5
+- Display "Laps 0/50" (or the selected target) on the race dashboard as soon as a LAPS class or loaded session is selected, before START; retain live lap progress on all spectator displays.
+- Make routine UI edits nonblocking: coalesce successive changes with an approximately 700 ms idle debounce, so clicking another class does not wait for SQLite I/O.
+- Force immediate durable persistence for critical operations and final application shutdown; serialize an isolated snapshot before the asynchronous database write so subsequent edits cannot corrupt an in-flight save.
+- Continue 0.17.4's targeted class and per-event SQLite updates, virtualized driver lists, Trackmate 9600 baud, LiveTime/RCSP imports, and race-result personal bests.
+- Draft-only build; validate rapid-change recovery and performance with large imported databases before publishing.
+
 ## 0.17.4
 - Replace expensive full-history database rewrites with transactionally scoped updates: only modified classes and their main rules, changed race events and their result/lap rows, and modified driver/assignment/series groups are rewritten; unchanged historical events are retained.
 - Reduce class-click delays by skipping redundant event-registration rebuilds, enabling virtualized/recycled driver roster rows, and batching large roster list updates into a single UI notification. Default to background SQLite serialization and saves so large histories do not block WPF while persisting changes.
