@@ -94,7 +94,31 @@ internal static class DatabaseIncrementalChecks
                 loaded.Events.Single(e=>e.Id==c.Id).Sessions[0].Laps.Count!=1 ||
                 loaded.Classes.Single(e=>e.Id==cls1.Id).Name!="Stock Updated")
                 throw new Exception("Incremental save failed round-trip integrity.");
-            return 4;
+            // Checkbox membership edits must not delete or reconstruct historic
+            // laps, but must update both authoritative snapshot and query tables.
+            var deletesBefore = (await DeletedEvents()).Length;
+            var beforePatchLap1 = await Row("EventSessionLaps", "EventId", a.Id);
+            var beforePatchLap2 = await Row("EventSessionLaps", "EventId", c.Id);
+            await db.UpdateEventClassIdsAsync(a.Id, System.Text.Json.JsonSerializer.Serialize(new[] { "stock", "pro" }));
+            var membership = await db.LoadApplicationStateAsync();
+            var selectedCount = membership?.Events.Single(e => e.Id == a.Id).ClassIds.Count ?? -1;
+            var otherCount = membership?.Events.Single(e => e.Id == c.Id).ClassIds.Count ?? -1;
+            var afterDeletes = (await DeletedEvents()).Length;
+            var afterLap1 = await Row("EventSessionLaps","EventId",a.Id);
+            var afterLap2 = await Row("EventSessionLaps","EventId",c.Id);
+            if (selectedCount != 2 || otherCount != 0 ||
+                afterDeletes != deletesBefore || beforePatchLap1 != afterLap1 || beforePatchLap2 != afterLap2)
+                throw new Exception($"Targeted update mismatch: changed={selectedCount}, other={otherCount}, deleted={deletesBefore}->{afterDeletes}, laps={beforePatchLap1}->{afterLap1} and {beforePatchLap2}->{afterLap2}.");
+            await using (var verify = new SqliteConnection($"Data Source={path};Mode=ReadOnly;Pooling=False"))
+            {
+                await verify.OpenAsync();
+                await using var cmd = verify.CreateCommand();
+                cmd.CommandText = "SELECT COUNT(*) FROM EventClasses WHERE EventId=$id";
+                cmd.Parameters.AddWithValue("$id", a.Id);
+                if (Convert.ToInt64(await cmd.ExecuteScalarAsync()) != 2)
+                    throw new Exception("Targeted membership update did not synchronize EventClasses.");
+            }
+            return 5;
         }
         finally { try { Directory.Delete(root,true); } catch { } }
     }

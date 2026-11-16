@@ -93,7 +93,7 @@ public partial class MainWindow : Window
         _settings.DriverPersonalBests = PersonalBests.FromEvents(_settings.Events, _settings.Classes);
         _settingsService = settingsService;
         _database = database;
-        _stateWriter = new BackgroundRaceStateWriter(database.SaveApplicationStateAsync, settingsService.SaveAsync);
+        _stateWriter = new BackgroundRaceStateWriter(database.SaveApplicationStateAsync, settingsService.SaveAsync, database.UpdateEventClassIdsAsync);
         _startupWarning = startupWarning;
         InitializeComponent();
         ConfigureDriverDirectorySearch();

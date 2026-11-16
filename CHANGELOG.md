@@ -2,6 +2,14 @@
 
 Keep all release history in this file. Add each new version at the top; do not create version-specific changelog files.
 
+## 0.17.8
+- Eliminate full-history serialization when adding or removing an event class with no scheduled heats to delete.
+- Persist only the current event ClassIds using a lightweight atomic JSON1 SQLite update, plus the matching Events and EventClasses projections; never touch lap/result tables for those changes.
+- Queue small class-mutation operations in the same ordered database worker as full saves to preserve edit ordering and allow instant consecutive clicks.
+- Keep full transactional reconciliation when removing a class also removes planned races. Preserve completed race history and protective prompts.
+- Add isolated regression checks for membership persistence, unrelated events and preservation of historic laps.
+- The rest of the application still has some full-state save paths; broader latency profiling is needed for any remaining delay. This draft needs real-database testing before publication.
+
 ## 0.17.7
 - Fix event class checkboxes freezing the UI: update only the clicked class membership and event-class summary in memory without reconstructing the entire checkbox list, planned sessions, or live race dashboard per click.
 - Recalculate the race queue only when removing a class actually deletes uncompleted heats; protect completed race results with existing confirmation rules.
