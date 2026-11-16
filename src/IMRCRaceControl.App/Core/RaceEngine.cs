@@ -38,6 +38,9 @@ public sealed class RaceEngine
     private bool FieldTargetReached(RacerRuntime racer) => IsLappedRace && Field(racer).Any(r => r.Laps.Count >= TargetLaps);
     public bool AllDriversFinished => !PracticeMode && _racers.Count > 0 && _racers.Values.All(r => r.Finished);
     public bool IsLappedRace => !PracticeMode && RaceFormat == global::IMRCRaceControl.Models.RaceFormat.Laps;
+    // Overall lap counter is the highest completed lap in the field.
+    public int CurrentRaceLap => _racers.Values.Select(r => r.Laps.Count).DefaultIfEmpty(0).Max();
+    public string LapsProgressDisplay => $"Lap {Math.Min(CurrentRaceLap, TargetLaps)}/{TargetLaps}";
 
     public IReadOnlyList<LapRecord> Laps => _racers.Values
         .SelectMany(r => r.Laps)

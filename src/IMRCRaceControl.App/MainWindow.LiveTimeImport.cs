@@ -257,7 +257,23 @@ public partial class MainWindow
             control.Unchecked += async (_, _) => await UpdatePreviewAsync();
         }
 
-        eventList.SelectionChanged += async (_, _) => await UpdatePreviewAsync();
+        // Selecting many event rows in a large imported archive can produce dozens
+        // of changes. Coalesce them into one background reconciliation pass.
+        var eventPreviewDelay = new System.Windows.Threading.DispatcherTimer
+        {
+            Interval = TimeSpan.FromMilliseconds(220)
+        };
+        eventPreviewDelay.Tick += async (_, _) =>
+        {
+            eventPreviewDelay.Stop();
+            await UpdatePreviewAsync();
+        };
+        eventList.SelectionChanged += (_, _) =>
+        {
+            eventPreviewDelay.Stop();
+            if (!busy) eventPreviewDelay.Start();
+        };
+        dialog.Closed += (_, _) => eventPreviewDelay.Stop();
 
         void UpdateScopeLabels()
         {

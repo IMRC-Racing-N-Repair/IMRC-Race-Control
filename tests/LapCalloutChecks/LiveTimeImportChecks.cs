@@ -26,6 +26,8 @@ internal static class LiveTimeImportChecks
             CreateFixture(reference,true);
             var original=File.ReadAllBytes(fixture);
             var plain=LiveTimeBackupReader.Read(fixture);
+            Check(RaceImportDetector.Inspect(fixture).Format == RaceImportFormat.LiveTime,
+                "automatic detector recognizes plain LiveTime SQLite");
             Check(plain.SchemaVersion==193 && plain.Drivers.Count==2 && plain.Classes.Count==1,"recognizes active roster");
             Check(plain.Entries.First(e=>e.DriverId==1).Transponders=="1234567;2345678","keeps primary and additional transponders");
             Check(plain.Events==2 && plain.Laps==2 && plain.PracticeLaps==1,"reports history without importing it");
@@ -55,6 +57,8 @@ internal static class LiveTimeImportChecks
             var encrypted = Path.Combine(folder, "encrypted # fixture.db");
             var password = "sample import password"u8.ToArray();
             CreateEncryptedFixture(encrypted, password, "sqlcipher", "legacy", 4);
+            Check(RaceImportDetector.Inspect(encrypted).Format == RaceImportFormat.LiveTime,
+                "automatic detector offers the unlock flow for SQLCipher LiveTime backup");
             var encryptedBytes = File.ReadAllBytes(encrypted);
             var needsPassword = false;
             try { LiveTimeBackupReader.ReadImportRoster(encrypted); }
@@ -99,6 +103,8 @@ internal static class LiveTimeImportChecks
 
             var rc4 = Path.Combine(folder, "rc4 fixture.db");
             CreateEncryptedFixture(rc4, password, "rc4", "legacy_page_size", 512);
+            Check(RaceImportDetector.Inspect(rc4).Format == RaceImportFormat.LiveTime,
+                "automatic detector offers the unlock flow for legacy RC4 backup");
             var rc4Bytes = File.ReadAllBytes(rc4);
             var rc4Roster = LiveTimeBackupReader.ReadEncryptedRoster(rc4, password);
             Check(rc4Roster.Drivers.SequenceEqual(plainRoster.Drivers) &&

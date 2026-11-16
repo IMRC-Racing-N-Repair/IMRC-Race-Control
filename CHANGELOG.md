@@ -2,6 +2,15 @@
 
 Keep all release history in this file. Add each new version at the top; do not create version-specific changelog files.
 
+## 0.17.3
+- Show the top three Track Records per class on the Track Info screen, without changing stored records or the adjustable print/PDF record count.
+- Display a centered IMRC Race Control logo loading screen immediately at launch, with progress shown through database initialization and main dashboard setup.
+- Simplify Saved Race Data to one format-detecting IMPORT RACE DATA action; remove the redundant RCSP folder inspection button.
+- Preserve 9600 baud as the default for Trackmate RC, the LiveTime and RC Scoring Pro import paths, and timed/fixed-lap race-result Personal Bests from 0.17.2.
+- Automatic import detection now attempts read-only legacy/encoded and encrypted LiveTime backup readers before showing an unknown-format message; retain the existing manual unlock fallback. A private Actions secret can bundle the shared LiveTime unlock credential at installer build time without committing it to source.
+- Coalesce rapid imported-event selections before recalculating duplicate review and planned database merges. Existing imports are written into Race Control's own SQLite database; large full-snapshot saves can still take longer and require separate performance profiling.
+- Keep the release as a draft for validation, with existing user data unchanged.
+
 ## 0.17.2
 - Keep Trackmate RC decoder on 9600 baud by default, with 8-N-1 and no handshake. One-time migrate previously saved 115200 default selections to 9600, while preserving future manual overrides and other decoder profiles.
 - Include both LiveTime selective import (including supported encrypted backups) and RC Scoring Pro Advantage ADT selective import (ZIP or extracted Data folder), with automatic file-format inspection, conflict review, source-preserving import and backup-first safety.

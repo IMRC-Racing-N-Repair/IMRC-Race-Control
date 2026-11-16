@@ -2205,7 +2205,7 @@ public partial class MainWindow : Window
             RecentLaps.Clear();
             RaceStateText.Text = "READY";
             RaceClockText.Text = _loadedSession?.RaceFormat == RaceFormat.Laps
-                ? "0:00.0"
+                ? $"Lap 0/{Math.Max(1, _loadedSession.TargetLaps)}"
                 : RaceEngine.FormatClock(TimeSpan.FromMinutes(ParseRaceMinutesOrDefault()));
             HeaderRaceStateText.Text = "READY";
             LastPassingText.Text = "Waiting for a passing…";
@@ -2313,10 +2313,10 @@ public partial class MainWindow : Window
 
         RaceClockText.Text = state switch
         {
-            RaceState.Ready or RaceState.FalseStart when _loadedSession?.RaceFormat == RaceFormat.Laps => "0:00.0",
+            RaceState.Ready or RaceState.FalseStart when _loadedSession?.RaceFormat == RaceFormat.Laps => $"Lap 0/{Math.Max(1, _loadedSession.TargetLaps)}",
             RaceState.Ready or RaceState.FalseStart => RaceEngine.FormatClock(TimeSpan.FromMinutes(ParseRaceMinutesOrDefault())),
             _ when _raceEngine.PracticeMode => "+" + RaceEngine.FormatClock(_raceEngine.GetMasterElapsed(now)),
-            _ when _raceEngine.IsLappedRace => RaceEngine.FormatClock(_raceEngine.GetMasterElapsed(now)),
+            _ when _raceEngine.IsLappedRace => _raceEngine.LapsProgressDisplay,
             _ => RaceEngine.FormatMasterClock(_raceEngine.GetRemaining(now))
         };
 

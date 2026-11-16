@@ -31,10 +31,11 @@ public partial class App : Application
         // Keep the process alive while preferences load, without creating an
         // unthemed window. SQLite remains authoritative over the JSON backup.
         ShutdownMode = ShutdownMode.OnExplicitShutdown;
-        StartupLoadingWindow? splash = null;
-        var delay = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(500) };
-        delay.Tick += (_, _) => { delay.Stop(); splash ??= new StartupLoadingWindow(); splash.Show(); };
-        delay.Start();
+        // Show immediately, including during database protection/migration and
+        // the expensive synchronous construction of the main dashboard.
+        StartupLoadingWindow? splash = new StartupLoadingWindow();
+        splash.Show();
+        await Dispatcher.InvokeAsync(() => { }, DispatcherPriority.Render);
         try
         {
             splash?.SetStatus("Protecting saved race data…");
@@ -65,10 +66,7 @@ public partial class App : Application
             ThemeService.Apply(settings.Theme);
             ThemeService.ApplyDashboard(settings);
             // Render a loading screen before the synchronous dashboard construction.
-            delay.Stop();
-            splash ??= new StartupLoadingWindow();
             splash.SetStatus("Preparing dashboard…");
-            splash.Show();
             await Dispatcher.InvokeAsync(() => { }, DispatcherPriority.ContextIdle);
             var window = new MainWindow(settings, settingsService, database, startupWarning);
             MainWindow = window;
@@ -79,7 +77,7 @@ public partial class App : Application
         }
         catch (Exception ex)
         {
-            delay.Stop(); splash?.Close();
+            splash?.Close();
             var path = AppCrashLogger.Log("Application startup", ex);
             MessageBox.Show($"Race Control could not start.\n\n{ex.Message}\n\nYour data has not been reset.\nBackups: {ApplicationDataPaths.BackupDirectory}\n\nDiagnostic log:\n{path}",
                 "IMRC Race Control", MessageBoxButton.OK, MessageBoxImage.Error);

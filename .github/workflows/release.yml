@@ -2,8 +2,8 @@ name: Build draft release
 on:
   workflow_dispatch:
   push:
-    branches: [main, master, prepare-v0.17.0, prepare-v0.17.1-rcsp-import, prepare-v0.17.2]
-    paths: ['src/IMRCRaceControl.App/IMRCRaceControl.App.csproj', 'scripts/Build-Installer.ps1', 'src/IMRCRaceControl.Installer/**', 'src/IMRCRaceControl.App/MainWindow.xaml.cs', 'src/IMRCRaceControl.App/MainWindow.NextRace.cs', 'src/IMRCRaceControl.App/Services/Rcsp*.cs', 'src/IMRCRaceControl.App/Services/RaceImportDetector.cs', 'src/IMRCRaceControl.App/Core/TrackmateProtocol.cs', 'src/IMRCRaceControl.App/Core/PersonalBests.cs', 'tests/LapCalloutChecks/PersonalBestChecks.cs', '.github/workflows/release.yml']
+    branches: [main, master, prepare-v0.17.0, prepare-v0.17.1-rcsp-import, prepare-v0.17.2, prepare-v0.17.3]
+    paths: ['src/IMRCRaceControl.App/IMRCRaceControl.App.csproj', 'scripts/Build-Installer.ps1', 'src/IMRCRaceControl.Installer/**', 'src/IMRCRaceControl.App/MainWindow.xaml.cs', 'src/IMRCRaceControl.App/MainWindow.NextRace.cs', 'src/IMRCRaceControl.App/Services/Rcsp*.cs', 'src/IMRCRaceControl.App/Services/RaceImportDetector.cs', 'src/IMRCRaceControl.App/MainWindow.LiveTimeImport.cs', 'src/IMRCRaceControl.App/Core/TrackmateProtocol.cs', 'src/IMRCRaceControl.App/Core/PersonalBests.cs', 'tests/LapCalloutChecks/PersonalBestChecks.cs', '.github/workflows/release.yml']
     tags: ['v*']
 permissions:
   contents: write
@@ -36,7 +36,27 @@ jobs:
         shell: pwsh
         env:
           UPDATE_REPOSITORY: https://github.com/${{ github.repository }}
-        run: ./scripts/Build-Installer.ps1 -Repository $env:UPDATE_REPOSITORY
+          # Configure in repository Settings > Secrets and variables > Actions.
+          # Never put this value in the tracked workflow, logs or a PR.
+          LIVETIME_IMPORT_PASSWORD: ${{ secrets.LIVETIME_IMPORT_PASSWORD }}
+        run: |
+          $bundle = Join-Path $env:RUNNER_TEMP "livetime-import.bundle"
+          try {
+            if (-not [string]::IsNullOrEmpty($env:LIVETIME_IMPORT_PASSWORD)) {
+              # The existing bundle builder reads the secret via redirected stdin,
+              # not a process argument. Do not echo the secret or output its bytes.
+              $env:LIVETIME_IMPORT_PASSWORD | dotnet run --project scripts/LiveTimePasswordBundle/LiveTimePasswordBundle.csproj -c Release -- $bundle
+              if ($LASTEXITCODE -ne 0 -or -not (Test-Path $bundle)) { throw 'Failed to create private LiveTime key resource.' }
+              Remove-Item Env:LIVETIME_IMPORT_PASSWORD
+              ./scripts/Build-Installer.ps1 -Repository $env:UPDATE_REPOSITORY -LiveTimePasswordResource $bundle
+            } else {
+              Write-Host "No LIVETIME_IMPORT_PASSWORD secret configured: build supports manual LiveTime unlocking only."
+              ./scripts/Build-Installer.ps1 -Repository $env:UPDATE_REPOSITORY
+            }
+          }
+          finally {
+            Remove-Item -LiteralPath $bundle -Force -ErrorAction SilentlyContinue
+          }
       - name: Save build artifacts
         uses: actions/upload-artifact@v4
         with:
