@@ -28,6 +28,8 @@ public sealed class StandingRow : INotifyPropertyChanged
     private string _status = string.Empty;
     private bool _isFastestLap;
     private bool _isNewPersonalBest;
+    private string _racePersonalBestText = string.Empty;
+    private bool _isNewRacePersonalBest;
     private bool _isLastPassing;
     private bool _isMinimumLapViolationGlow;
     private bool _isCheckedIn;
@@ -86,6 +88,8 @@ public sealed class StandingRow : INotifyPropertyChanged
     public bool IsFinished => Status == "FINISHED";
     public bool IsFastestLap { get => _isFastestLap; set => Set(ref _isFastestLap, value); }
     public bool IsNewPersonalBest { get => _isNewPersonalBest; set => Set(ref _isNewPersonalBest, value); }
+    public string RacePersonalBestText { get => _racePersonalBestText; set => Set(ref _racePersonalBestText, value ?? string.Empty); }
+    public bool IsNewRacePersonalBest { get => _isNewRacePersonalBest; set => Set(ref _isNewRacePersonalBest, value); }
     public bool IsLastPassing { get => _isLastPassing; set => Set(ref _isLastPassing, value); }
     public bool IsMinimumLapViolationGlow { get => _isMinimumLapViolationGlow; set => Set(ref _isMinimumLapViolationGlow, value); }
     public bool IsCheckedIn { get => _isCheckedIn; set => Set(ref _isCheckedIn, value); }
@@ -120,6 +124,8 @@ public sealed class StandingRow : INotifyPropertyChanged
         Status = source.Status;
         IsFastestLap = source.IsFastestLap;
         IsNewPersonalBest = source.IsNewPersonalBest;
+        RacePersonalBestText = source.RacePersonalBestText;
+        IsNewRacePersonalBest = source.IsNewRacePersonalBest;
         ManualActionText = source.ManualActionText;
     }
 
