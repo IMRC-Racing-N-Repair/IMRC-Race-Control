@@ -85,6 +85,7 @@ public partial class SettingsDialog : Window
     public string DashboardHighlightColor { get; private set; } = string.Empty;
     public string DashboardFastestLapHighlightColor { get; private set; } = string.Empty;
     public string DashboardNewBestLapHighlightColor { get; private set; } = string.Empty;
+    public string DashboardRacePersonalBestColor { get; private set; } = "#39FF65";
     public string DashboardCheckInGlowColor { get; private set; } = string.Empty;
     public string DashboardMinimumLapGlowColor { get; private set; } = string.Empty;
     public double DashboardMinimumLapGlowSeconds { get; private set; } = 1.0;
@@ -150,6 +151,7 @@ public partial class SettingsDialog : Window
             DashboardHighlightText.Text = settings.DashboardPassingHighlightColor;
             DashboardFastestLapText.Text = settings.DashboardFastestLapHighlightColor;
             DashboardNewBestLapText.Text = settings.DashboardNewBestLapHighlightColor;
+            DashboardRacePersonalBestText.Text = ThemeService.IsValidColor(settings.DashboardRacePersonalBestColor) ? settings.DashboardRacePersonalBestColor : "#39FF65";
             DashboardCheckInGlowText.Text = settings.DashboardCheckInGlowColor;
             DashboardMinimumLapGlowText.Text = settings.DashboardMinimumLapGlowColor;
             DashboardPositionUpText.Text = settings.DashboardPositionUpColor;
@@ -334,6 +336,7 @@ public partial class SettingsDialog : Window
         DashboardHighlightText.Text = colors.PassingHighlight;
         DashboardFastestLapText.Text = colors.FastestLapHighlight;
         DashboardNewBestLapText.Text = colors.NewBestLapHighlight;
+        DashboardRacePersonalBestText.Text = "#39FF65";
         DashboardCheckInGlowText.Text = colors.CheckInGlow;
         DashboardMinimumLapGlowText.Text = colors.MinimumLapGlow;
         DashboardPositionUpText.Text = colors.PositionUp;
@@ -367,6 +370,7 @@ public partial class SettingsDialog : Window
             colors = colors with { AlternateRow = colors.Row };
 
         ThemeService.ApplyDashboardColors(colors);
+        ThemeService.SetRacePersonalBestColor(DashboardRacePersonalBestText.Text);
     }
 
     private bool CurrentFieldsMatchThemeDefaults(AppTheme theme) =>
@@ -440,6 +444,11 @@ public partial class SettingsDialog : Window
             DashboardPositionDownText.Text.Trim(),
             DashboardPositionSameText.Text.Trim()
         };
+        if (!ThemeService.IsValidColor(DashboardRacePersonalBestText.Text.Trim()))
+        {
+            MessageBox.Show(this, "Enter a valid new race PB text color (example: #39FF65).", "Dashboard colors", MessageBoxButton.OK, MessageBoxImage.Information);
+            return;
+        }
         if (dashboardColors.Any(c => !ThemeService.IsValidColor(c)))
         {
             MessageBox.Show(this,
@@ -493,6 +502,7 @@ public partial class SettingsDialog : Window
             DashboardHighlightColor = dashboardColors[5];
             DashboardFastestLapHighlightColor = dashboardColors[6];
             DashboardNewBestLapHighlightColor = dashboardColors[7];
+            DashboardRacePersonalBestColor = DashboardRacePersonalBestText.Text.Trim();
             DashboardCheckInGlowColor = dashboardColors[8];
             DashboardMinimumLapGlowColor = dashboardColors[9];
             DashboardPositionUpColor = dashboardColors[10];
@@ -539,6 +549,7 @@ public partial class SettingsDialog : Window
             DashboardPositionDownColor,
             DashboardPositionSameColor);
         ThemeService.ApplyDashboardColors(savedPreview);
+        ThemeService.SetRacePersonalBestColor(DashboardRacePersonalBestColor);
 
         DialogResult = true;
     }
