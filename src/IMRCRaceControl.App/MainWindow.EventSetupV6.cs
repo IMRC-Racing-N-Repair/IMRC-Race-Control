@@ -2,6 +2,7 @@ using IMRCRaceControl.Core;
 using System.Globalization;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Threading;
 using IMRCRaceControl.Models;
 
 namespace IMRCRaceControl;
@@ -9,6 +10,74 @@ namespace IMRCRaceControl;
 public partial class MainWindow
 {
     private string _eventRosterClassId = string.Empty;
+    // Selecting/checking an event class must never rebuild all round/heat
+    // projections in the checkbox event handler.
+    private DispatcherTimer? _eventClassRefreshTimer;
+    private DispatcherTimer? _eventClassRosterTimer;
+    private bool _eventClassSessionsChanged;
+
+    private void ScheduleEventClassRefresh(bool sessionsChanged)
+    {
+        _eventClassSessionsChanged |= sessionsChanged;
+        _eventClassRefreshTimer ??= CreateEventClassRefreshTimer();
+        _eventClassRefreshTimer.Stop();
+        _eventClassRefreshTimer.Start();
+    }
+
+    private DispatcherTimer CreateEventClassRefreshTimer()
+    {
+        var timer = new DispatcherTimer(DispatcherPriority.Background)
+        {
+            Interval = TimeSpan.FromMilliseconds(500)
+        };
+        timer.Tick += (_, _) =>
+        {
+            timer.Stop();
+            if (_closing) return;
+            var sessionsChanged = _eventClassSessionsChanged;
+            _eventClassSessionsChanged = false;
+            // Recreate class rows once after rapid checkbox changes. The
+            // clicked checkbox itself was already updated immediately.
+            RefreshEventClassRows(_eventRosterClassId);
+            if (sessionsChanged)
+            {
+                RebuildRemainingQueueFromClassOrder();
+                RefreshPlannedSessions();
+            }
+        };
+        return timer;
+    }
+
+    private void ScheduleEventClassRosterRefresh()
+    {
+        _eventClassRosterTimer ??= new DispatcherTimer(DispatcherPriority.Background)
+        {
+            Interval = TimeSpan.FromMilliseconds(250)
+        };
+        _eventClassRosterTimer.Tick -= DeferredEventClassRosterRefresh;
+        _eventClassRosterTimer.Tick += DeferredEventClassRosterRefresh;
+        _eventClassRosterTimer.Stop();
+        _eventClassRosterTimer.Start();
+    }
+
+    private void DeferredEventClassRosterRefresh(object? sender, EventArgs e)
+    {
+        _eventClassRosterTimer?.Stop();
+        if (!_closing) RefreshEventDriverChoices(refreshRegistration: false);
+    }
+
+    private void UpdateEventClassChoicesInPlace()
+    {
+        if (_activeEvent is null) return;
+        var order = _activeEvent.ClassIds
+            .Select((id,index) => new { id, index })
+            .ToDictionary(x => x.id, x => x.index + 1, StringComparer.OrdinalIgnoreCase);
+        foreach (var choice in EventClassChoices)
+        {
+            choice.Included = order.ContainsKey(choice.ClassId);
+            choice.Order = order.TryGetValue(choice.ClassId, out var n) ? n : 0;
+        }
+    }
 
     private void RefreshEventSetupCollections()
     {
@@ -222,7 +291,7 @@ public partial class MainWindow
         FooterStatusText.Text = $"Created {cls.Name} and added it to this event.";
     }
 
-    private async void EventClassCheckBox_Click(object sender, RoutedEventArgs e)
+    private void EventClassCheckBox_Click(object sender, RoutedEventArgs e)
     {
         if (_activeEvent?.Status != EventStatus.Active ||
             sender is not CheckBox check ||
@@ -233,6 +302,7 @@ public partial class MainWindow
         if (cls is null)
             return;
 
+        var removedPendingSessions = false;
         var wantsIncluded = check.IsChecked == true;
         var alreadyIncluded = _activeEvent.ClassIds.Contains(classId, StringComparer.OrdinalIgnoreCase);
 
@@ -248,7 +318,7 @@ public partial class MainWindow
             {
                 MessageBox.Show(this, "That class already has completed results and must remain in the event history.",
                     "Class is in event history", MessageBoxButton.OK, MessageBoxImage.Information);
-                RefreshEventClassRows(classId);
+                check.IsChecked = true;
                 return;
             }
 
@@ -260,10 +330,11 @@ public partial class MainWindow
                     $"Unchecking {cls.Name} will also remove {pending.Count} uncompleted heat(s) and its event roster. Continue?",
                     "Remove class", MessageBoxButton.YesNo, MessageBoxImage.Warning) != MessageBoxResult.Yes)
             {
-                RefreshEventClassRows(classId);
+                check.IsChecked = true;
                 return;
             }
 
+            removedPendingSessions = pending.Count > 0;
             foreach (var session in pending)
                 _activeEvent.Sessions.Remove(session);
             _activeEvent.DriverAssignments.RemoveAll(a => a.ClassId == classId);
@@ -273,10 +344,12 @@ public partial class MainWindow
             FooterStatusText.Text = $"Removed {cls.Name} from the event.";
         }
 
-        RefreshEventClassRows(_eventRosterClassId);
-        RebuildRemainingQueueFromClassOrder();
-        RefreshPlannedSessions();
-        await CaptureAndSaveSettingsAsync();
+        // On a normal checkbox click only adjust in-memory model and the row
+        // bindings. Keep UI input responsive, even with years of imported laps.
+        UpdateEventClassChoicesInPlace();
+        ScheduleEventClassRosterRefresh();
+        ScheduleEventClassRefresh(sessionsChanged: removedPendingSessions);
+        _ = CaptureAndSaveSettingsAsync();
     }
 
     private void EventClassChecklist_SelectionChanged(object sender, SelectionChangedEventArgs e)
@@ -287,7 +360,7 @@ public partial class MainWindow
         if (string.Equals(_eventRosterClassId, choice.ClassId, StringComparison.OrdinalIgnoreCase))
             return;
         _eventRosterClassId = choice.ClassId;
-        RefreshEventDriverChoices(refreshRegistration: false);
+        ScheduleEventClassRosterRefresh();
     }
 
     private async void MoveEventClassUp_Click(object sender, RoutedEventArgs e) => await MoveSelectedEventClassAsync(-1);
