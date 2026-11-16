@@ -31,12 +31,45 @@ public partial class MainWindow
         var assignment=ev.DriverAssignments.FirstOrDefault(a=>a.DriverId==driverId && a.ClassId==classId);
         if(assignment is not null) UpdateFutureSessionTransponder(assignment);
 
-        // Schedule one consolidated asynchronous save after the user stops
-        // clicking. Closing/critical race operations flush the final state.
-        _ = CaptureAndSaveSettingsAsync();
+        // Copy only small membership/assignment arrays, not years of laps.
+        // The ordered database worker writes them atomically. UI returns now.
+        var classIdsJson = JsonSerializer.Serialize(ev.ClassIds);
+        var assignmentsJson = JsonSerializer.Serialize(ev.DriverAssignments);
+        var affected = new List<object>();
+        if (assignment is not null)
+        {
+            for (var si=0;si<ev.Sessions.Count;si++)
+            {
+                var session=ev.Sessions[si];
+                if(session.ClassId!=classId || session.ProgressStatus is not
+                    (EventSessionStatus.Planned or EventSessionStatus.Loaded))continue;
+                for(var ei=0;ei<session.Entrants.Count;ei++)
+                {
+                    var entrant=session.Entrants[ei];
+                    if(entrant.DriverId!=driverId)continue;
+                    affected.Add(new { SessionIndex=si, SessionId=session.Id,
+                        EntrantIndex=ei, CarNumber=entrant.CarNumber,
+                        Transponder=entrant.TransponderId ?? "" });
+                }
+            }
+        }
+        _ = PersistEventRegistrationChangeAsync(ev.Id, classIdsJson,
+            assignmentsJson, JsonSerializer.Serialize(affected));
         if(warn)
             FooterStatusText.Text="Registration updated. Existing lineups are preserved; update and reprint affected heats in Open Rounds / Mains.";
         return Task.CompletedTask;
+    }
+
+    private async Task PersistEventRegistrationChangeAsync(string eventId, string classIds,
+        string assignments, string entrantPatches)
+    {
+        try { await _stateWriter.UpdateEventRegistrationAsync(eventId,classIds,assignments,entrantPatches); }
+        catch(Exception ex)
+        {
+            IMRCRaceControl.Services.AppCrashLogger.Log("Targeted driver registration save",ex);
+            FooterStatusText.Text="Registration save warning. A full recovery save was queued.";
+            _ = CaptureAndSaveSettingsAsync();
+        }
     }
 
     private async void NewRegistrationDriver()
