@@ -1,4 +1,5 @@
 using System.Windows;
+using System.ComponentModel;
 using System.Windows.Controls;
 using System.Windows.Automation;
 using System.Windows.Media;
@@ -16,7 +17,7 @@ public sealed class EventRegistrationView : UserControl
         IsSnapToTickEnabled=true, SmallChange=1, LargeChange=1, Width=130, VerticalAlignment=VerticalAlignment.Center };
     private readonly TextBlock _classZoomLabel = new() { Width=48, VerticalAlignment=VerticalAlignment.Center };
     private readonly List<ClassTile> _classTiles = [];
-    private sealed record ClassTile(Border Border, Grid Grid, CheckBox Check, DockPanel Transponder);
+    private sealed record ClassTile(Border Border, Grid Grid, CheckBox Check, DockPanel Transponder, TextBlock Count);
     private readonly TextBlock _selected = new() { FontSize=17,FontWeight=FontWeights.SemiBold };
     private readonly TextBlock _status = new() { TextWrapping=TextWrapping.Wrap,Margin=new Thickness(0,6,0,0) };
     private readonly Button _newDriver = new() { Content="+ NEW DRIVER" }, _newClass=new() { Content="+ CLASS" };
@@ -24,7 +25,48 @@ public sealed class EventRegistrationView : UserControl
     private List<DriverProfile> _profiles=[]; private List<ClassDefinition> _definitions=[]; private List<DriverClassAssignment> _defaults=[];
     private Func<string,string,string,bool,string,Task>? _save;
     private bool _refreshing, _saving;
-    private sealed record DriverRow(string Id,string Label);
+    private sealed class DriverRow(string id, string label) : INotifyPropertyChanged
+    {
+        public string Id { get; } = id;
+        private string _label = label;
+        public string Label
+        {
+            get => _label;
+            set
+            {
+                if (_label == value) return;
+                _label = value;
+                PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(Label)));
+            }
+        }
+        public event PropertyChangedEventHandler? PropertyChanged;
+    }
+
+    private int DriverClassCount(string driverId) =>
+        _event?.DriverAssignments.Where(a => string.Equals(a.DriverId, driverId, StringComparison.OrdinalIgnoreCase))
+            .Select(a => a.ClassId).Distinct(StringComparer.OrdinalIgnoreCase).Count() ?? 0;
+
+    private int ClassRacerCount(string classId) =>
+        _event?.DriverAssignments.Where(a => string.Equals(a.ClassId, classId, StringComparison.OrdinalIgnoreCase))
+            .Select(a => a.DriverId).Distinct(StringComparer.OrdinalIgnoreCase).Count() ?? 0;
+
+    // Only update the affected labels: no list reset, control disabling, or tile regeneration.
+    private void UpdateLiveRegistrationCounts(string driverId, string classId)
+    {
+        if (_event is null) return;
+        var profile = _profiles.FirstOrDefault(x => x.Id == driverId);
+        var selectedRow = _drivers.Items.Cast<DriverRow>().FirstOrDefault(x => x.Id == driverId);
+        if (profile is not null && selectedRow is not null)
+        {
+            var count = DriverClassCount(driverId);
+            selectedRow.Label = $"{profile.DisplayName}  •  {count} {(count == 1 ? "class" : "classes")}";
+        }
+
+        var classTile = _classTiles.FirstOrDefault(t =>
+            string.Equals(t.Check.Tag as string, classId, StringComparison.OrdinalIgnoreCase));
+        if (classTile is not null)
+            classTile.Count.Text = $"({ClassRacerCount(classId)})";
+    }
     public EventRegistrationView()
     {
         var root=new Grid(); root.ColumnDefinitions.Add(new ColumnDefinition { Width=new GridLength(.8,GridUnitType.Star) });root.ColumnDefinitions.Add(new ColumnDefinition { Width=new GridLength(10) });root.ColumnDefinitions.Add(new ColumnDefinition { Width=new GridLength(1.8,GridUnitType.Star) });
@@ -78,7 +120,7 @@ public sealed class EventRegistrationView : UserControl
         _refreshing=true;
         var query=_search.Text.Trim();
         _drivers.ItemsSource=_profiles.Where(d=>(d.DisplayName+" "+d.FullName).Contains(query,StringComparison.OrdinalIgnoreCase)).OrderBy(d=>d.DisplayName)
-            .Select(d=>new DriverRow(d.Id,$"{d.DisplayName}  •  {_event?.DriverAssignments.Count(a=>a.DriverId==d.Id) ?? 0} classes")).ToList();
+            .Select(d=>new DriverRow(d.Id,$"{d.DisplayName}  •  {DriverClassCount(d.Id)} {(DriverClassCount(d.Id)==1 ? "class" : "classes")}")).ToList();
         _drivers.SelectedItem=_drivers.Items.Cast<DriverRow>().FirstOrDefault(x=>x.Id==selected) ?? _drivers.Items.Cast<DriverRow>().FirstOrDefault();
         _refreshing=false;RefreshClasses();
     }
@@ -100,13 +142,15 @@ public sealed class EventRegistrationView : UserControl
             row.ColumnDefinitions.Add(new ColumnDefinition());
             row.ColumnDefinitions.Add(new ColumnDefinition { Width=GridLength.Auto });
             var check=new CheckBox { Content=new TextBlock { Text=cls.Name,TextWrapping=TextWrapping.Wrap,FontWeight=FontWeights.SemiBold },Tag=cls.Id,IsChecked=assignment is not null,VerticalAlignment=VerticalAlignment.Center,Margin=new Thickness(0,0,0,2) };
+            var classCount = new TextBlock { Text=$"({ClassRacerCount(cls.Id)})", HorizontalAlignment=HorizontalAlignment.Right, VerticalAlignment=VerticalAlignment.Center, FontWeight=FontWeights.SemiBold, FontSize=11, Margin=new Thickness(3,0,0,2), ToolTip="Number of racers assigned to this class in the current event" };
+            Grid.SetColumn(classCount,1);row.Children.Add(classCount);
             var number=new TextBox { Text=assignment?.TransponderId ?? string.Join(";",defaults),IsEnabled=assignment is not null,ToolTip="Transponder number for this driver and class (optional)",Margin=new Thickness(0) };
             var field=new DockPanel();var label=new TextBlock { Text="TX #",Width=34,VerticalAlignment=VerticalAlignment.Center,FontSize=10 };DockPanel.SetDock(label,Dock.Left);field.Children.Add(label);field.Children.Add(number);
             Grid.SetRow(field,1);row.Children.Add(check);row.Children.Add(field);row.IsEnabled=_event.Status==EventStatus.Active;
             var color=new SolidColorBrush((Color)ColorConverter.ConvertFromString(cls.PrintColor));
             var border=new Border { Child=row,BorderBrush=color,BorderThickness=assignment is not null ? new Thickness(4,1,1,1) : new Thickness(1),CornerRadius=new CornerRadius(4),Margin=new Thickness(0,2,5,3) };
             border.SetResourceReference(Border.BackgroundProperty,assignment is not null ? "PanelHoverBrush" : "InputBrush");_classes.Children.Add(border);
-            _classTiles.Add(new(border,row,check,field));
+            _classTiles.Add(new(border,row,check,field,classCount));
             check.Click+=async(_,_)=>await Save(eventId,driver.Id,cls.Id,check.IsChecked==true,number.Text);
             if (_event.Status == EventStatus.Active) border.Cursor = System.Windows.Input.Cursors.Hand;
             border.MouseLeftButtonUp += async (_,e) =>
@@ -136,12 +180,13 @@ public sealed class EventRegistrationView : UserControl
         var viewport = _classScroll.ViewportWidth;
         var available = Math.Max(90, (double.IsFinite(viewport) && viewport > 0 ? viewport : _classScroll.ActualWidth) - 2);
         _classes.ItemWidth = list ? available : Math.Min(available, 174 * scale);
-        foreach (var (border, grid, check, transponder) in _classTiles)
+        foreach (var (border, grid, check, transponder, count) in _classTiles)
         {
             border.LayoutTransform = list ? Transform.Identity : new ScaleTransform(scale,scale);
             grid.MinHeight = list ? 27 : 43;
             grid.Margin = list ? new Thickness(6,2,6,2) : new Thickness(6,4,6,4);
-            Grid.SetColumnSpan(check,list ? 1 : 2);
+            Grid.SetColumnSpan(check,1);
+            count.Visibility = list ? Visibility.Collapsed : Visibility.Visible;
             Grid.SetRow(transponder,list ? 0 : 1);
             Grid.SetColumn(transponder,list ? 1 : 0);
             Grid.SetColumnSpan(transponder,list ? 1 : 2);
@@ -164,7 +209,12 @@ public sealed class EventRegistrationView : UserControl
             tile.Border.SetResourceReference(Border.BackgroundProperty,
                 included ? "PanelHoverBrush" : "InputBrush");
         }
-        try { await _save(eventId,driver,cls,included,number); }
+        try
+        {
+            await _save(eventId,driver,cls,included,number);
+            if (_event?.Id == eventId)
+                UpdateLiveRegistrationCounts(driver,cls);
+        }
         catch(Exception ex)
         {
             // Reconcile only if the edit failed. A successful edit must not

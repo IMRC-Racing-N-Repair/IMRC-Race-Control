@@ -2,6 +2,12 @@
 
 Keep all release history in this file. Add each new version at the top; do not create version-specific changelog files.
 
+## 0.17.10
+- Update the selected driver's Classes & Transponders count immediately after a checkbox change without rebuilding the driver list; singular and plural labels update correctly.
+- Show a live (#) count in the upper-right corner of each class tile for the number of distinct racers assigned to that class in the current event.
+- Update only the affected driver label and class counter using in-memory assignments, preserving the non-blocking click behavior from 0.17.9.
+- Keep ordered, targeted SQLite registration saving in the background. Draft-only, pending Windows verification and live testing with imported data.
+
 ## 0.17.9
 - Fix the actual Event > Drivers > Classes & Transponders grid: do not disable the entire control for each checkbox or transponder edit, and do not rebuild every driver/class tile after saving.
 - Make changes to the selected driver/class immediately in memory, while an ordered background worker persists only the event's ClassIds, DriverAssignments and affected transponders in pending heats.
