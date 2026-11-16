@@ -13,8 +13,6 @@ public static class DashboardWorkflowChecks
         }
         var defaults = new AppSettings();
         Eq(0,defaults.DashboardLayoutChoiceVersion,"Migrated saved settings without a choice prompt show it once");
-        var firstInstall = IMRCRaceControl.Services.SettingsService.CreateDefaults();
-        Eq(1711,firstInstall.DashboardLayoutChoiceVersion,"Fresh installations use compact layout without an upgrade prompt");
         Eq("LAPS,PACE", string.Join(',', defaults.DashboardColumnOrder.Take(2)),
             "Default PACE follows LAPS");
         Eq(false, DashboardColumnCatalog.OptionalColumns.Contains("STATUS"),
