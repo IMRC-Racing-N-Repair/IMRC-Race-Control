@@ -111,6 +111,7 @@ public partial class MainWindow : Window
         _decoderIngress.PacketFormatted += DecoderIngress_PacketFormatted;
 
         Loaded += MainWindow_Loaded;
+        Closing += MainWindow_Closing;
         Closed += MainWindow_Closed;
     }
 
@@ -1860,6 +1861,8 @@ public partial class MainWindow : Window
         StartStyleText.Text = session.StartStyle.ToDisplay();
         UpdateSessionRosterText();
         ShowLoadedRosterStandings(cls);
+        if (session.RaceFormat == RaceFormat.Laps)
+            RaceClockText.Text = $"Laps 0/{Math.Max(1, session.TargetLaps)}";
         ResetDriverLapPanelForSession();
 
         SetRaceSetupEnabled(true);
@@ -3036,6 +3039,41 @@ public partial class MainWindow : Window
     // Helpers / close
     // -----------------------------
 
+    private bool _closeFlushComplete;
+    private bool _closeFlushInProgress;
+
+    private async void MainWindow_Closing(object? sender, System.ComponentModel.CancelEventArgs e)
+    {
+        if (_closeFlushComplete) return;
+        e.Cancel = true;
+        if (_closeFlushInProgress) return;
+        _closeFlushInProgress = true;
+        _coalescedSaveTimer?.Stop();
+        IsEnabled = false;
+        try
+        {
+            // Closing must not destroy the process before a queued write finishes.
+            await PersistSettingsNowAsync(reportFailureToCaller: true);
+            _closeFlushComplete = true;
+            Close();
+        }
+        catch (Exception ex)
+        {
+            AppCrashLogger.Log("Final database flush", ex);
+            if (MessageBox.Show(this,
+                    "Race Control could not finish saving. Exit anyway? Recent changes may be lost.\n\n" + ex.Message,
+                    "Database save before exit", MessageBoxButton.YesNo, MessageBoxImage.Error,
+                    MessageBoxResult.No) == MessageBoxResult.Yes)
+            {
+                _closeFlushComplete = true;
+                Close();
+            }
+            else
+                IsEnabled = true;
+        }
+        finally { _closeFlushInProgress = false; }
+    }
+
     private async void MainWindow_Closed(object? sender, EventArgs e)
     {
         _closing = true;
@@ -3044,7 +3082,7 @@ public partial class MainWindow : Window
         _lapSpeech.Dispose();
         _raceTimer.Stop();
         try { await FinalizeAllPracticeOnCloseAsync(); } catch { }
-        try { await CaptureAndSaveSettingsAsync(reportFailureToCaller: true); } catch (Exception ex) { AppCrashLogger.Log("Final database flush", ex); }
+        // The Closing handler flushed all queued UI changes before shutdown.
         await _connection.DisposeAsync();
         await _decoderIngress.DisposeAsync();
         await _trafficLogger.DisposeAsync();
