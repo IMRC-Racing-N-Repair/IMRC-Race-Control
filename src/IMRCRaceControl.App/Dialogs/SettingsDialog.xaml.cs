@@ -336,7 +336,7 @@ public partial class SettingsDialog : Window
         DashboardHighlightText.Text = colors.PassingHighlight;
         DashboardFastestLapText.Text = colors.FastestLapHighlight;
         DashboardNewBestLapText.Text = colors.NewBestLapHighlight;
-        DashboardRacePersonalBestText.Text = "#39FF65";
+
         DashboardCheckInGlowText.Text = colors.CheckInGlow;
         DashboardMinimumLapGlowText.Text = colors.MinimumLapGlow;
         DashboardPositionUpText.Text = colors.PositionUp;
