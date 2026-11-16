@@ -23,7 +23,17 @@ public sealed class RaceControlDatabaseService
     private readonly SemaphoreSlim _initializeGate = new(1, 1);
     private volatile bool _initialized;
 
-    public string DatabasePath { get; } = ApplicationDataPaths.DatabasePath;
+    public string DatabasePath { get; }
+    private readonly string _backupDirectory;
+
+    // Isolated test databases must not write to a user's ordinary race-day folder.
+    public RaceControlDatabaseService(string? databasePath = null, string? backupDirectory = null)
+    {
+        DatabasePath = databasePath ?? ApplicationDataPaths.DatabasePath;
+        _backupDirectory = backupDirectory ?? (databasePath is null
+            ? ApplicationDataPaths.BackupDirectory
+            : Path.Combine(Path.GetDirectoryName(DatabasePath)!, "Backups"));
+    }
 
     private string ConnectionString => new SqliteConnectionStringBuilder
     {
@@ -46,7 +56,7 @@ public sealed class RaceControlDatabaseService
 
             Directory.CreateDirectory(Path.GetDirectoryName(DatabasePath)!);
             if (File.Exists(DatabasePath))
-                await DataProtectionService.BackupAsync(DatabasePath,ApplicationDataPaths.BackupDirectory);
+                await DataProtectionService.BackupAsync(DatabasePath,_backupDirectory);
 
             await using var connection = new SqliteConnection(ConnectionString);
             await connection.OpenAsync();
@@ -816,7 +826,7 @@ public sealed class RaceControlDatabaseService
         }
 
         transaction.Commit();
-        try { await DataProtectionService.BackupAsync(DatabasePath,ApplicationDataPaths.BackupDirectory); }
+        try { await DataProtectionService.BackupAsync(DatabasePath,_backupDirectory); }
         catch (Exception ex) { AppCrashLogger.Log("Automatic database backup",ex); }
     }
 
