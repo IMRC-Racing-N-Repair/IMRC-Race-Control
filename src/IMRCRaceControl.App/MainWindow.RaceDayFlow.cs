@@ -316,6 +316,7 @@ public partial class MainWindow
             .OrderBy(b => b.Timestamp)
             .ThenBy(b => b.Sequence)
             .ToList();
+        IndexCompletedRacePersonalBests(completedSession);
 
         SyncCombinedRun();
         var bumpMessage = completedSession.IsCombinedRace
