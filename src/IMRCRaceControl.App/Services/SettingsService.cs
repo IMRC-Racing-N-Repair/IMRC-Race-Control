@@ -13,8 +13,12 @@ public sealed class SettingsService
         PropertyNameCaseInsensitive = true
     };
 
-    public string SettingsPath { get; } = Path.Combine(ApplicationDataPaths.DataDirectory,
-        "settings.json");
+    public string SettingsPath { get; }
+    public SettingsService(string? settingsPath = null)
+    {
+        SettingsPath = settingsPath ?? Path.Combine(ApplicationDataPaths.DataDirectory,
+            "settings.json");
+    }
 
     public async Task<AppSettings> LoadAsync()
     {
