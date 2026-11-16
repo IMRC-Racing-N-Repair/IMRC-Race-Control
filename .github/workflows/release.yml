@@ -50,8 +50,7 @@ jobs:
               Remove-Item Env:LIVETIME_IMPORT_PASSWORD
               ./scripts/Build-Installer.ps1 -Repository $env:UPDATE_REPOSITORY -LiveTimePasswordResource $bundle
             } else {
-              Write-Host "No LIVETIME_IMPORT_PASSWORD secret configured: build supports manual LiveTime unlocking only."
-              ./scripts/Build-Installer.ps1 -Repository $env:UPDATE_REPOSITORY
+              throw 'Missing LIVETIME_IMPORT_PASSWORD Actions secret: refusing to create an installer without the required bundled LiveTime import key.'
             }
           }
           finally {
