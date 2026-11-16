@@ -6,7 +6,7 @@ Keep all release history in this file. Add each new version at the top; do not c
 - Fix event class checkboxes freezing the UI: update only the clicked class membership and event-class summary in memory without reconstructing the entire checkbox list, planned sessions, or live race dashboard per click.
 - Recalculate the race queue only when removing a class actually deletes uncompleted heats; protect completed race results with existing confirmation rules.
 - Defer event-class driver roster reconstruction until the operator stops clicking; don't refresh unrelated driver-registration views for each selection.
-- Preserve 0.17.6 ordered background database writes and 0.17.5 LAPS display. Database snapshot serialization can still affect the UI with very large histories; this patch eliminates the unnecessary synchronous checkbox path.
+- Preserve 0.17.6 ordered background database writes and 0.17.5 LAPS display. Noncritical full-state snapshot capture now runs at application-idle priority after 1.5 seconds of inactivity instead of interrupting successive user clicks. Critical race and shutdown saves remain immediate. Snapshot serialization can still affect the UI with very large histories and requires future incremental refactoring.
 - Draft only pending Windows tests and real large-database responsiveness verification.
 
 ## 0.17.6
