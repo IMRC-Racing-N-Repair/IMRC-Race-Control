@@ -2,6 +2,13 @@
 
 Keep all release history in this file. Add each new version at the top; do not create version-specific changelog files.
 
+## 0.17.7
+- Fix event class checkboxes freezing the UI: update only the clicked class membership and event-class summary in memory without reconstructing the entire checkbox list, planned sessions, or live race dashboard per click.
+- Recalculate the race queue only when removing a class actually deletes uncompleted heats; protect completed race results with existing confirmation rules.
+- Defer event-class driver roster reconstruction until the operator stops clicking; don't refresh unrelated driver-registration views for each selection.
+- Preserve 0.17.6 ordered background database writes and 0.17.5 LAPS display. Database snapshot serialization can still affect the UI with very large histories; this patch eliminates the unnecessary synchronous checkbox path.
+- Draft only pending Windows tests and real large-database responsiveness verification.
+
 ## 0.17.6
 - Separate race UI and database persistence into independent execution workloads: the WPF dispatcher handles interface and scoring presentation, while an ordered thread-pool worker handles SQLite writes, settings backup, JSON decoding and historical PB calculations.
 - Freeze race state before handing it to the background worker; preserve strict save ordering and finalize queued database writes before application shutdown.
