@@ -25,7 +25,7 @@ internal static class BackgroundWriterChecks
                 var persisted=await db.LoadApplicationStateAsync();
                 if(persisted?.Classes.Single().Name!="Third")
                     throw new Exception("Background writer did not preserve save order");
-                var restored=await settingsService.LoadAsync();
+                var restored=JsonSerializer.Deserialize<AppSettings>(await File.ReadAllTextAsync(backupPath))!;
                 if(restored.Classes.Single().Name!="Third")
                     throw new Exception("Settings recovery file is out of date");
             }
