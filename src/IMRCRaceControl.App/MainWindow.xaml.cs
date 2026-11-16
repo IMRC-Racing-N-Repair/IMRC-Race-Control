@@ -221,7 +221,39 @@ public partial class MainWindow : Window
         UpdateConnectionPanelVisibility();
     }
 
-    private async Task CaptureAndSaveSettingsAsync(bool reportFailureToCaller = false, bool backgroundWrite = true)
+    // User changes update the in-memory model immediately. Disk persistence is
+    // coalesced after a quiet period so repeated clicks never await a SQLite write.
+    // Important actions (reportFailureToCaller=true) still flush synchronously.
+    private DispatcherTimer? _coalescedSaveTimer;
+    private Task CaptureAndSaveSettingsAsync(bool reportFailureToCaller = false, bool backgroundWrite = true)
+    {
+        if (reportFailureToCaller || _closing)
+        {
+            _coalescedSaveTimer?.Stop();
+            return PersistSettingsNowAsync(reportFailureToCaller: true, backgroundWrite: true);
+        }
+        _coalescedSaveTimer ??= CreateCoalescedSaveTimer();
+        _coalescedSaveTimer.Stop();
+        _coalescedSaveTimer.Start();
+        return Task.CompletedTask;
+    }
+
+    private DispatcherTimer CreateCoalescedSaveTimer()
+    {
+        var timer = new DispatcherTimer(DispatcherPriority.Background)
+        {
+            Interval = TimeSpan.FromMilliseconds(700)
+        };
+        timer.Tick += async (_, _) =>
+        {
+            timer.Stop();
+            try { await PersistSettingsNowAsync(backgroundWrite: true); }
+            catch (Exception ex) { AppCrashLogger.Log("Deferred database save", ex); }
+        };
+        return timer;
+    }
+
+    private async Task PersistSettingsNowAsync(bool reportFailureToCaller = false, bool backgroundWrite = true)
     {
         await _settingsSaveGate.WaitAsync();
         try
@@ -1893,6 +1925,20 @@ public partial class MainWindow : Window
         UpdateRaceDefaultsFromClass(updateTiming: false);
     }
 
+    private (bool IsLaps, int Target) SelectedPreStartLaps()
+    {
+        if (_loadedSession is { RaceFormat: RaceFormat.Laps } loaded)
+            return (true, Math.Max(1, loaded.TargetLaps));
+        if (_loadedSession is not null) return (false, 0);
+        if (RaceClassCombo.SelectedItem is ClassDefinition cls)
+        {
+            var type = GetSelectedSessionType();
+            if (type != SessionType.Practice && cls.FormatFor(type) == RaceFormat.Laps)
+                return (true, Math.Max(1, cls.LapsFor(type)));
+        }
+        return (false, 0);
+    }
+
     private void UpdateRaceDefaultsFromClass(bool updateTiming = true)
     {
         if (RaceClassCombo.SelectedItem is not ClassDefinition cls)
@@ -1904,6 +1950,12 @@ public partial class MainWindow : Window
             MinimumLapText.Text = (_loadedSession?.MinimumLapSecondsOverride ?? cls.MinimumLapSeconds).ToString("0.###");
         }
         StartStyleText.Text = (_loadedSession?.StartStyle ?? GetConfiguredStartStyle(cls, type)).ToDisplay();
+        if (!_recallMode && _raceEngine.State is RaceState.Ready or RaceState.FalseStart)
+        {
+            var (isLaps, target) = SelectedPreStartLaps();
+            RaceClockText.Text = isLaps ? $"Laps 0/{target}"
+                : RaceEngine.FormatClock(TimeSpan.FromMinutes(ParseRaceMinutesOrDefault()));
+        }
         if (string.IsNullOrWhiteSpace(RaceSessionText.Text) || RaceSessionText.Text == "Ad Hoc Race")
             RaceSessionText.Text = $"{cls.Name} {type}";
     }
@@ -2205,7 +2257,7 @@ public partial class MainWindow : Window
             RecentLaps.Clear();
             RaceStateText.Text = "READY";
             RaceClockText.Text = _loadedSession?.RaceFormat == RaceFormat.Laps
-                ? $"Lap 0/{Math.Max(1, _loadedSession.TargetLaps)}"
+                ? $"Laps 0/{Math.Max(1, _loadedSession.TargetLaps)}"
                 : RaceEngine.FormatClock(TimeSpan.FromMinutes(ParseRaceMinutesOrDefault()));
             HeaderRaceStateText.Text = "READY";
             LastPassingText.Text = "Waiting for a passing…";
@@ -2313,7 +2365,7 @@ public partial class MainWindow : Window
 
         RaceClockText.Text = state switch
         {
-            RaceState.Ready or RaceState.FalseStart when _loadedSession?.RaceFormat == RaceFormat.Laps => $"Lap 0/{Math.Max(1, _loadedSession.TargetLaps)}",
+            RaceState.Ready or RaceState.FalseStart when SelectedPreStartLaps().IsLaps => $"Laps 0/{SelectedPreStartLaps().Target}",
             RaceState.Ready or RaceState.FalseStart => RaceEngine.FormatClock(TimeSpan.FromMinutes(ParseRaceMinutesOrDefault())),
             _ when _raceEngine.PracticeMode => "+" + RaceEngine.FormatClock(_raceEngine.GetMasterElapsed(now)),
             _ when _raceEngine.IsLappedRace => _raceEngine.LapsProgressDisplay,
@@ -2988,7 +3040,7 @@ public partial class MainWindow : Window
         _lapSpeech.Dispose();
         _raceTimer.Stop();
         try { await FinalizeAllPracticeOnCloseAsync(); } catch { }
-        try { await CaptureAndSaveSettingsAsync(); } catch { }
+        try { await CaptureAndSaveSettingsAsync(reportFailureToCaller: true); } catch (Exception ex) { AppCrashLogger.Log("Final database flush", ex); }
         await _connection.DisposeAsync();
         await _decoderIngress.DisposeAsync();
         await _trafficLogger.DisposeAsync();
