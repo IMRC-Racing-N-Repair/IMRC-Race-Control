@@ -59,6 +59,7 @@
     <Compile Include="../../src/IMRCRaceControl.App/Core/SpeechCalloutQueue.cs" Link="SpeechCalloutQueue.cs" />
     <Compile Include="../../src/IMRCRaceControl.App/Services/PracticeHistoryService.cs" Link="PracticeHistoryService.cs" />
     <Compile Include="../../src/IMRCRaceControl.App/Services/RaceControlDatabaseService.cs" Link="RaceControlDatabaseService.cs" />
+    <Compile Include="../../src/IMRCRaceControl.App/Services/BackgroundRaceStateWriter.cs" Link="BackgroundRaceStateWriter.cs" />
     <PackageReference Include="Microsoft.Data.Sqlite" Version="10.0.12" />
     <PackageReference Include="SQLite3MC.PCLRaw.lib" Version="2.6.1" />
   </ItemGroup>
