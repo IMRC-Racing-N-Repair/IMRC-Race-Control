@@ -367,6 +367,15 @@ public sealed class RaceControlDatabaseService
         await connection.OpenAsync();
         using var transaction = connection.BeginTransaction();
 
+        // Read the prior snapshot before overwriting it. This allows inexpensive
+        // section-level change detection on every subsequent save.
+        string? previousState;
+        await using (var previous = connection.CreateCommand())
+        {
+            previous.Transaction = transaction;
+            previous.CommandText = "SELECT Json FROM AppState WHERE StateKey = 'Current' LIMIT 1;";
+            previousState = await previous.ExecuteScalarAsync() as string;
+        }
         // One complete snapshot is retained so startup/recovery is atomic.
         var stateJson = JsonSerializer.Serialize(settings, JsonOptions);
         await ExecuteAsync(
@@ -382,30 +391,41 @@ public sealed class RaceControlDatabaseService
             ("$json", stateJson),
             ("$updatedAt", DateTimeOffset.Now.ToString("O")));
 
-        // The queryable entity tables are rebuilt inside the same transaction.
-        // This keeps them exactly synchronized with the atomic AppState snapshot.
-        foreach (var table in new[]
-                 {
-                     "Drivers",
-                     "Classes",
-                     "ClassMainRules",
-                     "DriverClassAssignments",
-                     "Events",
-                     "EventClasses",
-                     "EventDriverAssignments",
-                     "EventSessions",
-                     "EventSessionEntrants",
-                     "EventSessionResults",
-                     "EventSessionLaps",
-                     "EventSessionBreakouts",
-                     "EventRankings",
-                     "SeriesEvents",
-                     "Series"
-                 })
+        // Compare the previous atomic snapshot by section. Only rewrite groups
+        // whose source data actually changed; settings-only saves must not
+        // delete/reinsert thousands of completed laps and historical results.
+        // A missing/old snapshot forces one complete rebuild. Everything stays
+        // inside the same SQLite transaction as the canonical AppState JSON.
+        bool Changed(string property, string current)
         {
-            await ExecuteAsync(connection, transaction, $"DELETE FROM {table};");
+            if (string.IsNullOrEmpty(previousState)) return true;
+            try
+            {
+                using var json = JsonDocument.Parse(previousState);
+                return !json.RootElement.TryGetProperty(property, out var old) ||
+                    !string.Equals(old.GetRawText(), current, StringComparison.Ordinal);
+            }
+            catch (JsonException) { return true; }
         }
+        var rewriteDrivers = Changed("Drivers", JsonSerializer.Serialize(settings.Drivers, JsonOptions));
+        var rewriteClasses = Changed("Classes", JsonSerializer.Serialize(settings.Classes, JsonOptions));
+        var rewriteAssignments = Changed("DriverClassAssignments", JsonSerializer.Serialize(settings.DriverClassAssignments, JsonOptions));
+        var rewriteEvents = Changed("Events", JsonSerializer.Serialize(settings.Events, JsonOptions));
+        var rewriteSeries = Changed("Series", JsonSerializer.Serialize(settings.Series, JsonOptions));
+        foreach (var (table, rewrite) in new (string Table, bool Rewrite)[]
+        {
+            ("Drivers", rewriteDrivers), ("Classes", rewriteClasses), ("ClassMainRules", rewriteClasses),
+            ("DriverClassAssignments", rewriteAssignments),
+            ("Events", rewriteEvents), ("EventClasses", rewriteEvents),
+            ("EventDriverAssignments", rewriteEvents), ("EventSessions", rewriteEvents),
+            ("EventSessionEntrants", rewriteEvents), ("EventSessionResults", rewriteEvents),
+            ("EventSessionLaps", rewriteEvents), ("EventSessionBreakouts", rewriteEvents),
+            ("EventRankings", rewriteEvents),
+            ("SeriesEvents", rewriteSeries), ("Series", rewriteSeries)
+        })
+            if (rewrite) await ExecuteAsync(connection, transaction, $"DELETE FROM {table};");
 
+        if (rewriteDrivers)
         foreach (var driver in settings.Drivers)
         {
             await ExecuteAsync(
@@ -423,6 +443,7 @@ public sealed class RaceControlDatabaseService
                 ("$json", JsonSerializer.Serialize(driver, JsonOptions)));
         }
 
+        if (rewriteClasses)
         foreach (var cls in settings.Classes)
         {
             await ExecuteAsync(
@@ -467,6 +488,7 @@ public sealed class RaceControlDatabaseService
             }
         }
 
+        if (rewriteAssignments)
         foreach (var assignment in settings.DriverClassAssignments)
         {
             await ExecuteAsync(
@@ -486,6 +508,7 @@ public sealed class RaceControlDatabaseService
                 ("$json", JsonSerializer.Serialize(assignment, JsonOptions)));
         }
 
+        if (rewriteEvents)
         foreach (var ev in settings.Events)
         {
             await ExecuteAsync(
@@ -692,6 +715,7 @@ public sealed class RaceControlDatabaseService
             }
         }
 
+        if (rewriteSeries)
         foreach (var series in settings.Series)
         {
             await ExecuteAsync(
