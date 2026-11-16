@@ -116,8 +116,10 @@ public sealed class AppSettings
     public string EndToneFile { get; set; } = string.Empty;
     public string PassingToneFile { get; set; } = string.Empty;
 
-    public List<string> DashboardVisibleColumns { get; set; } = DashboardColumnCatalog.OptionalColumns.ToList();
+    public List<string> DashboardVisibleColumns { get; set; } = DashboardColumnCatalog.DefaultVisibleColumns.ToList();
     public List<string> DashboardColumnOrder { get; set; } = DashboardColumnCatalog.OptionalColumns.ToList();
+    // 0 means the upgraded user has not decided whether to adopt the new layout.
+    public int DashboardLayoutChoiceVersion { get; set; } = 0;
 
     // When true, dashboard colors automatically change with Light/Dark/Blue theme.
     public bool DashboardColorsFollowTheme { get; set; } = true;

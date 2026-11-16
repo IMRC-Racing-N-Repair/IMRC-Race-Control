@@ -2,6 +2,13 @@
 
 Keep all release history in this file. Add each new version at the top; do not create version-specific changelog files.
 
+## 0.17.11
+- Remove STATUS and ACTION columns from the live race dashboard; retain manual race check-in/crossing keyboard shortcuts.
+- Move PACE directly next to LAPS in the default race grid layout.
+- Default visible columns to all remaining race information except TOTAL, CONSIST, AVG 5, AVG 10, AVG 15, and TOP 5. The excluded columns remain available in dashboard customization.
+- On first launch after updating an existing installation, display a one-time choice: Use New Race Data Layout or Keep Current Layout. Retain all existing visibility/order preferences unless the operator explicitly opts into the new compact defaults; fresh installs use the new defaults without an upgrade prompt.
+- Keep 0.17.10 instant registration counts and responsive event class changes. Draft-only pending Windows verification and real race-day testing.
+
 ## 0.17.10
 - Update the selected driver's Classes & Transponders count immediately after a checkbox change without rebuilding the driver list; singular and plural labels update correctly.
 - Show a live (#) count in the upper-right corner of each class tile for the number of distinct racers assigned to that class in the current event.

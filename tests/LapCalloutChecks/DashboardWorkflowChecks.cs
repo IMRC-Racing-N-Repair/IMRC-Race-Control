@@ -11,6 +11,22 @@ public static class DashboardWorkflowChecks
             if (!EqualityComparer<T>.Default.Equals(expected,actual)) throw new Exception($"{name}: expected {expected}, got {actual}");
             checks++;
         }
+        var defaults = new AppSettings();
+        Eq(0,defaults.DashboardLayoutChoiceVersion,"Migrated saved settings without a choice prompt show it once");
+        Eq("LAPS,PACE", string.Join(',', defaults.DashboardColumnOrder.Take(2)),
+            "Default PACE follows LAPS");
+        Eq(false, DashboardColumnCatalog.OptionalColumns.Contains("STATUS"),
+            "Race grid excludes STATUS");
+        Eq(false, DashboardColumnCatalog.OptionalColumns.Contains("MANUAL"),
+            "Race grid excludes ACTION");
+        Eq("TOP 5,AVG 5,AVG 10,AVG 15,CONSIST,TOTAL",
+            string.Join(',', DashboardColumnCatalog.OptionalColumns
+                .Where(c => !defaults.DashboardVisibleColumns.Contains(c))),
+            "Specified advanced columns are hidden by default");
+        Eq(true, DashboardColumnCatalog.IsLegacyDefault(DashboardColumnCatalog.LegacyDefaultOrder),
+            "Legacy default ordering is detected for migration");
+        Eq(true, DashboardColumnCatalog.IsLegacyDefaultVisibility(DashboardColumnCatalog.LegacyDefaultOrder),
+            "Legacy default visibility is detected for migration");
         var state=new RaceCheckInState();
         var racers=new List<RacerEntry> {
             new() { CarNumber=1, DriverName="Josh Ingersoll",Nickname="Yoshi" },

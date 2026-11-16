@@ -49,7 +49,7 @@ public sealed class SettingsService
 
     public static AppSettings CreateDefaults()
     {
-        var settings = new AppSettings { SettingsSchemaVersion = 1100 };
+        var settings = new AppSettings { SettingsSchemaVersion = 1100, DashboardLayoutChoiceVersion = 1711 };
         Normalize(settings);
         return settings;
     }

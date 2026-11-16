@@ -125,6 +125,7 @@ public partial class MainWindow : Window
 
         ApplyLapSpeechControls();
         ThemeService.ApplyDashboard(_settings);
+        PromptForDashboardLayoutUpgrade();
         ApplyDashboardPreferences();
         ApplyPracticeLayoutPreferences();
         LoadSettingsIntoCollections();
