@@ -99,12 +99,14 @@ internal static class DatabaseIncrementalChecks
             var deletesBefore = (await DeletedEvents()).Length;
             await db.UpdateEventClassIdsAsync(a.Id, System.Text.Json.JsonSerializer.Serialize(new[] { "stock", "pro" }));
             var membership = await db.LoadApplicationStateAsync();
-            if (membership?.Events.Single(e => e.Id == a.Id).ClassIds.Count != 2 ||
-                membership.Events.Single(e => e.Id == c.Id).ClassIds.Count != 0 ||
-                (await DeletedEvents()).Length != deletesBefore ||
-                lap1 != await Row("EventSessionLaps","EventId",a.Id) ||
-                lap2 != await Row("EventSessionLaps","EventId",c.Id))
-                throw new Exception("Targeted membership edit damaged history or failed to persist.");
+            var selectedCount = membership?.Events.Single(e => e.Id == a.Id).ClassIds.Count ?? -1;
+            var otherCount = membership?.Events.Single(e => e.Id == c.Id).ClassIds.Count ?? -1;
+            var afterDeletes = (await DeletedEvents()).Length;
+            var afterLap1 = await Row("EventSessionLaps","EventId",a.Id);
+            var afterLap2 = await Row("EventSessionLaps","EventId",c.Id);
+            if (selectedCount != 2 || otherCount != 0 ||
+                afterDeletes != deletesBefore || lap1 != afterLap1 || lap2 != afterLap2)
+                throw new Exception($"Targeted update mismatch: changed={selectedCount}, other={otherCount}, deleted={deletesBefore}->{afterDeletes}, laps={lap1}->{afterLap1} and {lap2}->{afterLap2}.");
             await using (var verify = new SqliteConnection($"Data Source={path};Mode=ReadOnly;Pooling=False"))
             {
                 await verify.OpenAsync();
