@@ -116,7 +116,7 @@ public sealed class AppSettings
     public string EndToneFile { get; set; } = string.Empty;
     public string PassingToneFile { get; set; } = string.Empty;
 
-    public List<string> DashboardVisibleColumns { get; set; } = DashboardColumnCatalog.OptionalColumns.ToList();
+    public List<string> DashboardVisibleColumns { get; set; } = DashboardColumnCatalog.DefaultVisibleColumns.ToList();
     public List<string> DashboardColumnOrder { get; set; } = DashboardColumnCatalog.OptionalColumns.ToList();
 
     // When true, dashboard colors automatically change with Light/Dark/Blue theme.
