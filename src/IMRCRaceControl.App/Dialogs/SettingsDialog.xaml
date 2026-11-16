@@ -91,7 +91,7 @@
                                 <TextBox x:Name="DashboardNewBestLapText" TextChanged="DashboardColorPreview_TextChanged"/>
 
                                 <TextBlock Text="New completed-race PB text (under driver name)" Foreground="{DynamicResource MutedBrush}"/>
-                                <TextBox x:Name="DashboardRacePersonalBestText" TextChanged="DashboardColorPreview_TextChanged" ToolTip="Bright green by default (#39FF65); enter a color name or #RRGGBB"/>
+                                <TextBox x:Name="DashboardRacePersonalBestText" TextChanged="DashboardRacePersonalBestColor_TextChanged" ToolTip="Bright green by default (#39FF65); enter a color name or #RRGGBB"/>
 
                                 <TextBlock Text="Driver check-in outline" Foreground="{DynamicResource MutedBrush}"/>
                                 <TextBox x:Name="DashboardCheckInGlowText" TextChanged="DashboardColorPreview_TextChanged"/>
