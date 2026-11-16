@@ -2,6 +2,13 @@
 
 Keep all release history in this file. Add each new version at the top; do not create version-specific changelog files.
 
+## 0.17.12
+- Speed up Track Info records: one pass through completed qualifying/main laps for all classes instead of repeatedly traversing all imported laps for every class.
+- Cache the ranked track records when changing class, track and print count; explicitly pressing REFRESH or editing track assignment invalidates the cache.
+- Keep only the top three on-screen, with the chosen top-N available for print/PDF.
+- Clarify the existing PB behavior: the live lap highlight indicates a better lap within the current heat; saved historical personal bests are race-result based, and do not yet trigger a separate live career-PB notification.
+- Preserve 0.17.11 dashboard layout upgrade choice; draft-only pending Windows verification and real large-import speed testing.
+
 ## 0.17.11
 - Remove STATUS and ACTION columns from the live race dashboard; retain manual race check-in/crossing keyboard shortcuts.
 - Move PACE directly next to LAPS in the default race grid layout.
