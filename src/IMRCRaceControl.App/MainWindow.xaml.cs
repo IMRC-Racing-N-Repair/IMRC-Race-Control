@@ -63,7 +63,7 @@ public partial class MainWindow : Window
     public ObservableCollection<RaceDayEventDefinition> Events { get; } = new();
     public ObservableCollection<EventClassChoice> EventClassChoices { get; } = new();
     public ObservableCollection<EventClassRow> EventSelectedClasses { get; } = new();
-    public ObservableCollection<EventDriverChoice> EventDriverChoices { get; } = new();
+    public BulkObservableCollection<EventDriverChoice> EventDriverChoices { get; } = new();
     public ObservableCollection<EventRosterRow> EventRosterRows { get; } = new();
     public ObservableCollection<DriverProfile> AvailableEventDrivers { get; } = new();
     public ObservableCollection<EventRunRow> PlannedSessions { get; } = new();
