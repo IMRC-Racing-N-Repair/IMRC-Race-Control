@@ -2,6 +2,15 @@
 
 Keep all release history in this file. Add each new version at the top; do not create version-specific changelog files.
 
+## 0.17.6
+- Separate race UI and database persistence into independent execution workloads: the WPF dispatcher handles interface and scoring presentation, while an ordered thread-pool worker handles SQLite writes, settings backup, JSON decoding and historical PB calculations.
+- Freeze race state before handing it to the background worker; preserve strict save ordering and finalize queued database writes before application shutdown.
+- Add isolated regression checks for ordered successive saves and settings recovery.
+- On computers with at least two logical CPU cores Windows can run the UI and background writer concurrently; do not pin threads or require a specific hardware core count. No guarantee of fixed 2-core utilization.
+- Retain the 0.17.5 pre-start LAPS counter, class-click debounce, background data persistence and prior import/race functionality.
+- UI snapshot capture is still serialized on the dispatcher and remains a future optimization target for exceptionally large histories.
+- Draft-only; verify with real hardware and an imported racing database before publication.
+
 ## 0.17.5
 - Display "Laps 0/50" (or the selected target) on the race dashboard as soon as a LAPS class or loaded session is selected, before START; retain live lap progress on all spectator displays.
 - Make routine UI edits nonblocking: coalesce successive changes with an approximately 700 ms idle debounce, so clicking another class does not wait for SQLite I/O.
