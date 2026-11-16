@@ -366,6 +366,58 @@ public sealed class RaceControlDatabaseService
         }
     }
 
+    /// <summary>
+    /// Persist a change to event membership without serializing or rebuilding
+    /// any imported event results or lap history. The authoritative AppState
+    /// JSON, event JSON and ordered membership table change atomically.
+    /// </summary>
+    public async Task UpdateEventClassIdsAsync(string eventId, string classIdsJson)
+    {
+        if (string.IsNullOrWhiteSpace(eventId)) throw new ArgumentException("Event ID required", nameof(eventId));
+        using var classes = JsonDocument.Parse(classIdsJson);
+        if (classes.RootElement.ValueKind != JsonValueKind.Array ||
+            classes.RootElement.EnumerateArray().Any(x => x.ValueKind != JsonValueKind.String))
+            throw new ArgumentException("Class IDs must be a JSON string array.", nameof(classIdsJson));
+
+        await InitializeAsync();
+        await using var connection = new SqliteConnection(ConnectionString);
+        await connection.OpenAsync();
+        using var tx = connection.BeginTransaction();
+        // Locate event by its stable ID. JSON1 handles escaping paths and
+        // preserves all other stored properties, including archived lap data.
+        await using (var cmd = connection.CreateCommand())
+        {
+            cmd.Transaction = tx;
+            cmd.CommandText = """
+                UPDATE AppState SET
+                    Json = json_set(Json,
+                        '$.Events[' ||
+                        (SELECT key FROM json_each(AppState.Json, '$.Events')
+                         WHERE json_extract(value, '$.Id') = $id LIMIT 1)
+                        || '].ClassIds', json($classes)),
+                    UpdatedAt = $now
+                WHERE StateKey = 'Current'
+                AND EXISTS (SELECT 1 FROM json_each(AppState.Json, '$.Events')
+                            WHERE json_extract(value, '$.Id') = $id);
+                """;
+            cmd.Parameters.AddWithValue("$id", eventId);
+            cmd.Parameters.AddWithValue("$classes", classIdsJson);
+            cmd.Parameters.AddWithValue("$now", DateTimeOffset.UtcNow.ToString("O"));
+            if (await cmd.ExecuteNonQueryAsync() != 1)
+                throw new InvalidOperationException("Event is not present in the saved race database.");
+        }
+        await ExecuteAsync(connection, tx,
+            "UPDATE Events SET Json = json_set(Json, '$.ClassIds', json($classes)) WHERE Id=$id;",
+            ("$id", eventId), ("$classes", classIdsJson));
+        await ExecuteAsync(connection, tx, "DELETE FROM EventClasses WHERE EventId=$id;", ("$id", eventId));
+        var ids = classes.RootElement.EnumerateArray().Select(x => x.GetString()!).ToArray();
+        for (int i = 0; i < ids.Length; i++)
+            await ExecuteAsync(connection, tx,
+                "INSERT INTO EventClasses(EventId,ClassId,RunOrder) VALUES($id,$class,$order);",
+                ("$id", eventId), ("$class", ids[i]), ("$order", i + 1));
+        tx.Commit();
+    }
+
     public async Task SaveApplicationStateAsync(AppSettings settings)
     {
         settings.RentalTransponders ??= new();
