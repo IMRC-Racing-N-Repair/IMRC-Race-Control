@@ -99,7 +99,7 @@ public sealed class EventRegistrationView : UserControl
             row.RowDefinitions.Add(new RowDefinition { Height=GridLength.Auto });row.RowDefinitions.Add(new RowDefinition { Height=GridLength.Auto });
             row.ColumnDefinitions.Add(new ColumnDefinition());
             row.ColumnDefinitions.Add(new ColumnDefinition { Width=GridLength.Auto });
-            var check=new CheckBox { Content=new TextBlock { Text=cls.Name,TextWrapping=TextWrapping.Wrap,FontWeight=FontWeights.SemiBold },IsChecked=assignment is not null,VerticalAlignment=VerticalAlignment.Center,Margin=new Thickness(0,0,0,2) };
+            var check=new CheckBox { Content=new TextBlock { Text=cls.Name,TextWrapping=TextWrapping.Wrap,FontWeight=FontWeights.SemiBold },Tag=cls.Id,IsChecked=assignment is not null,VerticalAlignment=VerticalAlignment.Center,Margin=new Thickness(0,0,0,2) };
             var number=new TextBox { Text=assignment?.TransponderId ?? string.Join(";",defaults),IsEnabled=assignment is not null,ToolTip="Transponder number for this driver and class (optional)",Margin=new Thickness(0) };
             var field=new DockPanel();var label=new TextBlock { Text="TX #",Width=34,VerticalAlignment=VerticalAlignment.Center,FontSize=10 };DockPanel.SetDock(label,Dock.Left);field.Children.Add(label);field.Children.Add(number);
             Grid.SetRow(field,1);row.Children.Add(check);row.Children.Add(field);row.IsEnabled=_event.Status==EventStatus.Active;
@@ -111,7 +111,7 @@ public sealed class EventRegistrationView : UserControl
             if (_event.Status == EventStatus.Active) border.Cursor = System.Windows.Input.Cursors.Hand;
             border.MouseLeftButtonUp += async (_,e) =>
             {
-                if (!row.IsEnabled || _saving || e.OriginalSource is not DependencyObject source) return;
+                if (!row.IsEnabled || e.OriginalSource is not DependencyObject source) return;
                 // Keep the active transponder field editable and let the checkbox handle its own click.
                 if ((number.IsEnabled && (ReferenceEquals(source,number) || number.IsAncestorOf(source))) ||
                     ReferenceEquals(source,check) || check.IsAncestorOf(source)) return;
@@ -120,7 +120,7 @@ public sealed class EventRegistrationView : UserControl
             };
             number.LostKeyboardFocus+=async(_,_)=>
             {
-                if(_saving || _event?.Id!=eventId)return;
+                if(_event?.Id!=eventId)return;
                 var current=_event?.DriverAssignments.FirstOrDefault(a=>a.DriverId==driver.Id && a.ClassId==cls.Id);
                 if(current is not null && current.TransponderId!=number.Text.Trim())await Save(eventId,driver.Id,cls.Id,true,number.Text);
             };
@@ -152,11 +152,26 @@ public sealed class EventRegistrationView : UserControl
 
     private async Task Save(string eventId,string driver,string cls,bool included,string number)
     {
-        if(_save is null || _saving)return;
-        _saving=true;IsEnabled=false;
-        string? error=null;
-        try { await _save(eventId,driver,cls,included,number); }catch(Exception ex){error=ex.Message;}
-        finally { _saving=false;IsEnabled=true;RefreshDrivers();if(error is not null)_status.Text=error; }
+        // Keep the driver/class grid interactive while a change is queued.
+        // Never disable the whole control or rebuild every visual tile per click.
+        if(_save is null)return;
+        var tile=_classTiles.FirstOrDefault(t=>t.Check.Tag is string id && id==cls);
+        if(tile is not null)
+        {
+            tile.Check.IsChecked=included;
+            tile.Transponder.IsEnabled=included;
+            tile.Border.BorderThickness=included ? new Thickness(4,1,1,1) : new Thickness(1);
+            tile.Border.SetResourceReference(Border.BackgroundProperty,
+                included ? "PanelHoverBrush" : "InputBrush");
+        }
+        try { await _save(eventId,driver,cls,included,number); }
+        catch(Exception ex)
+        {
+            // Reconcile only if the edit failed. A successful edit must not
+            // tear down the grid or interrupt the next click.
+            _status.Text="Could not save registration: "+ex.Message;
+            RefreshDrivers();
+        }
     }
     internal static void ExportPreview(string output)
     {
