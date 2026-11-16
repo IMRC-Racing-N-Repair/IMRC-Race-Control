@@ -19,19 +19,88 @@ public partial class MainWindow
     private DispatcherTimer? _minimumLapGlowTimer;
     private static readonly TimeSpan PassingHighlightDuration = TimeSpan.FromSeconds(2.25);
 
+    /// <summary>
+    /// Offer the new compact race-data layout once after upgrading an existing
+    /// installation. Never silently replace the operator's current layout.
+    /// Fresh installations get the defaults without a migration prompt.
+    /// </summary>
+    private void PromptForDashboardLayoutUpgrade()
+    {
+        const int layoutRevision = 1711;
+        if (_settings.DashboardLayoutChoiceVersion >= layoutRevision) return;
+
+        var prompt = new Window
+        {
+            Title = "Race Dashboard Layout Update",
+            Owner = this,
+            WindowStartupLocation = WindowStartupLocation.CenterOwner,
+            SizeToContent = SizeToContent.WidthAndHeight,
+            ResizeMode = ResizeMode.NoResize,
+            ShowInTaskbar = false,
+            MinWidth = 430,
+            MaxWidth = 580
+        };
+        if (TryFindResource("PanelBrush") is System.Windows.Media.Brush background)
+            prompt.Background = background;
+        if (TryFindResource("ForegroundBrush") is System.Windows.Media.Brush foreground)
+            prompt.Foreground = foreground;
+
+        var body = new StackPanel { Margin = new Thickness(22) };
+        body.Children.Add(new TextBlock
+        {
+            Text = "New Race Data Layout Available",
+            FontWeight = FontWeights.Bold,
+            FontSize = 19,
+            Margin = new Thickness(0,0,0,12)
+        });
+        body.Children.Add(new TextBlock
+        {
+            Text = "Race Control has a new default race dashboard layout. PACE is next to LAPS, and the extra statistics are hidden by default.\n\nWould you like to use the new race data layout, or keep your current column selection and order?",
+            TextWrapping = TextWrapping.Wrap,
+            MaxWidth = 505,
+            Margin = new Thickness(0,0,0,20)
+        });
+        var buttons = new StackPanel
+        {
+            Orientation = Orientation.Horizontal,
+            HorizontalAlignment = HorizontalAlignment.Right
+        };
+        var keep = new Button
+        {
+            Content = "Keep Current Layout",
+            MinWidth = 155,
+            MinHeight = 36,
+            Margin = new Thickness(0,0,10,0)
+        };
+        var useNew = new Button
+        {
+            Content = "Use New Race Data Layout",
+            MinWidth = 205,
+            MinHeight = 36,
+            IsDefault = true
+        };
+        keep.Click += (_, _) => { prompt.DialogResult = false; };
+        useNew.Click += (_, _) => { prompt.DialogResult = true; };
+        buttons.Children.Add(keep);
+        buttons.Children.Add(useNew);
+        body.Children.Add(buttons);
+        prompt.Content = body;
+
+        if (prompt.ShowDialog() == true)
+        {
+            _settings.DashboardVisibleColumns = DashboardColumnCatalog.DefaultVisibleColumns.ToList();
+            _settings.DashboardColumnOrder = DashboardColumnCatalog.OptionalColumns.ToList();
+        }
+        _settings.DashboardLayoutChoiceVersion = layoutRevision;
+        _ = SaveSettingsSafelyAsync();
+    }
+
     private void ApplyDashboardPreferences()
     {
         if (StandingsGrid is null)
             return;
 
         ThemeService.ApplyDashboard(_settings);
-
-        // Upgrade only the untouched, former "show everything" defaults.
-        // Preserve deliberate user column selections and reordered layouts.
-        if (DashboardColumnCatalog.IsLegacyDefaultVisibility(_settings.DashboardVisibleColumns))
-            _settings.DashboardVisibleColumns = DashboardColumnCatalog.DefaultVisibleColumns.ToList();
-        if (DashboardColumnCatalog.IsLegacyDefault(_settings.DashboardColumnOrder))
-            _settings.DashboardColumnOrder = DashboardColumnCatalog.OptionalColumns.ToList();
 
         var columns = StandingsGrid.Columns
             .Where(c => c.Header is not null)
