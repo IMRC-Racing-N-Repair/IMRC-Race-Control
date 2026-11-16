@@ -2205,7 +2205,7 @@ public partial class MainWindow : Window
             RecentLaps.Clear();
             RaceStateText.Text = "READY";
             RaceClockText.Text = _loadedSession?.RaceFormat == RaceFormat.Laps
-                ? "0:00.0"
+                ? $"Lap 0/{Math.Max(1, _loadedSession.TargetLaps)}"
                 : RaceEngine.FormatClock(TimeSpan.FromMinutes(ParseRaceMinutesOrDefault()));
             HeaderRaceStateText.Text = "READY";
             LastPassingText.Text = "Waiting for a passing…";
