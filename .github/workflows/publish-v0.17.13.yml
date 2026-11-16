@@ -25,17 +25,19 @@ jobs:
             echo "Version 0.17.13 build or verification does not match the expected commit"
             exit 1
           }
-          is_draft=$(gh release view "$tag" --repo "$GH_REPO" --json isDraft --jq .isDraft)
-          target=$(gh api "repos/$GH_REPO/releases/tags/$tag" --jq .target_commitish)
-          [[ "$is_draft" == true && "$target" == "$verified_sha" ]] || {
+          release_id=447338115
+          is_draft=$(gh api "repos/$GH_REPO/releases/$release_id" --jq .draft)
+          target=$(gh api "repos/$GH_REPO/releases/$release_id" --jq .target_commitish)
+          tag_found=$(gh api "repos/$GH_REPO/releases/$release_id" --jq .tag_name)
+          [[ "$is_draft" == true && "$target" == "$verified_sha" && "$tag_found" == "$tag" ]] || {
             echo "Release is not the expected draft from the verified commit"
             exit 1
           }
           for asset in RaceControl-Installer.exe IMRCRaceControl.App-0.17.13-full.nupkg releases.win.json RELEASES SHA256SUMS.txt; do
-            gh release view "$tag" --repo "$GH_REPO" --json assets --jq '.assets[].name' | grep -Fxq "$asset" || {
+            gh api "repos/$GH_REPO/releases/$release_id" --jq '.assets[].name' | grep -Fxq "$asset" || {
               echo "Missing release asset: $asset"
               exit 1
             }
           done
-          gh release edit "$tag" --repo "$GH_REPO" --draft=false --latest
-          gh release view "$tag" --repo "$GH_REPO" --json isDraft,url,tagName
+          gh api --method PATCH "repos/$GH_REPO/releases/$release_id" -F draft=false -f make_latest=true > /dev/null
+          gh api "repos/$GH_REPO/releases/$release_id" --jq '{draft,tag_name,html_url,published_at}'
