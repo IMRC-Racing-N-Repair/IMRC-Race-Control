@@ -23,6 +23,28 @@ public sealed partial class TrackRecordsView : UserControl
     private Func<(TrackProfile Track, IReadOnlyList<TrackProfile> ImportedTracks, List<RaceDayEventDefinition> Events, List<ClassDefinition> Classes)>? _source;
     private RaceReport? _report;
     private bool _refreshing;
+    // Cache the ranked records per venue. Changing the class filter or print
+    // limit reuses the same results instead of rescanning all imported laps.
+    private string? _cachedTrackId;
+    private int _cachedCount;
+    private List<TrackRecordClass>? _cachedRecords;
+
+    private List<TrackRecordClass> GetRecords(TrackProfile track,
+        (TrackProfile Track, IReadOnlyList<TrackProfile> ImportedTracks,
+            List<RaceDayEventDefinition> Events, List<ClassDefinition> Classes) data,
+        int count)
+    {
+        var wanted = Math.Max(10,count);
+        if (_cachedRecords is null || _cachedCount < wanted ||
+            !string.Equals(_cachedTrackId,track.Id,StringComparison.OrdinalIgnoreCase))
+        {
+            _cachedRecords = TrackRecords.Calculate(track,data.Events,data.Classes,wanted,
+                includeUnracedClasses:track.Id==data.Track.Id);
+            _cachedTrackId = track.Id;
+            _cachedCount = wanted;
+        }
+        return _cachedRecords;
+    }
 
     public TrackRecordsView()
     {
@@ -44,13 +66,17 @@ public sealed partial class TrackRecordsView : UserControl
         root.Children.Add(_recordScroll);
         _tracks.SelectionChanged+=(_,_)=> { if (!_refreshing) RefreshClasses(); };
         _classes.SelectionChanged+=(_,_)=>Render(); _count.TextChanged+=(_,_)=>Render(); refresh.Click+=(_,_)=>Refresh();
-        Loaded+=(_,_)=>Refresh();
+        Loaded+=(_,_)=> { if (_tracks.Items.Count == 0) Refresh(); };
         _print.Click+=(_,_)=> { if(_report is not null) new ReportPrintDialog(_report) { Owner=Window.GetWindow(this) }.ShowDialog(); };
     }
     public void Configure(Func<(TrackProfile Track,IReadOnlyList<TrackProfile> ImportedTracks,List<RaceDayEventDefinition> Events,List<ClassDefinition> Classes)> source) { _source=source; Refresh(); }
     public void Refresh()
     {
         if(_source is null) return;
+        // Refresh is explicit: current race data may have changed since the
+        // last snapshot. Ordinary tab navigation never clears this cache.
+        _cachedTrackId = null;
+        _cachedRecords = null;
         var data = _source();
         var previous = _tracks.SelectedItem as TrackProfile;
         var wasOnlyTrack = _tracks.Items.Count <= 1;
@@ -80,7 +106,7 @@ public sealed partial class TrackRecordsView : UserControl
         var selected = (_classes.SelectedItem as Choice)?.Id;
         _refreshing = true;
         var choices = new List<Choice> { new(null,"All classes") };
-        choices.AddRange(TrackRecords.Calculate(track,data.Events,data.Classes,1, includeUnracedClasses: track.Id == data.Track.Id).Select(c=>new Choice(c.Id,c.Name)));
+        choices.AddRange(GetRecords(track,data,10).Select(c=>new Choice(c.Id,c.Name)));
         _classes.ItemsSource=choices; _classes.SelectedItem=choices.FirstOrDefault(c=>c.Id==selected)??choices[0];
         _refreshing = false;
         Render();
@@ -92,8 +118,11 @@ public sealed partial class TrackRecordsView : UserControl
         if(!int.TryParse(_count.Text,out var count) || count<1) { _status.Text="Enter a whole number of at least 1 for the records per class."; return; }
         var data=_source();
         var track = _tracks.SelectedItem as TrackProfile ?? data.Track;
-        var classes=TrackRecords.Calculate(track,data.Events,data.Classes,count,(_classes.SelectedItem as Choice)?.Id,
-            includeUnracedClasses: track.Id == data.Track.Id);
+        var selectedClassId = (_classes.SelectedItem as Choice)?.Id;
+        var classes=GetRecords(track,data,count)
+            .Where(c => selectedClassId is null || string.Equals(c.Id,selectedClassId,StringComparison.OrdinalIgnoreCase))
+            .Select(c => new TrackRecordClass(c.Id,c.Name,c.Color,c.Records.Take(count).ToList()))
+            .ToList();
         _report=TrackRecords.Report(track.Name,classes,count); _print.IsEnabled=classes.Count>0;
         var unassigned=data.Events.Count(e=>e.Track is null && e.Sessions.Any(s=>s.ProgressStatus==EventSessionStatus.Completed));
         _status.Text=$"{(string.IsNullOrWhiteSpace(track.Name)?"Your track":track.Name)} • {data.Events.Count(e => e.Track?.Id == track.Id):N0} events • {classes.Sum(c=>c.Records.Count)} records • Top 3 shown per class • Top {count} available for print/PDF"+

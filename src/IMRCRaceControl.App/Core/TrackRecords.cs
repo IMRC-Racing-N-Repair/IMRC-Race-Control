@@ -17,24 +17,68 @@ public static class TrackRecords
         IEnumerable<ClassDefinition> classes, int count = 10, string? classId = null, bool includeUnracedClasses = true)
     {
         if (count < 1) throw new ArgumentOutOfRangeException(nameof(count));
-        var sessions = events.Where(e => e.Track?.Id == track.Id)
-            .SelectMany(e => e.Sessions.Where(s => s.ProgressStatus == EventSessionStatus.Completed &&
-                (s.SessionType == SessionType.Qualifying || s.SessionType == SessionType.Race)).Select(s => (Event:e, Session:s))).ToList();
-        var venueClassIds = sessions.Select(x => x.Session.ClassId).ToHashSet();
-        var catalog = classes.Where(c => includeUnracedClasses || venueClassIds.Contains(c.Id))
-            .Select(c => (c.Id,c.Name,Color:c.PrintColor))
-            .Concat(sessions.Select(x => (Id:x.Session.ClassId,Name:x.Session.ClassName,Color:"#DCE1E6")))
-            .DistinctBy(c => c.Id).Where(c => classId is null || c.Id == classId).OrderBy(c => c.Name).ThenBy(c=>c.Id);
+
+        // Walk each historic lap only once, not once per class. Imported
+        // databases can contain millions of laps across hundreds of classes.
+        // Keep just the driver's best valid lap for each track/class; ties
+        // preserve the earlier event date then recorded lap timestamp.
+        var bestByClass = new Dictionary<string, Dictionary<string,
+            (LapRecord Lap, RaceDayEventDefinition Event)>>(StringComparer.OrdinalIgnoreCase);
+        var discovered = new Dictionary<string, (string Name, string Color)>(StringComparer.OrdinalIgnoreCase);
+        foreach (var ev in events)
+        {
+            if (!string.Equals(ev.Track?.Id, track.Id, StringComparison.OrdinalIgnoreCase)) continue;
+            foreach (var session in ev.Sessions)
+            {
+                if (session.ProgressStatus != EventSessionStatus.Completed ||
+                    session.SessionType is not (SessionType.Qualifying or SessionType.Race) ||
+                    string.IsNullOrWhiteSpace(session.ClassId)) continue;
+
+                if (!discovered.ContainsKey(session.ClassId))
+                    discovered[session.ClassId] = (session.ClassName, "#DCE1E6");
+                if (classId is not null && !string.Equals(session.ClassId, classId, StringComparison.OrdinalIgnoreCase))
+                    continue;
+
+                if (!bestByClass.TryGetValue(session.ClassId, out var records))
+                    bestByClass[session.ClassId] = records =
+                        new Dictionary<string,(LapRecord,RaceDayEventDefinition)>(StringComparer.OrdinalIgnoreCase);
+                var entrants = session.Entrants.GroupBy(e => e.CarNumber).ToDictionary(g => g.Key, g => g.First());
+                foreach (var lap in session.Laps)
+                {
+                    if (!EligibleLap(lap)) continue;
+                    var driverKey = entrants.TryGetValue(lap.CarNumber, out var driver) &&
+                        !string.IsNullOrWhiteSpace(driver.DriverId)
+                        ? "driver:" + driver.DriverId
+                        : $"unknown:{ev.Id}:{session.Id}:{lap.CarNumber}";
+                    if (records.TryGetValue(driverKey, out var prior) &&
+                        (prior.Lap.LapTime < lap.LapTime ||
+                         prior.Lap.LapTime == lap.LapTime &&
+                         (prior.Event.EventDate < ev.EventDate ||
+                          prior.Event.EventDate == ev.EventDate &&
+                          prior.Lap.Timestamp <= lap.Timestamp))) continue;
+                    records[driverKey] = (lap, ev);
+                }
+            }
+        }
+
+        var catalog = classes.Where(c => includeUnracedClasses || discovered.ContainsKey(c.Id))
+            .Select(c => (c.Id, c.Name, Color:c.PrintColor))
+            .Concat(discovered.Select(k => (Id:k.Key,Name:k.Value.Name,Color:k.Value.Color)))
+            .DistinctBy(c => c.Id, StringComparer.OrdinalIgnoreCase)
+            .Where(c => classId is null || string.Equals(c.Id, classId, StringComparison.OrdinalIgnoreCase))
+            .OrderBy(c => c.Name).ThenBy(c => c.Id);
+
         return catalog.Select(c =>
         {
-            var best = sessions.Where(x => x.Session.ClassId == c.Id).SelectMany(x => x.Session.Laps
-                .Where(EligibleLap)
-                .Select(l => (Lap:l,x.Event,Driver:x.Session.Entrants.FirstOrDefault(d => d.CarNumber == l.CarNumber),Session:x.Session)))
-                .GroupBy(x => !string.IsNullOrWhiteSpace(x.Driver?.DriverId) ? "driver:"+x.Driver.DriverId : $"unknown:{x.Event.Id}:{x.Session.Id}:{x.Lap.CarNumber}")
-                .Select(g => g.OrderBy(x=>x.Lap.LapTime).ThenBy(x=>x.Event.EventDate).ThenBy(x=>x.Lap.Timestamp).First())
-                .OrderBy(x=>x.Lap.LapTime).ThenBy(x=>x.Event.EventDate).ThenBy(x=>x.Lap.DriverName,StringComparer.Ordinal).Take(count)
-                .Select((x,i)=>new TrackRecordRow(i+1,x.Lap.DriverName,x.Lap.LapTime,x.Event.EventDate,x.Event.Name)).ToList();
-            return new TrackRecordClass(c.Id,c.Name,c.Color,best);
+            var records = bestByClass.TryGetValue(c.Id, out var matches)
+                ? matches.Values.OrderBy(x => x.Lap.LapTime)
+                    .ThenBy(x => x.Event.EventDate)
+                    .ThenBy(x => x.Lap.DriverName,StringComparer.Ordinal)
+                    .Take(count)
+                    .Select((x,i) => new TrackRecordRow(i+1,x.Lap.DriverName,x.Lap.LapTime,x.Event.EventDate,x.Event.Name))
+                    .ToList()
+                : new List<TrackRecordRow>();
+            return new TrackRecordClass(c.Id,c.Name,c.Color,records);
         }).ToList();
     }
 
