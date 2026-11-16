@@ -94,7 +94,27 @@ internal static class DatabaseIncrementalChecks
                 loaded.Events.Single(e=>e.Id==c.Id).Sessions[0].Laps.Count!=1 ||
                 loaded.Classes.Single(e=>e.Id==cls1.Id).Name!="Stock Updated")
                 throw new Exception("Incremental save failed round-trip integrity.");
-            return 4;
+            // Checkbox membership edits must not delete or reconstruct historic
+            // laps, but must update both authoritative snapshot and query tables.
+            var deletesBefore = (await DeletedEvents()).Length;
+            await db.UpdateEventClassIdsAsync(a.Id, "[\\"stock\\",\\"pro\\"]");
+            var membership = await db.LoadApplicationStateAsync();
+            if (membership?.Events.Single(e => e.Id == a.Id).ClassIds.Count != 2 ||
+                membership.Events.Single(e => e.Id == c.Id).ClassIds.Count != 0 ||
+                (await DeletedEvents()).Length != deletesBefore ||
+                lap1 != await Row("EventSessionLaps","EventId",a.Id) ||
+                lap2 != await Row("EventSessionLaps","EventId",c.Id))
+                throw new Exception("Targeted membership edit damaged history or failed to persist.");
+            await using (var verify = new SqliteConnection($"Data Source={path};Mode=ReadOnly;Pooling=False"))
+            {
+                await verify.OpenAsync();
+                await using var cmd = verify.CreateCommand();
+                cmd.CommandText = "SELECT COUNT(*) FROM EventClasses WHERE EventId=$id";
+                cmd.Parameters.AddWithValue("$id", a.Id);
+                if (Convert.ToInt64(await cmd.ExecuteScalarAsync()) != 2)
+                    throw new Exception("Targeted membership update did not synchronize EventClasses.");
+            }
+            return 5;
         }
         finally { try { Directory.Delete(root,true); } catch { } }
     }
