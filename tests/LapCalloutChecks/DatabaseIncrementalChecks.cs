@@ -97,7 +97,7 @@ internal static class DatabaseIncrementalChecks
             // Checkbox membership edits must not delete or reconstruct historic
             // laps, but must update both authoritative snapshot and query tables.
             var deletesBefore = (await DeletedEvents()).Length;
-            await db.UpdateEventClassIdsAsync(a.Id, "[\\"stock\\",\\"pro\\"]");
+            await db.UpdateEventClassIdsAsync(a.Id, System.Text.Json.JsonSerializer.Serialize(new[] { "stock", "pro" }));
             var membership = await db.LoadApplicationStateAsync();
             if (membership?.Events.Single(e => e.Id == a.Id).ClassIds.Count != 2 ||
                 membership.Events.Single(e => e.Id == c.Id).ClassIds.Count != 0 ||
