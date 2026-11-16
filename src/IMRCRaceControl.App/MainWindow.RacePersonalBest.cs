@@ -56,14 +56,20 @@ public partial class MainWindow
 
         foreach (var row in Standings)
         {
-            row.RacePersonalBestText = "";
-            row.IsNewRacePersonalBest = false;
-            if (!_racePBAtStart.ContainsKey(row.CarNumber) ||
-                !TryPBElapsed(row.TotalTime,out var elapsed)) continue;
-            var state = RacePersonalBestDisplay.Evaluate(_racePBAtStart[row.CarNumber],
-                format,distance,row.Laps,elapsed,row.IsFinished);
-            row.RacePersonalBestText = state.Text;
-            row.IsNewRacePersonalBest = state.IsNewRecord;
+            var text = "";
+            var newRecord = false;
+            if (_racePBAtStart.TryGetValue(row.CarNumber,out var baseline) &&
+                TryPBElapsed(row.TotalTime,out var elapsed))
+            {
+                var state = RacePersonalBestDisplay.Evaluate(baseline,
+                    format,distance,row.Laps,elapsed,row.IsFinished);
+                text = state.Text;
+                newRecord = state.IsNewRecord;
+            }
+            // One property assignment per tick prevents 100-ms text blinking
+            // and unnecessary WPF layout recalculations during live scoring.
+            row.RacePersonalBestText = text;
+            row.IsNewRacePersonalBest = newRecord;
         }
     }
 
