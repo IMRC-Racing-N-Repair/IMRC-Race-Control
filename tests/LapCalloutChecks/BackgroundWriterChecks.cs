@@ -12,7 +12,7 @@ internal static class BackgroundWriterChecks
         {
             var db=new RaceControlDatabaseService(
                 Path.Combine(root,"race.db"),Path.Combine(root,"Backups"));
-            var settingsService=new SettingsService(Path.Combine(root,"settings.json"));
+            var backupPath=Path.Combine(root,"settings.json");
             await using(var writer=new BackgroundRaceStateWriter(db,settingsService))
             {
                 var first=new AppSettings { Classes=[new ClassDefinition {Id="cls",Name="First"}] };
