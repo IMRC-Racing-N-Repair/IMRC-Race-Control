@@ -177,6 +177,7 @@ public static class ThemeService
             colors = colors with { AlternateRow = colors.Row };
 
         ApplyDashboardColors(colors);
+        SetRacePersonalBestColor(settings.DashboardRacePersonalBestColor);
         if (Application.Current is not null)
         {
             SetBrush("DriverCrossingBrush", NormalizeOrDefault(settings.DriverCrossingColor, "#35C76F"));
@@ -184,6 +185,11 @@ public static class ThemeService
             Application.Current.Resources["FinishedDriverStyle"] = settings.FinishedDriverStyle;
             ApplyHighlightBrush("FinishedDriverBrush", "FinishedDriverContrastBrush", NormalizeOrDefault(settings.FinishedDriverColor, "#808080"));
         }
+    }
+
+    public static void SetRacePersonalBestColor(string? requested)
+    {
+        SetBrush("DashboardRacePersonalBestBrush", NormalizeOrDefault(requested, "#39FF65"));
     }
 
     public static void ApplyDashboardColors(DashboardThemeColors colors)

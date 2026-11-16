@@ -70,6 +70,7 @@ public partial class MainWindow
         _settings.DashboardPassingHighlightColor = dialog.DashboardHighlightColor;
         _settings.DashboardFastestLapHighlightColor = dialog.DashboardFastestLapHighlightColor;
         _settings.DashboardNewBestLapHighlightColor = dialog.DashboardNewBestLapHighlightColor;
+        _settings.DashboardRacePersonalBestColor = dialog.DashboardRacePersonalBestColor;
         _settings.DashboardCheckInGlowColor = dialog.DashboardCheckInGlowColor;
         _settings.DashboardMinimumLapGlowColor = dialog.DashboardMinimumLapGlowColor;
         _settings.DashboardMinimumLapGlowSeconds = dialog.DashboardMinimumLapGlowSeconds;

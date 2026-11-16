@@ -2146,6 +2146,7 @@ public partial class MainWindow : Window
                 sessionType,
                 startStyle,
                 toneTime);
+            CaptureRacePersonalBestBaselines();
 
             if (_loadedSession is not null)
             {
@@ -2367,6 +2368,7 @@ public partial class MainWindow : Window
         };
 
         ReplaceStandings(_raceEngine.GetStandings(now));
+        UpdateRacePersonalBestRows();
         RefreshRoundProjection();
 
         var fastest = Standings.Where(s => s.IsFastestLap && s.BestLap != "—").ToList();

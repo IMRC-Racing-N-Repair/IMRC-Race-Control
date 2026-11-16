@@ -1,0 +1,43 @@
+name: Publish verified Race Control 0.17.13
+on:
+  push:
+    branches: [prepare-v0.17.13-personal-best]
+    paths: ['.github/workflows/publish-v0.17.13.yml']
+permissions:
+  contents: write
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Publish only the verified complete installer draft
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          tag=v0.17.13
+          verified_sha=09ea720927448ca3a89fa607041afdf3dd320b37
+          build_status=$(gh run view 43913587786 --repo "$GH_REPO" --json conclusion --jq .conclusion)
+          test_status=$(gh run view 43913602211 --repo "$GH_REPO" --json conclusion --jq .conclusion)
+          test_sha=$(gh run view 43913602211 --repo "$GH_REPO" --json headSha --jq .headSha)
+          [[ "$build_status" == success && "$test_status" == success && "$test_sha" == "$verified_sha" ]] || {
+            echo "Version 0.17.13 build or verification does not match the expected commit"
+            exit 1
+          }
+          release_id=447338115
+          is_draft=$(gh api "repos/$GH_REPO/releases/$release_id" --jq .draft)
+          target=$(gh api "repos/$GH_REPO/releases/$release_id" --jq .target_commitish)
+          tag_found=$(gh api "repos/$GH_REPO/releases/$release_id" --jq .tag_name)
+          [[ "$is_draft" == true && "$target" == "$verified_sha" && "$tag_found" == "$tag" ]] || {
+            echo "Release is not the expected draft from the verified commit"
+            exit 1
+          }
+          for asset in RaceControl-Installer.exe IMRCRaceControl.App-0.17.13-full.nupkg releases.win.json RELEASES SHA256SUMS.txt; do
+            gh api "repos/$GH_REPO/releases/$release_id" --jq '.assets[].name' | grep -Fxq "$asset" || {
+              echo "Missing release asset: $asset"
+              exit 1
+            }
+          done
+          gh api --method PATCH "repos/$GH_REPO/releases/$release_id" -F draft=false -f make_latest=true > /dev/null
+          gh api "repos/$GH_REPO/releases/$release_id" --jq '{draft,tag_name,html_url,published_at}'
