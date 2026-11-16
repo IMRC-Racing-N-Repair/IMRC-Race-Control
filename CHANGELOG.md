@@ -2,6 +2,14 @@
 
 Keep all release history in this file. Add each new version at the top; do not create version-specific changelog files.
 
+## 0.17.9
+- Fix the actual Event > Drivers > Classes & Transponders grid: do not disable the entire control for each checkbox or transponder edit, and do not rebuild every driver/class tile after saving.
+- Make changes to the selected driver/class immediately in memory, while an ordered background worker persists only the event's ClassIds, DriverAssignments and affected transponders in pending heats.
+- Persist targeted changes with SQLite JSON1 updates to canonical AppState and queryable projections; leave historical results and laps unchanged.
+- Remove full event registration/round recalculation and full-state snapshot save from the individual tile click handler.
+- Add database regression checks verifying targeted registration changes preserve unrelated race history.
+- This patch is draft pending user testing with a large imported database and final Windows verification.
+
 ## 0.17.8
 - Eliminate full-history serialization when adding or removing an event class with no scheduled heats to delete.
 - Persist only the current event ClassIds using a lightweight atomic JSON1 SQLite update, plus the matching Events and EventClasses projections; never touch lap/result tables for those changes.
