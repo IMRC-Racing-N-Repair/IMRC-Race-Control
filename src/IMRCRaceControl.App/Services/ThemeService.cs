@@ -177,6 +177,7 @@ public static class ThemeService
             colors = colors with { AlternateRow = colors.Row };
 
         ApplyDashboardColors(colors);
+        SetRacePersonalBestColor(settings.DashboardRacePersonalBestColor);
         if (Application.Current is not null)
         {
             SetBrush("DriverCrossingBrush", NormalizeOrDefault(settings.DriverCrossingColor, "#35C76F"));
