@@ -363,8 +363,31 @@ public partial class MainWindow
         ScheduleEventClassRosterRefresh();
         // Only removals of unrun heats require a queue/projection rebuild.
         // Adding or removing an unused class must not touch historical data.
-        if (removedPendingSessions) ScheduleEventClassRefresh(sessionsChanged: true);
-        _ = CaptureAndSaveSettingsAsync();
+        if (removedPendingSessions)
+        {
+            ScheduleEventClassRefresh(sessionsChanged: true);
+            _ = CaptureAndSaveSettingsAsync(); // Session deletions require full reconciliation.
+        }
+        else
+        {
+            // Commit only the selected event's ClassIds. No historical-lap
+            // serialization, PB rebuild, or backup of the entire database.
+            var eventId = _activeEvent.Id;
+            var ids = System.Text.Json.JsonSerializer.Serialize(_activeEvent.ClassIds);
+            _ = SaveEventClassMembershipAsync(eventId, ids);
+        }
+    }
+
+    private async Task SaveEventClassMembershipAsync(string eventId, string classIdsJson)
+    {
+        try { await _stateWriter.UpdateEventClassesAsync(eventId, classIdsJson); }
+        catch (Exception ex)
+        {
+            IMRCRaceControl.Services.AppCrashLogger.Log("Incremental event class save", ex);
+            FooterStatusText.Text = "Class change needs a full recovery save; see diagnostic log.";
+            // An event added but not yet persisted needs a full snapshot once.
+            await CaptureAndSaveSettingsAsync();
+        }
     }
 
     private void EventClassChecklist_SelectionChanged(object sender, SelectionChangedEventArgs e)
