@@ -539,6 +539,7 @@ public partial class MainWindow
 
     internal string SpectatorEventText => _finishedSpectatorFrame?.Event ?? _activeEvent?.Name ?? "IMRC Race Control";
     internal string SpectatorMasterClock => _finishedSpectatorFrame?.Clock ?? RaceClockText?.Text ?? "0:00.0";
+    internal bool SpectatorShowsLapProgress => _loadedSession?.RaceFormat == RaceFormat.Laps || _raceEngine.IsLappedRace;
     internal string SpectatorRaceState => _finishedSpectatorFrame?.State ?? RaceStateText?.Text ?? "READY";
     internal string SpectatorFastestText => _finishedSpectatorFrame?.Fastest ?? FastestSessionText?.Text ?? "Fastest: —";
     internal string SpectatorProjectionText => _finishedSpectatorFrame?.Projection ?? RoundProjectionInfoText?.Text ?? string.Empty;
