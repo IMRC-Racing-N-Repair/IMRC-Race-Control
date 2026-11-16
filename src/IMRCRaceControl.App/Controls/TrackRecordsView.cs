@@ -104,7 +104,9 @@ public sealed partial class TrackRecordsView : UserControl
             var heading=new TextBlock { Text=c.Name.ToUpperInvariant(), FontSize=18, FontWeight=FontWeights.Bold, Margin=new Thickness(10,4,0,4) };
             _records.Children.Add(new Border { Child=heading, BorderThickness=new Thickness(5,0,0,0), BorderBrush=(Brush)new BrushConverter().ConvertFromString(c.Color)!, Margin=new Thickness(0,12,0,8) });
             if(c.Records.Count==0) { _records.Children.Add(new TextBlock { Text="No completed race laps recorded at this track yet.", Margin=new Thickness(10,0,0,16) }); continue; }
-            var grid=new DataGrid { ItemsSource=c.Records, AutoGenerateColumns=false, IsReadOnly=true, CanUserAddRows=false, CanUserSortColumns=false, CanUserReorderColumns=false, HeadersVisibility=DataGridHeadersVisibility.Column, GridLinesVisibility=DataGridGridLinesVisibility.Horizontal, Margin=new Thickness(0,0,0,16) };
+            // Show only the podium on-screen. The full selected top-N remains in
+            // _report for printing/PDF, so historical records are never discarded.
+            var grid=new DataGrid { ItemsSource=c.Records.Take(3).ToList(), AutoGenerateColumns=false, IsReadOnly=true, CanUserAddRows=false, CanUserSortColumns=false, CanUserReorderColumns=false, HeadersVisibility=DataGridHeadersVisibility.Column, GridLinesVisibility=DataGridGridLinesVisibility.Horizontal, Margin=new Thickness(0,0,0,16) };
             // A DataGrid has its own ScrollViewer and consumes the wheel even
             // when its rows fit. Route wheel input to the containing records page.
             grid.PreviewMouseWheel += (_, e) =>
