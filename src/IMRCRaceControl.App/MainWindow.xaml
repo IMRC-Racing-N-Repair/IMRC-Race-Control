@@ -987,6 +987,9 @@
 
                                     <ListBox x:Name="EventDriverChecklist" Grid.Row="1"
                                              ItemsSource="{Binding EventDriverChoices}"
+                                             VirtualizingPanel.IsVirtualizing="True"
+                                             VirtualizingPanel.VirtualizationMode="Recycling"
+                                             ScrollViewer.CanContentScroll="True"
                                              SelectionChanged="EventDriverChecklist_SelectionChanged"
                                              ScrollViewer.VerticalScrollBarVisibility="Auto"
                                              Margin="0,5,0,0"
