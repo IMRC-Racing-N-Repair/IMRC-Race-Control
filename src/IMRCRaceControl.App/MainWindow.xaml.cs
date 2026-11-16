@@ -28,6 +28,7 @@ public partial class MainWindow : Window
     private readonly EventArchiveService _eventArchiveService = new();
     private readonly ConnectionController _connection = new();
     private readonly SemaphoreSlim _settingsSaveGate = new(1, 1);
+    private readonly BackgroundRaceStateWriter _stateWriter;
     private readonly TrafficLogService _trafficLogger = new();
     private readonly DecoderIngressService _decoderIngress = new();
     private readonly DispatcherTimer _raceTimer;
@@ -92,6 +93,7 @@ public partial class MainWindow : Window
         _settings.DriverPersonalBests = PersonalBests.FromEvents(_settings.Events, _settings.Classes);
         _settingsService = settingsService;
         _database = database;
+        _stateWriter = new BackgroundRaceStateWriter(database, settingsService);
         _startupWarning = startupWarning;
         InitializeComponent();
         ConfigureDriverDirectorySearch();
@@ -264,7 +266,7 @@ public partial class MainWindow : Window
             _settings.Drivers = Drivers.ToList();
             _settings.DriverClassAssignments = _driverAssignments.ToList();
             _settings.Events = Events.ToList();
-            _settings.DriverPersonalBests = PersonalBests.FromEvents(_settings.Events);
+            // Rebuild the historical PB index on the dedicated background writer.
             _settings.Series = SeriesDefinitions.ToList();
             _settings.LastSeriesId = _activeSeries?.Id ?? string.Empty;
             _settings.LastClassId = (RaceClassCombo.SelectedItem as ClassDefinition)?.Id ?? _settings.LastClassId;
@@ -302,31 +304,12 @@ public partial class MainWindow : Window
 
             try
             {
-                // Copy on the UI thread after the edit-quiet interval. The
-                // background writer must never serialize a live mutable event
-                // while another click is changing the roster or scoring data.
+                // Capture only a stable immutable snapshot on the dispatcher.
+                // JSON decoding, per-class PB calculations, SQLite transactions,
+                // historical-row reconciliation, and recovery backup I/O are
+                // processed in order by a separate thread-pool worker.
                 var snapshotJson = System.Text.Json.JsonSerializer.Serialize(_settings);
-                var snapshot = System.Text.Json.JsonSerializer.Deserialize<AppSettings>(snapshotJson)
-                    ?? throw new InvalidOperationException("Could not snapshot race settings.");
-                // Only immutable captured data is used by background database I/O.
-                if (backgroundWrite)
-                    await Task.Run(() => _database.SaveApplicationStateAsync(snapshot));
-                else
-                    await _database.SaveApplicationStateAsync(snapshot);
-
-                // Keep settings.json as a readable migration/disaster-recovery backup.
-                try
-                {
-                    if (backgroundWrite)
-                        await Task.Run(() => _settingsService.SaveAsync(snapshot));
-                    else
-                        await _settingsService.SaveAsync(snapshot);
-                }
-                catch (Exception backupError)
-                {
-                    AppCrashLogger.Log("Settings backup save", backupError);
-                    FooterStatusText.Text = "Saved to database; settings backup could not be updated.";
-                }
+                await _stateWriter.WriteAsync(snapshotJson);
             }
             catch (Exception ex)
             {
@@ -3083,6 +3066,7 @@ public partial class MainWindow : Window
         _raceTimer.Stop();
         try { await FinalizeAllPracticeOnCloseAsync(); } catch { }
         // The Closing handler flushed all queued UI changes before shutdown.
+        await _stateWriter.DisposeAsync();
         await _connection.DisposeAsync();
         await _decoderIngress.DisposeAsync();
         await _trafficLogger.DisposeAsync();
