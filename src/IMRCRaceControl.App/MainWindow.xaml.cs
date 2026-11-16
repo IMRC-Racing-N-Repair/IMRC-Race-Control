@@ -111,6 +111,7 @@ public partial class MainWindow : Window
         _decoderIngress.PacketFormatted += DecoderIngress_PacketFormatted;
 
         Loaded += MainWindow_Loaded;
+        Closing += MainWindow_Closing;
         Closed += MainWindow_Closed;
     }
 
@@ -221,7 +222,39 @@ public partial class MainWindow : Window
         UpdateConnectionPanelVisibility();
     }
 
-    private async Task CaptureAndSaveSettingsAsync(bool reportFailureToCaller = false, bool backgroundWrite = true)
+    // User changes update the in-memory model immediately. Disk persistence is
+    // coalesced after a quiet period so repeated clicks never await a SQLite write.
+    // Important actions (reportFailureToCaller=true) still flush synchronously.
+    private DispatcherTimer? _coalescedSaveTimer;
+    private Task CaptureAndSaveSettingsAsync(bool reportFailureToCaller = false, bool backgroundWrite = true)
+    {
+        if (reportFailureToCaller || _closing)
+        {
+            _coalescedSaveTimer?.Stop();
+            return PersistSettingsNowAsync(reportFailureToCaller: true, backgroundWrite: true);
+        }
+        _coalescedSaveTimer ??= CreateCoalescedSaveTimer();
+        _coalescedSaveTimer.Stop();
+        _coalescedSaveTimer.Start();
+        return Task.CompletedTask;
+    }
+
+    private DispatcherTimer CreateCoalescedSaveTimer()
+    {
+        var timer = new DispatcherTimer(DispatcherPriority.Background)
+        {
+            Interval = TimeSpan.FromMilliseconds(700)
+        };
+        timer.Tick += async (_, _) =>
+        {
+            timer.Stop();
+            try { await PersistSettingsNowAsync(backgroundWrite: true); }
+            catch (Exception ex) { AppCrashLogger.Log("Deferred database save", ex); }
+        };
+        return timer;
+    }
+
+    private async Task PersistSettingsNowAsync(bool reportFailureToCaller = false, bool backgroundWrite = true)
     {
         await _settingsSaveGate.WaitAsync();
         try
@@ -269,21 +302,25 @@ public partial class MainWindow : Window
 
             try
             {
-                // SQLite is authoritative. This saves the complete application
-                // snapshot and synchronizes the queryable racing tables atomically.
-                // Microsoft.Data.Sqlite performs database I/O synchronously.
+                // Copy on the UI thread after the edit-quiet interval. The
+                // background writer must never serialize a live mutable event
+                // while another click is changing the roster or scoring data.
+                var snapshotJson = System.Text.Json.JsonSerializer.Serialize(_settings);
+                var snapshot = System.Text.Json.JsonSerializer.Deserialize<AppSettings>(snapshotJson)
+                    ?? throw new InvalidOperationException("Could not snapshot race settings.");
+                // Only immutable captured data is used by background database I/O.
                 if (backgroundWrite)
-                    await Task.Run(() => _database.SaveApplicationStateAsync(_settings));
+                    await Task.Run(() => _database.SaveApplicationStateAsync(snapshot));
                 else
-                    await _database.SaveApplicationStateAsync(_settings);
+                    await _database.SaveApplicationStateAsync(snapshot);
 
                 // Keep settings.json as a readable migration/disaster-recovery backup.
                 try
                 {
                     if (backgroundWrite)
-                        await Task.Run(() => _settingsService.SaveAsync(_settings));
+                        await Task.Run(() => _settingsService.SaveAsync(snapshot));
                     else
-                        await _settingsService.SaveAsync(_settings);
+                        await _settingsService.SaveAsync(snapshot);
                 }
                 catch (Exception backupError)
                 {
@@ -1824,6 +1861,8 @@ public partial class MainWindow : Window
         StartStyleText.Text = session.StartStyle.ToDisplay();
         UpdateSessionRosterText();
         ShowLoadedRosterStandings(cls);
+        if (session.RaceFormat == RaceFormat.Laps)
+            RaceClockText.Text = $"Laps 0/{Math.Max(1, session.TargetLaps)}";
         ResetDriverLapPanelForSession();
 
         SetRaceSetupEnabled(true);
@@ -1893,6 +1932,20 @@ public partial class MainWindow : Window
         UpdateRaceDefaultsFromClass(updateTiming: false);
     }
 
+    private (bool IsLaps, int Target) SelectedPreStartLaps()
+    {
+        if (_loadedSession is { RaceFormat: RaceFormat.Laps } loaded)
+            return (true, Math.Max(1, loaded.TargetLaps));
+        if (_loadedSession is not null) return (false, 0);
+        if (RaceClassCombo.SelectedItem is ClassDefinition cls)
+        {
+            var type = GetSelectedSessionType();
+            if (type != SessionType.Practice && cls.FormatFor(type) == RaceFormat.Laps)
+                return (true, Math.Max(1, cls.LapsFor(type)));
+        }
+        return (false, 0);
+    }
+
     private void UpdateRaceDefaultsFromClass(bool updateTiming = true)
     {
         if (RaceClassCombo.SelectedItem is not ClassDefinition cls)
@@ -1904,6 +1957,12 @@ public partial class MainWindow : Window
             MinimumLapText.Text = (_loadedSession?.MinimumLapSecondsOverride ?? cls.MinimumLapSeconds).ToString("0.###");
         }
         StartStyleText.Text = (_loadedSession?.StartStyle ?? GetConfiguredStartStyle(cls, type)).ToDisplay();
+        if (!_recallMode && _raceEngine.State is RaceState.Ready or RaceState.FalseStart)
+        {
+            var (isLaps, target) = SelectedPreStartLaps();
+            RaceClockText.Text = isLaps ? $"Laps 0/{target}"
+                : RaceEngine.FormatClock(TimeSpan.FromMinutes(ParseRaceMinutesOrDefault()));
+        }
         if (string.IsNullOrWhiteSpace(RaceSessionText.Text) || RaceSessionText.Text == "Ad Hoc Race")
             RaceSessionText.Text = $"{cls.Name} {type}";
     }
@@ -2205,7 +2264,7 @@ public partial class MainWindow : Window
             RecentLaps.Clear();
             RaceStateText.Text = "READY";
             RaceClockText.Text = _loadedSession?.RaceFormat == RaceFormat.Laps
-                ? $"Lap 0/{Math.Max(1, _loadedSession.TargetLaps)}"
+                ? $"Laps 0/{Math.Max(1, _loadedSession.TargetLaps)}"
                 : RaceEngine.FormatClock(TimeSpan.FromMinutes(ParseRaceMinutesOrDefault()));
             HeaderRaceStateText.Text = "READY";
             LastPassingText.Text = "Waiting for a passing…";
@@ -2313,7 +2372,7 @@ public partial class MainWindow : Window
 
         RaceClockText.Text = state switch
         {
-            RaceState.Ready or RaceState.FalseStart when _loadedSession?.RaceFormat == RaceFormat.Laps => $"Lap 0/{Math.Max(1, _loadedSession.TargetLaps)}",
+            RaceState.Ready or RaceState.FalseStart when SelectedPreStartLaps().IsLaps => $"Laps 0/{SelectedPreStartLaps().Target}",
             RaceState.Ready or RaceState.FalseStart => RaceEngine.FormatClock(TimeSpan.FromMinutes(ParseRaceMinutesOrDefault())),
             _ when _raceEngine.PracticeMode => "+" + RaceEngine.FormatClock(_raceEngine.GetMasterElapsed(now)),
             _ when _raceEngine.IsLappedRace => _raceEngine.LapsProgressDisplay,
@@ -2980,6 +3039,41 @@ public partial class MainWindow : Window
     // Helpers / close
     // -----------------------------
 
+    private bool _closeFlushComplete;
+    private bool _closeFlushInProgress;
+
+    private async void MainWindow_Closing(object? sender, System.ComponentModel.CancelEventArgs e)
+    {
+        if (_closeFlushComplete) return;
+        e.Cancel = true;
+        if (_closeFlushInProgress) return;
+        _closeFlushInProgress = true;
+        _coalescedSaveTimer?.Stop();
+        IsEnabled = false;
+        try
+        {
+            // Closing must not destroy the process before a queued write finishes.
+            await PersistSettingsNowAsync(reportFailureToCaller: true);
+            _closeFlushComplete = true;
+            Close();
+        }
+        catch (Exception ex)
+        {
+            AppCrashLogger.Log("Final database flush", ex);
+            if (MessageBox.Show(this,
+                    "Race Control could not finish saving. Exit anyway? Recent changes may be lost.\n\n" + ex.Message,
+                    "Database save before exit", MessageBoxButton.YesNo, MessageBoxImage.Error,
+                    MessageBoxResult.No) == MessageBoxResult.Yes)
+            {
+                _closeFlushComplete = true;
+                Close();
+            }
+            else
+                IsEnabled = true;
+        }
+        finally { _closeFlushInProgress = false; }
+    }
+
     private async void MainWindow_Closed(object? sender, EventArgs e)
     {
         _closing = true;
@@ -2988,7 +3082,7 @@ public partial class MainWindow : Window
         _lapSpeech.Dispose();
         _raceTimer.Stop();
         try { await FinalizeAllPracticeOnCloseAsync(); } catch { }
-        try { await CaptureAndSaveSettingsAsync(); } catch { }
+        // The Closing handler flushed all queued UI changes before shutdown.
         await _connection.DisposeAsync();
         await _decoderIngress.DisposeAsync();
         await _trafficLogger.DisposeAsync();
