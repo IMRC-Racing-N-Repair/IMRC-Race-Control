@@ -159,6 +159,9 @@ public partial class SettingsDialog : Window
             DashboardPositionSameText.Text = settings.DashboardPositionSameColor;
         }
 
+        DashboardRacePersonalBestText.Text =
+            ThemeService.IsValidColor(settings.DashboardRacePersonalBestColor)
+                ? settings.DashboardRacePersonalBestColor : "#39FF65";
         CrossingStyleCombo.SelectedIndex = settings.DriverCrossingStyle == "Underline" ? 1 : 0;
         DriverCrossingColorText.Text = settings.DriverCrossingColor;
         FinishedStyleCombo.SelectedIndex = settings.FinishedDriverStyle == "Text" ? 1 : settings.FinishedDriverStyle == "None" ? 2 : 0;
@@ -304,6 +307,7 @@ public partial class SettingsDialog : Window
         _dashboardPreviewTheme = theme;
         DashboardAlternateRowsCheck.IsChecked = true;
         SetDashboardColorFields(ThemeService.GetDashboardDefaults(theme));
+        DashboardRacePersonalBestText.Text = "#39FF65";
         ThemeService.Apply(theme);
         ApplyDashboardPreview(theme);
     }
@@ -315,6 +319,12 @@ public partial class SettingsDialog : Window
 
         _dashboardColorsFollowTheme = false;
         ApplyDashboardPreview(Selected(ThemeCombo, _dashboardPreviewTheme));
+    }
+
+    private void DashboardRacePersonalBestColor_TextChanged(object sender, TextChangedEventArgs e)
+    {
+        if (IsLoaded && ThemeService.IsValidColor(DashboardRacePersonalBestText.Text))
+            ThemeService.SetRacePersonalBestColor(DashboardRacePersonalBestText.Text);
     }
 
     private void DashboardColorPreview_TextChanged(object sender, TextChangedEventArgs e)
