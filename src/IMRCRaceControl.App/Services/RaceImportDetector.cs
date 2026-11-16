@@ -45,10 +45,42 @@ public static class RaceImportDetector
             return InspectRcspNames(Directory.GetFiles(Path.GetDirectoryName(path)!, "*.adt")
                 .Select(Path.GetFileName).Where(s => s is not null).Select(s => s!).ToArray(),
                 "RC Scoring Pro Advantage table");
-        // Encrypted LiveTime databases do not have a SQLite plaintext signature.
-        // Never automatically assume that arbitrary binary data is LiveTime.
+        // Older LiveTime backups and encrypted databases lack the SQLite header.
+        // Probe only plausible database files, read-only, using the same supported
+        // extraction paths and optional bundled password as the full importer.
+        // Never classify arbitrary binary input solely on file extension/size.
+        if (IsLiveTimeCandidate(path, stream.Length))
+        {
+            try
+            {
+                var roster = LiveTimeBackupReader.ReadImportRoster(path);
+                return new(RaceImportFormat.LiveTime,
+                    "LiveTime backup (automatically decoded and schema-validated)",
+                    [], [$"Recognized LiveTime schema {roster.SchemaVersion} after trying compatible backup readers."]);
+            }
+            catch (LiveTimeBackupPasswordRequiredException)
+            {
+                // The source could be a differently encrypted LiveTime database.
+                // Open the existing unlock flow; it must verify the database schema
+                // before anything can be imported.
+                return new(RaceImportFormat.LiveTime,
+                    "Potential encrypted LiveTime database (unlock required)",
+                    [], ["Automatic decoding was attempted; provide the matching key if requested."]);
+            }
+            catch (InvalidDataException)
+            {
+                return Unknown("Automatic legacy/encoded and encrypted LiveTime checks did not identify a supported database.");
+            }
+        }
         return Unknown("Unrecognized source format; no data has been changed.");
     }
+
+    private static bool IsLiveTimeCandidate(string path, long length) =>
+        length is >= 512 and <= 268435456 && length % 512 == 0 &&
+        (path.EndsWith(".db", StringComparison.OrdinalIgnoreCase) ||
+         path.EndsWith(".bak", StringComparison.OrdinalIgnoreCase) ||
+         path.EndsWith(".sqlite", StringComparison.OrdinalIgnoreCase) ||
+         path.EndsWith(".dat", StringComparison.OrdinalIgnoreCase));
 
     private static RaceImportInspection InspectSqlite(string path)
     {
