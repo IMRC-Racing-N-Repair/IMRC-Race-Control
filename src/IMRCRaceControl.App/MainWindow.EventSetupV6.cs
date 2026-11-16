@@ -109,7 +109,7 @@ public partial class MainWindow
         // the large event-registration table on every selected-class click.
         if (refreshRegistration) RefreshEventRegistrationView();
         selectDriverId ??= (EventDriverChecklist?.SelectedItem as EventDriverChoice)?.DriverId;
-        EventDriverChoices.Clear();
+        // Avoid hundreds of per-row change notifications during class switching.
 
         SelectedEventDriverText.Text = "Select a checked driver";
         SelectedEventDriverFullNameText.Text = "—";
