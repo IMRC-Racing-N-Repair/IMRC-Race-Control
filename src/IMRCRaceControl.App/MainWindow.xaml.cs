@@ -2146,6 +2146,7 @@ public partial class MainWindow : Window
                 sessionType,
                 startStyle,
                 toneTime);
+            CaptureRacePersonalBestBaselines();
 
             if (_loadedSession is not null)
             {
