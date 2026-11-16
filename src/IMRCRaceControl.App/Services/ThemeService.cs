@@ -187,6 +187,11 @@ public static class ThemeService
         }
     }
 
+    public static void SetRacePersonalBestColor(string? requested)
+    {
+        SetBrush("DashboardRacePersonalBestBrush", NormalizeOrDefault(requested, "#39FF65"));
+    }
+
     public static void ApplyDashboardColors(DashboardThemeColors colors)
     {
         SetBrush("DashboardBackgroundBrush", colors.Background);
