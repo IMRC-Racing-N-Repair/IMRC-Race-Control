@@ -31,6 +31,7 @@ public partial class MainWindow : Window
     private readonly BackgroundRaceStateWriter _stateWriter;
     private readonly TrafficLogService _trafficLogger = new();
     private readonly DecoderIngressService _decoderIngress = new();
+    private int _trackmateUnrecognizedPackets;
     private readonly DispatcherTimer _raceTimer;
     private readonly ObservableCollection<DriverClassAssignment> _driverAssignments = new();
 
@@ -2915,7 +2916,10 @@ public partial class MainWindow : Window
     private void Connection_StatusChanged(object? sender, TransportStatusEventArgs e)
     {
         if (e.State is TransportState.Connecting or TransportState.Disconnected or TransportState.Error)
+        {
             _decoderIngress.ResetConnection();
+            _trackmateUnrecognizedPackets = 0;
+        }
         Dispatcher.Invoke(() =>
         {
             DecoderStatusText.Text = e.Message + (e.State == TransportState.Error ? " — see OPEN LOGS" : "");
@@ -2967,7 +2971,24 @@ public partial class MainWindow : Window
             }));
         Dispatcher.BeginInvoke(DispatcherPriority.Background, new Action(() =>
         {
-            DecoderProtocolText.Text = $"Protocol: {packet.Protocol}";
+            // Trackmate's physical serial baud must match the decoder output. Receiving bytes
+            // does not mean that a valid crossing was decoded or counted as a lap.
+            if (packet.Transport.StartsWith("Trackmate ", StringComparison.OrdinalIgnoreCase))
+            {
+                if (packet.Passings.Count > 0)
+                    _trackmateUnrecognizedPackets = 0;
+                else if (packet.DecodeSummary.Contains("Invalid Trackmate", StringComparison.OrdinalIgnoreCase))
+                    _trackmateUnrecognizedPackets++;
+
+                DecoderProtocolText.Text = _trackmateUnrecognizedPackets >= 5
+                    ? "Trackmate: invalid passing data — check selected baud matches decoder serial output; see OPEN LOGS"
+                    : $"Protocol: {packet.Protocol}";
+            }
+            else
+            {
+                _trackmateUnrecognizedPackets = 0;
+                DecoderProtocolText.Text = $"Protocol: {packet.Protocol}";
+            }
             _chunkCount++;
             _byteCount += packet.Bytes;
             Traffic.Add(new TrafficRow
