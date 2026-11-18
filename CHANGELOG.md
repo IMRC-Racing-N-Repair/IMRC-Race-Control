@@ -2,6 +2,12 @@
 
 Keep all release history in this file. Add each new version at the top; do not create version-specific changelog files.
 
+## 0.17.14
+- Keep Trackmate's known-working 9600-baud setting as the default while allowing operators to select and save other serial baud rates. The selected rate is passed directly to the serial port and must match the decoder's configured serial output.
+- Add a visible decoder warning after repeated invalid Trackmate passing frames, directing operators to check their serial baud setting and decoder logs. Do not mistake incoming bytes or decoder-side detection for valid scored lap passes.
+- Reset Trackmate invalid-frame warnings after a valid passing or connection reset. Leave other decoder protocols and their saved baud rates unchanged.
+- Hardware validation remains required for non-9600 Trackmate rates. No claim of automatic baud negotiation or support for an unverified decoder output rate.
+
 ## 0.17.13
 - Show a compact "PB: laps/time" line directly beneath the driver name only when the driver's current projected race pace is better than their previous overall race-result PB for the same driver/class/format/distance.
 - On a confirmed completed result that beats the prior PB, replace that line with the newly achieved laps/time in larger, bold, bright green text. An initial completed result also establishes a first PB.
