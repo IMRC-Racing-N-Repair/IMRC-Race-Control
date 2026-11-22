@@ -58,7 +58,6 @@ public partial class MainWindow
 
     private void ApplyPracticeLayoutPreferences()
     {
-        PracticeGridColumns = Math.Clamp(_settings.PracticeCardsPerRow, 4, 6);
         RefreshVisiblePracticeCards();
     }
 
@@ -82,8 +81,9 @@ public partial class MainWindow
         }
 
         var visibleCount = Math.Min(PracticeCards.Count, MaximumVisiblePracticeCards);
+        PracticeGridColumns = Math.Min(Math.Max(1, visibleCount), Math.Clamp(_settings.PracticeCardsPerRow, 4, 6));
         PracticeGridRows = Math.Max(
-            2,
+            1,
             (int)Math.Ceiling(Math.Max(1, visibleCount) / (double)Math.Max(1, PracticeGridColumns)));
 
         if (PracticeLayoutStatusText is not null)
