@@ -889,7 +889,7 @@
                                                         BorderBrush="{DynamicResource BorderStrongBrush}"
                                                         BorderThickness="0,0,0,1"
                                                         CornerRadius="0"
-                                                        Padding="3">
+                                                        Padding="6">
                                                     <!--
                                                         The card uses a fixed design surface and a Viewbox.
                                                         With two rows it renders at normal spectator size.
@@ -901,11 +901,11 @@
                                                              StretchDirection="Both"
                                                              HorizontalAlignment="Stretch"
                                                              VerticalAlignment="Stretch">
-                                                        <Grid Width="310" Height="320" Margin="3">
+                                                        <Grid Width="360" Height="270" Margin="0">
                                                             <Grid.RowDefinitions>
-                                                                <RowDefinition Height="48"/>
-                                                                <RowDefinition Height="54"/>
-                                                                <RowDefinition Height="62"/>
+                                                                <RowDefinition Height="50"/>
+                                                                <RowDefinition Height="52"/>
+                                                                <RowDefinition Height="44"/>
                                                                 <RowDefinition Height="*"/>
                                                                 <RowDefinition Height="20"/>
                                                             </Grid.RowDefinitions>
@@ -919,7 +919,7 @@
 
                                                                 <StackPanel VerticalAlignment="Center">
                                                                     <Border Style="{StaticResource DriverCrossingBorderStyle}" Padding="4,1"><TextBlock Text="{Binding DriverName}"
-                                                                               FontSize="20"
+                                                                               FontSize="24"
                                                                                FontWeight="Bold"
                                                                                TextTrimming="CharacterEllipsis"
                                                                                Foreground="{DynamicResource DashboardTextBrush}"/></Border>
@@ -933,7 +933,7 @@
                                                                 <TextBlock Grid.Column="1"
                                                                            Text="{Binding LapCount, StringFormat='Laps {0}'}"
                                                                            VerticalAlignment="Center"
-                                                                           FontSize="13"
+                                                                           FontSize="17"
                                                                            FontWeight="Bold"
                                                                            Margin="8,0,2,0"/>
                                                             </Grid>
@@ -943,11 +943,11 @@
                                                                 <StackPanel Margin="2" VerticalAlignment="Center">
                                                                     <TextBlock Text="LAST"
                                                                                TextAlignment="Center"
-                                                                               FontSize="9"
+                                                                               FontSize="11"
                                                                                Foreground="{DynamicResource MutedBrush}"/>
                                                                     <TextBlock Text="{Binding LastLapDisplay}"
                                                                                TextAlignment="Center"
-                                                                               FontSize="16"
+                                                                               FontSize="23"
                                                                                FontWeight="Bold"/>
                                                                 </StackPanel>
 
@@ -987,15 +987,15 @@
                                                                     <DataTemplate>
                                                                         <Border Margin="2"
                                                                                 Padding="3"
-                                                                                Background="{DynamicResource PanelAltBrush}"
+                                                                                Background="Transparent"
                                                                                 BorderBrush="{DynamicResource BorderBrush}"
-                                                                                BorderThickness="1"
-                                                                                CornerRadius="2">
+                                                                                BorderThickness="0"
+                                                                                CornerRadius="0">
                                                                             <StackPanel VerticalAlignment="Center">
                                                                                 <TextBlock Text="{Binding Label}"
                                                                                            TextAlignment="Center"
                                                                                            TextTrimming="CharacterEllipsis"
-                                                                                           FontSize="8.5"
+                                                                                           FontSize="10"
                                                                                            Foreground="{DynamicResource MutedBrush}"/>
                                                                                 <TextBlock Text="{Binding Value}"
                                                                                            TextAlignment="Center"
@@ -1011,8 +1011,8 @@
                                                             <Border Grid.Row="3"
                                                                     Margin="0,3,0,2"
                                                                     BorderBrush="{DynamicResource BorderBrush}"
-                                                                    BorderThickness="1"
-                                                                    CornerRadius="2"
+                                                                    BorderThickness="0"
+                                                                    CornerRadius="0"
                                                                     ClipToBounds="True">
                                                                 <ScrollViewer VerticalScrollBarVisibility="Auto"
                                                                               HorizontalScrollBarVisibility="Disabled">
