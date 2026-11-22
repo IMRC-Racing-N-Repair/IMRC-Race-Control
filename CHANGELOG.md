@@ -3,6 +3,7 @@
 Keep all release history in this file. Add each new version at the top; do not create version-specific changelog files.
 
 ## 0.17.14
+- Shorten the practice Top 2 Consecutive display label to Top 2 Cons. and align stat values on a common horizontal row without changing saved stat identifiers.
 - Simplify live practice driver cards by removing the transponder subtitle and lap source text. Show signed three-decimal differences from each preceding lap, green for faster, red for slower, neutral for equal or first laps.
 - Restore the saved physical decoder connection on application startup; retain the saved COM port instead of connecting to another detected port. Add a clickable global decoder icon with red disconnected, green connected and orange error states.
 - Expand live practice tiles to use available rows and columns based on active driver count; enlarge timing text and simplify nested statistics panels.
