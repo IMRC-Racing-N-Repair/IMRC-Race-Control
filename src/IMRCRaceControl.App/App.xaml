@@ -923,11 +923,6 @@
                                                                                FontWeight="Bold"
                                                                                TextTrimming="CharacterEllipsis"
                                                                                Foreground="{DynamicResource DashboardTextBrush}"/></Border>
-                                                                    <TextBlock Text="{Binding TransponderDisplay}"
-                                                                               ToolTip="{Binding TransponderDisplay}"
-                                                                               FontSize="10"
-                                                                               Foreground="{DynamicResource MutedBrush}"
-                                                                               TextTrimming="CharacterEllipsis"/>
                                                                 </StackPanel>
 
                                                                 <TextBlock Grid.Column="1"
@@ -1061,12 +1056,23 @@
                                                                                                    FontSize="12"
                                                                                                    FontWeight="Bold"/>
 
-                                                                                        <TextBlock Grid.Column="2"
-                                                                                                   Text="{Binding Source}"
-                                                                                                   TextAlignment="Right"
-                                                                                                   TextTrimming="CharacterEllipsis"
-                                                                                                   FontSize="9"
-                                                                                                   Foreground="{DynamicResource MutedBrush}"/>
+                                                                                        <TextBlock Grid.Column="2" Text="{Binding LapDeltaDisplay}"
+                                                                                                   TextAlignment="Right" FontSize="13" FontWeight="Bold"
+                                                                                                   ToolTip="Difference from previous lap (seconds)">
+                                                                                            <TextBlock.Style>
+                                                                                                <Style TargetType="TextBlock">
+                                                                                                    <Setter Property="Foreground" Value="{DynamicResource MutedBrush}"/>
+                                                                                                    <Style.Triggers>
+                                                                                                        <DataTrigger Binding="{Binding IsFaster}" Value="True">
+                                                                                                            <Setter Property="Foreground" Value="{DynamicResource GoodBrush}"/>
+                                                                                                        </DataTrigger>
+                                                                                                        <DataTrigger Binding="{Binding IsSlower}" Value="True">
+                                                                                                            <Setter Property="Foreground" Value="{DynamicResource DangerBrush}"/>
+                                                                                                        </DataTrigger>
+                                                                                                    </Style.Triggers>
+                                                                                                </Style>
+                                                                                            </TextBlock.Style>
+                                                                                        </TextBlock>
                                                                                     </Grid>
                                                                                 </Border>
                                                                             </DataTemplate>
