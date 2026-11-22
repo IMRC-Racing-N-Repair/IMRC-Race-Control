@@ -97,6 +97,7 @@ public sealed class PracticeCardViewModel : INotifyPropertyChanged
 
     public void AddLap(PracticeLapEntry lap)
     {
+        lap.PreviousLapDelta = Laps.Count == 0 ? null : lap.LapTime - Laps[^1].LapTime;
         Laps.Add(lap);
         OnPropertyChanged(nameof(LapCount));
         OnPropertyChanged(nameof(LastLapDisplay));
