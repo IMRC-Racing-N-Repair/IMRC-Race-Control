@@ -3,6 +3,7 @@
 Keep all release history in this file. Add each new version at the top; do not create version-specific changelog files.
 
 ## 0.17.14
+- Simplify live practice driver cards by removing the transponder subtitle and lap source text. Show signed three-decimal differences from each preceding lap, green for faster, red for slower, neutral for equal or first laps.
 - Restore the saved physical decoder connection on application startup; retain the saved COM port instead of connecting to another detected port. Add a clickable global decoder icon with red disconnected, green connected and orange error states.
 - Expand live practice tiles to use available rows and columns based on active driver count; enlarge timing text and simplify nested statistics panels.
 - Keep Trackmate's known-working 9600-baud setting as the default while allowing operators to select and save other serial baud rates. The selected rate is passed directly to the serial port and must match the decoder's configured serial output.
