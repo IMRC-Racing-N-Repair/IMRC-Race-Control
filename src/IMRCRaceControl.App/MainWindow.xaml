@@ -48,6 +48,9 @@
                 <StackPanel Grid.Column="4" Orientation="Horizontal">
                 <Button x:Name="PopOutDashboardButton" Content="&#xE7F4;" FontFamily="Segoe MDL2 Assets" Click="PopOutDashboardButton_Click" ToolTip="Pop out race / practice board" AutomationProperties.Name="Pop out race / practice board" Width="34" MinWidth="34" Padding="0" FontSize="15"/>
                 <Button Content="&#xE749;" FontFamily="Segoe MDL2 Assets" Click="PrintReports_Click" ToolTip="Print reports" AutomationProperties.Name="Print reports" Width="34" MinWidth="34" Padding="0" FontSize="15"/>
+                <Button x:Name="HeaderDecoderButton" Click="HeaderDecoderButton_Click" ToolTip="Decoder: disconnected" AutomationProperties.Name="Decoder connection status" Width="34" MinWidth="34" Padding="0">
+                    <TextBlock x:Name="HeaderDecoderIcon" Text="&#xE950;" FontFamily="Segoe MDL2 Assets" FontSize="19" Foreground="#E53B3B" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                </Button>
                 <Button Content="⚙" Click="Settings_Click"
                         ToolTip="Settings" Width="34" MinWidth="34"
                         Padding="0" FontSize="15" VerticalAlignment="Center"/>
@@ -1643,11 +1646,11 @@
                                         <ComboBoxItem>Simulator</ComboBoxItem>
                                     </ComboBox>
                                     <CheckBox x:Name="AutoReconnectCheck"
-                                              Content="Keep connected until Disconnect or app closes"
+                                              Content="Reconnect automatically on startup and after connection loss"
                                               IsEnabled="False"
                                               IsChecked="True"
                                               Margin="0,5,0,5"/>
-                                    <TextBlock Text="Trackmate defaults to 115200 baud and I-Lap to 9600. Both preset 8-N-1 with no flow control and send their own startup commands. For Trackmate RC/Iridium, select its COM port and close other timing software first. OpenStint uses its running decoder service."
+                                    <TextBlock Text="Trackmate defaults to 9600 baud and I-Lap to 9600. Both preset 8-N-1 with no flow control and send their own startup commands. For Trackmate RC/Iridium, select its COM port and close other timing software first. OpenStint uses its running decoder service."
                                                TextWrapping="Wrap"
                                                Foreground="{DynamicResource MutedBrush}"
                                                FontSize="12"/>
