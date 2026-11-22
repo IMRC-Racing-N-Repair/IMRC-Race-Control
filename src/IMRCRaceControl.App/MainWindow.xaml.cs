@@ -185,7 +185,38 @@ public partial class MainWindow : Window
 
         if (_activeEvent is not null && MainTabs.SelectedItem == RaceTab)
             EnsureCurrentSessionLoadedForDashboard();
+
+        await RestoreDecoderConnectionAsync();
     }
+
+    private async Task RestoreDecoderConnectionAsync()
+    {
+        var mode = _settings.LastConnectionType;
+        if (mode.StartsWith("Simulator", StringComparison.OrdinalIgnoreCase)) return;
+        var serial = mode.StartsWith("USB", StringComparison.OrdinalIgnoreCase) ||
+                     mode.StartsWith("I-Lap", StringComparison.OrdinalIgnoreCase) ||
+                     mode.StartsWith("Trackmate", StringComparison.OrdinalIgnoreCase);
+        if (serial && string.IsNullOrWhiteSpace(_settings.LastComPort)) return;
+        try
+        {
+            if (serial && !PortCombo.Items.Contains(_settings.LastComPort))
+                PortCombo.Items.Add(_settings.LastComPort);
+            if (serial) PortCombo.SelectedItem = _settings.LastComPort;
+            ConnectButton.IsEnabled = false;
+            await _connection.StartAsync(BuildTransportFactory(), autoReconnect: true);
+            DisconnectButton.IsEnabled = true;
+        }
+        catch (Exception ex)
+        {
+            DecoderDiagnostics.Write("AUTO CONNECT ERROR", "Startup decoder connection failed", ex);
+            HeaderDecoderIcon.Foreground = new SolidColorBrush(Color.FromRgb(255, 149, 50));
+            HeaderDecoderButton.ToolTip = "Decoder error: " + ex.Message;
+            ConnectButton.IsEnabled = true;
+            DisconnectButton.IsEnabled = false;
+        }
+    }
+
+    private void HeaderDecoderButton_Click(object sender, RoutedEventArgs e) => MainTabs.SelectedItem = DecoderTab;
 
     private void LoadSettingsIntoCollections()
     {
@@ -2934,6 +2965,14 @@ public partial class MainWindow : Window
                 TransportState.Error => new SolidColorBrush(Color.FromRgb(229, 59, 59)),
                 _ => new SolidColorBrush(Color.FromRgb(107, 114, 128))
             };
+
+            HeaderDecoderIcon.Foreground = new SolidColorBrush(e.State switch
+            {
+                TransportState.Connected => Color.FromRgb(53, 199, 111),
+                TransportState.Error => Color.FromRgb(255, 149, 50),
+                _ => Color.FromRgb(229, 59, 59)
+            });
+            HeaderDecoderButton.ToolTip = "Decoder: " + e.Message;
 
             if (e.State == TransportState.Connected)
             {
