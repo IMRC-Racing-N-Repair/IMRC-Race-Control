@@ -8,6 +8,7 @@ public sealed class PracticeStatDisplay : INotifyPropertyChanged
     private string _value = "—";
 
     public string Label { get; init; } = string.Empty;
+    public string DisplayLabel => Label == PracticeStatCatalog.Top2Consecutive ? "Top 2 Cons." : Label;
 
     public string Value
     {
