@@ -233,7 +233,7 @@ public partial class RoundMainBuilderDialog : Window
             SortCombo.ItemsSource = sorts;
             SortCombo.DisplayMemberPath = nameof(Choice<MainSortOrder>.Label);
             SortCombo.SelectedValuePath = nameof(Choice<MainSortOrder>.Value);
-            SortCombo.SelectedValue = global::IMRCRaceControl.Models.MainSortOrder.QualifyingRank;
+            SortCombo.SelectedValue = global::IMRCRaceControl.Models.MainSortOrder.OverallRoundResults;
         }
         else
         {
@@ -1319,6 +1319,18 @@ public partial class RoundMainBuilderDialog : Window
                 .ToList();
         }
 
+        if (sortOrder == MainSortOrder.OverallRoundResults)
+        {
+            var overallOrder = GetOverallRoundBestRunOrder(classId)
+                .Select((driverId, index) => new { driverId, index })
+                .ToDictionary(x => x.driverId, x => x.index, StringComparer.OrdinalIgnoreCase);
+            return entrants
+                .OrderBy(e => overallOrder.TryGetValue(e.DriverId, out var index) ? index : int.MaxValue)
+                .ThenBy(e => e.SeedRank <= 0 ? int.MaxValue : e.SeedRank)
+                .ThenBy(e => e.DisplayName, StringComparer.OrdinalIgnoreCase)
+                .ToList();
+        }
+
         // Default / IFMAR-style main seeding: calculate directly from the
         // qualifying sessions that still exist in this event. This means a
         // race deleted from the bottom list is immediately removed from main
@@ -1332,6 +1344,41 @@ public partial class RoundMainBuilderDialog : Window
             .ThenBy(e => e.SeedRank <= 0 ? int.MaxValue : e.SeedRank)
             .ThenBy(e => e.DisplayName, StringComparer.OrdinalIgnoreCase)
             .ToList();
+    }
+
+    // Use each racer's single best completed qualifier, not the last round
+    // or the best position within one heat. Compare laps descending and
+    // completion time ascending, preserving all previous rounds.
+    private List<string> GetOverallRoundBestRunOrder(string classId)
+    {
+        var performances = PreviewSessions
+            .Where(s => s.SessionType == SessionType.Qualifying &&
+                        string.Equals(s.ClassId, classId, StringComparison.OrdinalIgnoreCase) &&
+                        s.ProgressStatus == EventSessionStatus.Completed)
+            .SelectMany(session => session.Entrants
+                .Where(e => !string.IsNullOrWhiteSpace(e.DriverId))
+                .Select(entrant =>
+                {
+                    var result = session.Results.FirstOrDefault(r => r.CarNumber == entrant.CarNumber);
+                    var laps = session.Laps.Where(l => l.CarNumber == entrant.CarNumber)
+                        .OrderBy(l => l.LapNumber).ToList();
+                    return new
+                    {
+                        entrant.DriverId,
+                        Name = entrant.DisplayName,
+                        Laps = result?.Laps ?? laps.Count,
+                        Elapsed = laps.LastOrDefault()?.Elapsed.TotalSeconds ?? double.MaxValue,
+                        BestLap = laps.Count == 0 ? double.MaxValue : laps.Min(l => l.LapTime.TotalSeconds)
+                    };
+                }))
+            .Where(p => p.Laps > 0)
+            .GroupBy(p => p.DriverId, StringComparer.OrdinalIgnoreCase)
+            .Select(g => g.OrderByDescending(p => p.Laps)
+                .ThenBy(p => p.Elapsed).ThenBy(p => p.BestLap).First())
+            .OrderByDescending(p => p.Laps).ThenBy(p => p.Elapsed)
+            .ThenBy(p => p.BestLap).ThenBy(p => p.Name, StringComparer.OrdinalIgnoreCase)
+            .Select(p => p.DriverId).ToList();
+        return performances;
     }
 
     private List<string> GetCurrentQualifyingRankOrder(string classId)
