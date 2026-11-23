@@ -220,6 +220,7 @@ public partial class MainWindow
         if (!_practiceActive) return;
         var crossing = PracticeTracker.Record(PracticeCards, driver, transponderId, source, timestamp, className);
         var card = crossing.Card;
+        card.IdleLapMultiplier = _settings.PracticeIdleLapMultiplier;
         if (crossing.Created || crossing.LapAdded) card.IsLastPassing = true;
         if (crossing.Created)
         {
@@ -246,6 +247,7 @@ public partial class MainWindow
             foreach (var card in PracticeCards)
             {
                 card.IsLastPassing = now - card.LastCrossingAt < PassingHighlightDuration;
+                card.IdleLapMultiplier = _settings.PracticeIdleLapMultiplier;
                 card.SetVisibleStats(_settings.PracticeVisibleStats);
             }
 
