@@ -466,6 +466,9 @@ public sealed class RaceEngine
             var last = laps.LastOrDefault();
             var best = laps.Count == 0 ? (TimeSpan?)null : laps.Min(l => l.LapTime);
             var bestLapNumber = best is null ? (int?)null : laps.First(l => l.LapTime == best.Value).LapNumber;
+            var carBreakouts = _breakouts.Where(b => b.CarNumber == runtime.Racer.CarNumber).ToList();
+            var breakoutPending = carBreakouts.Count > 0 &&
+                (last is null || carBreakouts[^1].Timestamp > last.Timestamp);
             var isNewPersonalBest = false;
             if (last is not null && laps.Count > 1)
             {
@@ -510,6 +513,8 @@ public sealed class RaceEngine
                 Status = status,
                 ManualActionText = "PASS",
                 IsFastestLap = best.HasValue && classBest.HasValue && best.Value == sessionBest.Value,
+                BreakoutCount = carBreakouts.Count,
+                IsBreakoutPending = breakoutPending,
                 IsNewPersonalBest = isNewPersonalBest
             });
         }
