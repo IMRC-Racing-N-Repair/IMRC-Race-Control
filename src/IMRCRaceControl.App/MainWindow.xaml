@@ -290,7 +290,7 @@
                                     </DataGridTemplateColumn>
                                     <DataGridTextColumn ElementStyle="{StaticResource DashboardCenteredCellTextStyle}" Header="CLOCK" Binding="{Binding Clock}" Width="95"/>
                                     <DataGridTextColumn ElementStyle="{StaticResource DashboardCenteredCellTextStyle}" Header="GAP LEADER" Binding="{Binding GapToLeader}" Width="110"/>
-                                    <DataGridTextColumn ElementStyle="{StaticResource DashboardCenteredCellTextStyle}" Header="GAP BEHIND" Binding="{Binding GapBehind}" Width="110"/>
+                                    <DataGridTextColumn ElementStyle="{StaticResource DashboardCenteredCellTextStyle}" Header="GAP AHEAD" Binding="{Binding GapBehind}" Width="110"/>
                                     <DataGridTextColumn ElementStyle="{StaticResource DashboardCenteredCellTextStyle}" Header="TOP 2" Binding="{Binding Top2}" Width="120"/>
                                     <DataGridTextColumn ElementStyle="{StaticResource DashboardCenteredCellTextStyle}" Header="TOP 3" Binding="{Binding Top3}" Width="120"/>
                                     <DataGridTextColumn ElementStyle="{StaticResource DashboardCenteredCellTextStyle}" Header="TOP 5" Binding="{Binding Top5}" Width="120"/>
