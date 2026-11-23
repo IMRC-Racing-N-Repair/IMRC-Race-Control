@@ -3,7 +3,7 @@
 Keep all release history in this file. Add each new version at the top; do not create version-specific changelog files.
 
 ## 0.17.14
-- Refresh live practice driver panels with subtle rounded corners, a dark blue gradient, light blue header accent, and a soft shadow while preserving large readable lap timing and flat statistics.
+- Refresh live practice driver panels with rounded 12px corners, a subtle dark-blue gradient, a slim cyan header accent, and a soft shadow while preserving large readable lap timing and flat statistics.
 - Shorten the practice Top 2 Consecutive display label to Top 2 Cons. and align stat values on a common horizontal row without changing saved stat identifiers.
 - Simplify live practice driver cards by removing the transponder subtitle and lap source text. Show signed three-decimal differences from each preceding lap, green for faster, red for slower, neutral for equal or first laps.
 - Restore the saved physical decoder connection on application startup; retain the saved COM port instead of connecting to another detected port. Add a clickable global decoder icon with red disconnected, green connected and orange error states.
