@@ -144,5 +144,8 @@ public sealed class AppSettings
 
     public List<string> PracticeVisibleStats { get; set; } = PracticeStatCatalog.Defaults.ToList();
     public int PracticeCardsPerRow { get; set; } = 5;
+    public double PracticeIdleLapMultiplier { get; set; } = 20.0;
+    public string RaceStartShortcut { get; set; } = "S";
+    public string RaceFalseStartShortcut { get; set; } = "F";
 
 }
