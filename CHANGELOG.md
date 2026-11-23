@@ -3,6 +3,8 @@
 Keep all release history in this file. Add each new version at the top; do not create version-specific changelog files.
 
 ## 0.17.15
+- Restore drag-and-drop for newly generated heats before the first Save; add a visible MOVE grip and keep HEAT UP / HEAT DOWN available. Renumber the editable preview immediately without changing saved/completed races.
+- Display simultaneous breakout notices one per line beneath the race results, with a bounded scroll area for larger fields.
 - Show multiple simultaneous breakout notices as compact orange chips at the bottom of the race screen. Keep all consecutive breakouts (even from the same driver) visible until that driver records a valid lap; support undo and clear on new/restarted races.
 - Make rounded practice cards follow the selected Light, Dark, or Blue theme while retaining a subtle gradient/radiant overlay, theme accent stripe, and soft shadow.
 - Mains seeding now offers **OVERALL ROUND RESULTS** (default for new mains): rank racers by their best single completed qualifying run across every round, rather than the final round only. The prior round-placement ranking remains available as a separate choice.
