@@ -44,24 +44,23 @@ public partial class RoundMainBuilderDialog
     {
         if(HandleDriverDrop(e))return;
         if(CanDropRace(e,out var id,out var target))StageRaceMove(id,target!.SourceSessionId);
-        else BuilderStatusText.Text="Move unrun races within the same round only. Completed races stay locked.";
+        else BuilderStatusText.Text="Move unrun qualifying races within the same qualifying round, or move mains independently. Completed races stay locked.";
         e.Handled=true;
     }
     private void StageRaceMove(string sourceId,string targetId)
     {
         var source=PreviewSessions.Single(s=>s.Id==sourceId);var target=PreviewSessions.Single(s=>s.Id==targetId);
         if(!RaceLineupOrder.CanMove(source,target))return;
-        var group=PreviewSessions.Where(s=>DashboardRoundChoice.From(s)==DashboardRoundChoice.From(source) && RaceLineupOrder.Movable(s))
+        var group=PreviewSessions.Where(s=>RaceLineupOrder.GroupKey(s)==RaceLineupOrder.GroupKey(source) && RaceLineupOrder.Movable(s))
             .OrderBy(s=>_pendingRaceOrder.GetValueOrDefault(s.Id,s.LineupOrder??int.MaxValue)).ThenBy(s=>s.QueueOrder).ToList();
-        var moving=group.Where(s=>s.Id==sourceId || GroupFor(sourceId).Length>0 && GroupFor(s.Id)==GroupFor(sourceId)).ToList();
+        var moving=group.Where(s=>s.Id==sourceId).ToList();
         if(moving.Contains(target))return;
         group.RemoveAll(moving.Contains);
-        var targetGroup=GroupFor(targetId);
-        var to=group.FindIndex(s=>s.Id==targetId || targetGroup.Length>0 && GroupFor(s.Id)==targetGroup);
+        var to=group.FindIndex(s=>s.Id==targetId);
         group.InsertRange(to,moving);
         for(int i=0;i<group.Count;i++)_pendingRaceOrder[group[i].Id]=i+1;
         RefreshLineupOverview();SaveButton.IsEnabled=true;
-        BuilderStatusText.Text="Race order updated in this round. SAVE CHANGES to keep it. Heat numbers and drivers are unchanged.";
+        BuilderStatusText.Text="Race moved independently. SAVE CHANGES to keep the new position; completed races stay locked.";
     }
     private List<HeatPlan> OrderOverview(List<HeatPlan> plans)
     {
@@ -70,6 +69,6 @@ public partial class RoundMainBuilderDialog
             ProgressStatus=PreviewSessions.FirstOrDefault(s=>s.Id==p.SourceSessionId)?.ProgressStatus??EventSessionStatus.Planned,
             LineupOrder=_pendingRaceOrder.TryGetValue(p.SourceSessionId,out var order)?order:PreviewSessions.FirstOrDefault(s=>s.Id==p.SourceSessionId)?.LineupOrder})).ToList();
         RaceLineupOrder.Apply(rows.Select(r=>r.Session));
-        return rows.OrderBy(r=>r.Session.ScheduleStageOrder).ThenBy(r=>r.Session.ScheduleRoundOrder).ThenBy(r=>r.Session.QueueOrder).Select(r=>r.Plan).ToList();
+        return rows.OrderBy(r=>r.Session.ScheduleStageOrder).ThenBy(r=>r.Session.SessionType==SessionType.Race ? 0 : r.Session.ScheduleRoundOrder).ThenBy(r=>r.Session.QueueOrder).Select(r=>r.Plan).ToList();
     }
 }
