@@ -5,14 +5,16 @@ public enum MainSortOrder
     QualifyingRank,
     DriverSeed,
     RegistrationOrder,
-    Random
+    Random,
+    OverallRoundResults
 }
 
 public static class MainSortOrderExtensions
 {
     public static string ToDisplay(this MainSortOrder order) => order switch
     {
-        MainSortOrder.QualifyingRank => "Qualifying Rank",
+        MainSortOrder.QualifyingRank => "Qualifying Rank (round placements)",
+        MainSortOrder.OverallRoundResults => "OVERALL ROUND RESULTS — best run across all rounds",
         MainSortOrder.DriverSeed => "Driver / Class Seed",
         MainSortOrder.RegistrationOrder => "Event Registration Order",
         MainSortOrder.Random => "Random",
