@@ -778,7 +778,11 @@
         </Style>
         <DataTemplate x:Key="RacePositionTemplate">
             <Border x:Name="PositionOutline" BorderBrush="Transparent" BorderThickness="2" CornerRadius="6" Padding="4,8" Margin="2" VerticalAlignment="Center">
-                <TextBlock Text="{Binding Position}" TextAlignment="Center" FontWeight="SemiBold"/>
+                <StackPanel Orientation="Vertical" VerticalAlignment="Center">
+                    <TextBlock Text="{Binding OverallPositionDisplay}" TextAlignment="Center" FontWeight="Bold"/>
+                    <TextBlock Text="{Binding QualifyingMainBand}" FontSize="9" FontWeight="SemiBold" TextAlignment="Center"
+                               Foreground="{DynamicResource MutedBrush}"/>
+                </StackPanel>
             </Border>
             <DataTemplate.Triggers>
                 <DataTrigger Binding="{Binding IsFinished}" Value="True">
