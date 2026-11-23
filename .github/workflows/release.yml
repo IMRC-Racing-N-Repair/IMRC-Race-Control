@@ -98,12 +98,24 @@ jobs:
           $tag = "v$env:RELEASE_VERSION"
           $releaseJson = gh release list --repo $env:GITHUB_REPOSITORY --limit 100 --json tagName,isDraft
           if ($LASTEXITCODE -ne 0) { throw 'Could not inspect existing releases' }
-          $existing = @($releaseJson | ConvertFrom-Json | Where-Object { $_.tagName -eq $tag })
-          if ($existing.Count -gt 0) {
-            if (-not $existing[0].isDraft) { throw 'This version is already published. Increment the version instead of replacing it.' }
-            gh release edit $tag --repo $env:GITHUB_REPOSITORY --target $env:RELEASE_COMMIT --title "IMRC Race Control $env:RELEASE_VERSION" --notes-file artifacts/ReleaseNotes.md
+          $releases = @($releaseJson | ConvertFrom-Json)
+          $existing = @($releases | Where-Object { $_.tagName -eq $tag })
+          $title = "IMRC Race Control $env:RELEASE_VERSION"
+          if ($existing.Count -gt 0 -and -not $existing[0].isDraft) {
+            # A published tag must never be replaced, edited or overwritten.
+            # Prepare an isolated review draft for the same application version.
+            $tag = "v$env:RELEASE_VERSION-draft.1"
+            $title = "IMRC Race Control $env:RELEASE_VERSION - testing draft"
+            Write-Host "The version tag is already published. Using separate unpublished draft tag $tag."
+          }
+          $draftExisting = @($releases | Where-Object { $_.tagName -eq $tag })
+          if ($draftExisting.Count -gt 0 -and -not $draftExisting[0].isDraft) {
+            throw "Alternate draft tag $tag is already published. Refusing to modify it."
+          }
+          if ($draftExisting.Count -gt 0) {
+            gh release edit $tag --repo $env:GITHUB_REPOSITORY --target $env:RELEASE_COMMIT --title $title --notes-file artifacts/ReleaseNotes.md
           } else {
-            gh release create $tag --repo $env:GITHUB_REPOSITORY --draft --target $env:RELEASE_COMMIT --title "IMRC Race Control $env:RELEASE_VERSION" --notes-file artifacts/ReleaseNotes.md
+            gh release create $tag --repo $env:GITHUB_REPOSITORY --draft --target $env:RELEASE_COMMIT --title $title --notes-file artifacts/ReleaseNotes.md
           }
           if ($LASTEXITCODE -ne 0) { throw 'Draft release could not be prepared' }
           $draft = gh release view $tag --repo $env:GITHUB_REPOSITORY --json isDraft | ConvertFrom-Json
