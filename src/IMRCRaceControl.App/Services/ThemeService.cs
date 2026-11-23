@@ -33,7 +33,7 @@ public static class ThemeService
             AlternateRow: "#DDE6F0",
             Text: "#182330",
             PassingHighlight: "#2E78B8",
-            FastestLapHighlight: "#FFF2B8",
+            FastestLapHighlight: "#CDEEDC",
             NewBestLapHighlight: "#CDEEDC",
             CheckInGlow: "#D83A3A",
             MinimumLapGlow: "#E67E22",
@@ -48,7 +48,7 @@ public static class ThemeService
             AlternateRow: "#15364D",
             Text: "#F2F9FF",
             PassingHighlight: "#2997DA",
-            FastestLapHighlight: "#3A4419",
+            FastestLapHighlight: "#0C5A4A",
             NewBestLapHighlight: "#0C5A4A",
             CheckInGlow: "#FF5555",
             MinimumLapGlow: "#FF9F43",
@@ -58,15 +58,15 @@ public static class ThemeService
 
         AppTheme.Thanksgiving => new DashboardThemeColors(
             Background: "#20150F", Panel: "#2B1D14", Row: "#302116", AlternateRow: "#402B1C", Text: "#FFF4E3",
-            PassingHighlight: "#985126", FastestLapHighlight: "#68501A", NewBestLapHighlight: "#31543A",
+            PassingHighlight: "#985126", FastestLapHighlight: "#31543A", NewBestLapHighlight: "#31543A",
             CheckInGlow: "#FF6464", MinimumLapGlow: "#FFB04F", PositionUp: "#5DC98C", PositionDown: "#FF7777", PositionSame: "#EAC269"),
         AppTheme.Halloween => new DashboardThemeColors(
             Background: "#130F1A", Panel: "#201629", Row: "#251B31", AlternateRow: "#352440", Text: "#FAF4FF",
-            PassingHighlight: "#854719", FastestLapHighlight: "#62501A", NewBestLapHighlight: "#315239",
+            PassingHighlight: "#854719", FastestLapHighlight: "#315239", NewBestLapHighlight: "#315239",
             CheckInGlow: "#FF6464", MinimumLapGlow: "#FFAA45", PositionUp: "#8AD65C", PositionDown: "#FF7777", PositionSame: "#E8BE60"),
         AppTheme.Christmas => new DashboardThemeColors(
             Background: "#0D1B17", Panel: "#142B23", Row: "#19332A", AlternateRow: "#244337", Text: "#F5FFF8",
-            PassingHighlight: "#8D3449", FastestLapHighlight: "#66541D", NewBestLapHighlight: "#326346",
+            PassingHighlight: "#8D3449", FastestLapHighlight: "#326346", NewBestLapHighlight: "#326346",
             CheckInGlow: "#FF6464", MinimumLapGlow: "#FFB04F", PositionUp: "#6ED99A", PositionDown: "#FF7777", PositionSame: "#EAC76B"),
 
         _ => new DashboardThemeColors(
@@ -76,7 +76,7 @@ public static class ThemeService
             AlternateRow: "#1B1F23",
             Text: "#F4F7FB",
             PassingHighlight: "#7E2E35",
-            FastestLapHighlight: "#3A3212",
+            FastestLapHighlight: "#0E5B45",
             NewBestLapHighlight: "#0E5B45",
             CheckInGlow: "#FF4B4B",
             MinimumLapGlow: "#FF9800",
