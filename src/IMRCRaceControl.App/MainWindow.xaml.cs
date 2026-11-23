@@ -2512,6 +2512,21 @@ public partial class MainWindow : Window
 
         var key = e.Key == Key.System ? e.SystemKey : e.Key;
         var modifiers = Keyboard.Modifiers;
+        // Shortcut keys only apply on the race screen; never intercept typing or car-number hotkeys.
+        if (modifiers == ModifierKeys.None && key.ToString().Equals(_settings.RaceStartShortcut, StringComparison.OrdinalIgnoreCase) &&
+            StartRaceButton.IsEnabled && !_practiceActive && (_raceEngine.State is RaceState.Ready or RaceState.FalseStart))
+        {
+            e.Handled = true;
+            StartRaceButton_Click(StartRaceButton, new RoutedEventArgs());
+            return;
+        }
+        if (modifiers == ModifierKeys.None && key.ToString().Equals(_settings.RaceFalseStartShortcut, StringComparison.OrdinalIgnoreCase) &&
+            FalseStartButton.IsEnabled && (_raceEngine.State is RaceState.Armed or RaceState.Running or RaceState.TimeExpired))
+        {
+            e.Handled = true;
+            FalseStartButton_Click(FalseStartButton, new RoutedEventArgs());
+            return;
+        }
         int? carNumber = null;
 
         if ((modifiers & ModifierKeys.Alt) == ModifierKeys.Alt &&
