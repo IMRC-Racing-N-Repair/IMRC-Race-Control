@@ -1968,6 +1968,11 @@ public partial class RoundMainBuilderDialog : Window
             MessageBox.Show(this,"A race roster is full. Split the field into another heat/main.","Rounds / mains");
             return;
         }
+        if (!ConfirmConsecutiveRaceDrivers())
+        {
+            BuilderStatusText.Text = "Consecutive-race conflicts need review. Adjust the lineup, then SAVE again to recheck.";
+            return;
+        }
         if (SaveRequested is null) { DialogResult = true; return; }
         IsEnabled = false;
         var savedSuccessfully = false;
@@ -1987,6 +1992,84 @@ public partial class RoundMainBuilderDialog : Window
         }
         finally { OrderOnlySave = false; IsEnabled = true; }
         if (savedSuccessfully && CloseAfterSave) DialogResult = true;
+    }
+
+    private bool ConfirmConsecutiveRaceDrivers()
+    {
+        // StageCurrentLineup has already supplied a detached preview. Inspect the
+        // proposed race order without mutating completed/saved event sessions.
+        var proposed = PreviewSessions
+            .Where(s => s.ProgressStatus != EventSessionStatus.Skipped)
+            .ToList();
+        var knownMax = proposed.Select(s => s.QueueOrder).Where(q => q > 0).DefaultIfEmpty(0).Max();
+        var stagedOrder = BuiltSessions.Select((s, i) => new { s.Id, Index = i })
+            .ToDictionary(x => x.Id, x => x.Index, StringComparer.OrdinalIgnoreCase);
+        proposed = proposed
+            .OrderBy(s => _pendingRaceOrder.TryGetValue(s.Id, out var custom) ? custom :
+                s.LineupOrder ?? (s.QueueOrder > 0 ? s.QueueOrder : knownMax + stagedOrder.GetValueOrDefault(s.Id) + 1))
+            .ThenBy(s => s.QueueOrder)
+            .ToList();
+
+        var conflicts = new List<string>();
+        for (var i = 0; i + 1 < proposed.Count; i++)
+        {
+            var first = proposed[i];
+            var second = proposed[i + 1];
+            if (first.ProgressStatus == EventSessionStatus.Completed &&
+                second.ProgressStatus == EventSessionStatus.Completed)
+                continue; // historical results cannot be changed
+            var firstDrivers = first.Entrants.Where(e => !string.IsNullOrWhiteSpace(e.DriverId))
+                .GroupBy(e => e.DriverId, StringComparer.OrdinalIgnoreCase)
+                .ToDictionary(g => g.Key, g => g.First().DisplayName, StringComparer.OrdinalIgnoreCase);
+            foreach (var entrant in second.Entrants.Where(e => firstDrivers.ContainsKey(e.DriverId))
+                .GroupBy(e => e.DriverId, StringComparer.OrdinalIgnoreCase).Select(g => g.First()))
+                conflicts.Add($"{firstDrivers[entrant.DriverId]}  •  {first.Name}  →  {second.Name}");
+        }
+        if (conflicts.Count == 0) return true;
+
+        var popup = new Window
+        {
+            Owner = this,
+            Title = "Consecutive race warning",
+            WindowStartupLocation = WindowStartupLocation.CenterOwner,
+            Width = 650, Height = 460, MinWidth = 520, MinHeight = 310,
+            Background = System.Windows.Media.Brushes.White
+        };
+        var root = new DockPanel { Margin = new Thickness(16) };
+        popup.Content = root;
+        var actions = new StackPanel
+        {
+            Orientation = Orientation.Horizontal,
+            HorizontalAlignment = HorizontalAlignment.Right,
+            Margin = new Thickness(0, 12, 0, 0)
+        };
+        DockPanel.SetDock(actions, Dock.Bottom);
+        root.Children.Add(actions);
+        var change = new Button { Content = "CHANGE LINEUP", MinWidth = 150, Margin = new Thickness(0, 0, 10, 0) };
+        change.Click += (_, _) => popup.DialogResult = false;
+        actions.Children.Add(change);
+        var continueButton = new Button { Content = "CONTINUE ANYWAY", MinWidth = 150 };
+        continueButton.Click += (_, _) => popup.DialogResult = true;
+        actions.Children.Add(continueButton);
+        var intro = new TextBlock
+        {
+            Text = "These drivers are scheduled in back-to-back races. Choose CHANGE LINEUP to return to the builder. SAVE will check again until you choose CONTINUE ANYWAY.",
+            TextWrapping = TextWrapping.Wrap, FontSize = 15, FontWeight = FontWeights.SemiBold,
+            Foreground = System.Windows.Media.Brushes.Black, Margin = new Thickness(0, 0, 0, 12)
+        };
+        DockPanel.SetDock(intro, Dock.Top);
+        root.Children.Add(intro);
+        var details = new TextBox
+        {
+            Text = string.Join(Environment.NewLine, conflicts),
+            IsReadOnly = true, TextWrapping = TextWrapping.Wrap,
+            VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
+            Foreground = System.Windows.Media.Brushes.Black,
+            Background = System.Windows.Media.Brushes.White,
+            FontSize = 13
+        };
+        root.Children.Add(details);
+        return popup.ShowDialog() == true;
     }
 
     private List<EventSessionDefinition> BuildCurrentLineup()
