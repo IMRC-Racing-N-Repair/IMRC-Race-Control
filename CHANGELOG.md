@@ -3,6 +3,11 @@
 Keep all release history in this file. Add each new version at the top; do not create version-specific changelog files.
 
 ## 0.17.15
+- Mains seeding now offers **OVERALL ROUND RESULTS** (default for new mains): rank racers by their best single completed qualifying run across every round, rather than the final round only. The prior round-placement ranking remains available as a separate choice.
+- Tone-start races keep the master clock running from the start tone but ignore each racer's first crossing for scored laps and breakout detection. That crossing becomes the baseline for Lap 1; later complete laps use crossing-to-crossing time. Practice and alternative start styles retain their behavior.
+- Before saving a generated or edited lineup, detect drivers appearing in consecutive races and show the driver and both race names/numbers with CHANGE LINEUP or CONTINUE ANYWAY. CHANGE returns to editing; every subsequent save checks again. Combined class sessions in the same on-track race are excluded.
+- Add regression checks for ignored tone-start first crossings and protected master-clock timing.
+
 - Generate evenly balanced qualifying heats instead of filling the first heat before the next (12 racers with max 9 become 6/6).
 - Default ranked and previous-round qualifying heats to slower-seeded racers first; mains retain lower-main-first generation.
 - Renumber uncompleted qualifying heats in their displayed order without changing completed heats or their saved heat numbers.
