@@ -404,6 +404,32 @@ Equal(start, toneBaseline.MasterStartedAt!.Value, "Tone starts master clock imme
 toneBaseline.UndoLastPassing(start.AddSeconds(5));
 Equal(0, toneBaseline.Laps.Count, "Undo returns to tone baseline without a phantom lap");
 
+// Main seeding must use the best result across ALL completed qualifying rounds,
+// even if a driver's final round is substantially slower.
+EventSessionDefinition QualifyingFixture(int round, int aLaps, int bLaps) => new()
+{
+    Id = $"qual-round-{round}", Name = $"Qual Q{round}",
+    ClassId = "seed-class", Round = round, SessionType = SessionType.Qualifying,
+    ProgressStatus = EventSessionStatus.Completed,
+    Entrants =
+    [
+        new SessionEntrant { CarNumber = 1, DriverId = "seed-a", DriverName = "Driver A" },
+        new SessionEntrant { CarNumber = 2, DriverId = "seed-b", DriverName = "Driver B" }
+    ],
+    Results =
+    [
+        new StandingRow { CarNumber = 1, Laps = aLaps },
+        new StandingRow { CarNumber = 2, Laps = bLaps }
+    ]
+};
+var overallSeed = OverallQualifyingSeed.BestRunOrder(
+    [QualifyingFixture(1, 75, 74), QualifyingFixture(2, 72, 76),
+     QualifyingFixture(3, 70, 70)], "seed-class");
+Equal("seed-b", overallSeed[0], "Main seed selects fastest best completed qualifying run");
+Equal("seed-a", overallSeed[1], "Last round does not replace driver's best earlier run");
+var missingSeed = OverallQualifyingSeed.BestRunOrder([QualifyingFixture(1, 75, 74)], "other-class");
+Equal(0, missingSeed.Count, "Main seed does not mix classes");
+
 // Back-to-back warning operates on physical races, not nested combined class rows.
 var combinedOne = new EventSessionDefinition
 {
