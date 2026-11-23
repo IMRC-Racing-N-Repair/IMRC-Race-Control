@@ -7,6 +7,8 @@
     <Compile Include="../../src/IMRCRaceControl.App/Core/OverallPositionScope.cs" Link="OverallPositionScope.cs" />
     <Compile Include="../../src/IMRCRaceControl.App/Core/CombinedRaces.cs" Link="CombinedRaces.cs" />
     <Compile Include="../../src/IMRCRaceControl.App/Core/RaceLineupOrder.cs" Link="RaceLineupOrder.cs" />
+    <Compile Include="../../src/IMRCRaceControl.App/Core/ConsecutiveRaceDetector.cs" Link="ConsecutiveRaceDetector.cs" />
+    <Compile Include="../../src/IMRCRaceControl.App/Core/OverallQualifyingSeed.cs" Link="OverallQualifyingSeed.cs" />
     <Compile Include="../../src/IMRCRaceControl.App/Core/HeatDriverTransfer.cs" Link="HeatDriverTransfer.cs" />
     <Compile Include="../../src/IMRCRaceControl.App/Core/TrackRecords.cs" Link="TrackRecords.cs" />
     <Compile Include="../../src/IMRCRaceControl.App/Core/PersonalBests.cs" Link="PersonalBests.cs" />
@@ -62,6 +64,8 @@
     <Compile Include="../../src/IMRCRaceControl.App/Services/RaceControlDatabaseService.cs" Link="RaceControlDatabaseService.cs" />
     <Compile Include="../../src/IMRCRaceControl.App/Services/BackgroundRaceStateWriter.cs" Link="BackgroundRaceStateWriter.cs" />
     <PackageReference Include="Microsoft.Data.Sqlite" Version="10.0.12" />
+    <PackageReference Include="System.Security.Cryptography.Pkcs" Version="10.0.14" />
+    <PackageReference Include="System.Security.Cryptography.Xml" Version="10.0.14" />
     <PackageReference Include="SQLite3MC.PCLRaw.lib" Version="2.6.1" />
   </ItemGroup>
 </Project>
