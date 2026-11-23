@@ -11,42 +11,117 @@ public partial class RoundMainBuilderDialog
     public bool OrderOnlySave {get;private set;}
     private Point _raceDragOrigin;
     private string? _raceDragId;
-    private HeatPlan? RaceAt(object source)=>source is DependencyObject node && ItemsControl.ContainerFromElement(HeatGrid,node) is DataGridRow row ? row.Item as HeatPlan:null;
-    private void RaceDragStart(object sender,MouseButtonEventArgs e)
+    private HeatPlan? _raceDragPlan;
+    private HeatPlan? RaceAt(object source) =>
+        source is DependencyObject node && ItemsControl.ContainerFromElement(HeatGrid, node) is DataGridRow row
+            ? row.Item as HeatPlan : null;
+
+    private static bool CanReorderPreviewHeat(HeatPlan source, HeatPlan target) =>
+        !ReferenceEquals(source, target) &&
+        !source.IsLocked && !target.IsLocked &&
+        !source.IsCombinedHeader && !target.IsCombinedHeader &&
+        !source.IsCombinedChild && !target.IsCombinedChild &&
+        source.SessionType == target.SessionType &&
+        (source.SessionType == SessionType.Race || source.Round == target.Round);
+
+    private void RaceDragStart(object sender, MouseButtonEventArgs e)
     {
-        if(CombineClick(e)) {_raceDragId=null;return;}
-        _raceDragOrigin=e.GetPosition(HeatGrid);_raceDragId=RaceAt(e.OriginalSource)?.SourceSessionId;
+        if (CombineClick(e))
+        {
+            _raceDragPlan = null;
+            _raceDragId = null;
+            return;
+        }
+        _raceDragOrigin = e.GetPosition(HeatGrid);
+        _raceDragPlan = RaceAt(e.OriginalSource);
+        _raceDragId = _raceDragPlan?.SourceSessionId;
     }
-    private void RaceDragMove(object sender,MouseEventArgs e)
+
+    private void RaceDragMove(object sender, MouseEventArgs e)
     {
-        if(_holdingCombine || e.LeftButton!=MouseButtonState.Pressed || string.IsNullOrEmpty(_raceDragId))return;
-        var point=e.GetPosition(HeatGrid);
-        if(Math.Abs(point.X-_raceDragOrigin.X)<SystemParameters.MinimumHorizontalDragDistance && Math.Abs(point.Y-_raceDragOrigin.Y)<SystemParameters.MinimumVerticalDragDistance)return;
-        var source=PreviewSessions.FirstOrDefault(s=>s.Id==_raceDragId);
-        var id=_raceDragId;_raceDragId=null;
-        if(source is not null && RaceLineupOrder.Movable(source))DragDrop.DoDragDrop(HeatGrid,new DataObject("IMRC.LineupRace",id),DragDropEffects.Move);
+        if (_holdingCombine || e.LeftButton != MouseButtonState.Pressed || _raceDragPlan is null)
+            return;
+        var point = e.GetPosition(HeatGrid);
+        if (Math.Abs(point.X - _raceDragOrigin.X) < SystemParameters.MinimumHorizontalDragDistance &&
+            Math.Abs(point.Y - _raceDragOrigin.Y) < SystemParameters.MinimumVerticalDragDistance)
+            return;
+
+        var plan = _raceDragPlan;
+        var id = _raceDragId;
+        _raceDragPlan = null;
+        _raceDragId = null;
+
+        // Newly generated heats have no SourceSessionId. They still must be
+        // draggable before saving, and an edited saved heat should move its
+        // current preview (not silently modify the persistent event).
+        if (!_browsingSavedLineups && HeatPlans.Contains(plan) && !plan.IsLocked &&
+            !plan.IsCombinedHeader && !plan.IsCombinedChild)
+        {
+            DragDrop.DoDragDrop(HeatGrid, new DataObject("IMRC.PreviewHeat", plan), DragDropEffects.Move);
+            return;
+        }
+        var source = PreviewSessions.FirstOrDefault(s => s.Id == id);
+        if (source is not null && RaceLineupOrder.Movable(source))
+            DragDrop.DoDragDrop(HeatGrid, new DataObject("IMRC.LineupRace", id!), DragDropEffects.Move);
     }
-    private bool CanDropRace(DragEventArgs e,out string id,out HeatPlan? target)
+
+    private bool CanDropPreviewHeat(DragEventArgs e, out HeatPlan? source, out HeatPlan? target)
     {
-        id=e.Data.GetData("IMRC.LineupRace") as string ?? "";target=RaceAt(e.OriginalSource);
-        var sourceId=id;
-        var sourceSession=PreviewSessions.FirstOrDefault(s=>s.Id==sourceId);
-        var targetId=target?.SourceSessionId;
-        var targetSession=PreviewSessions.FirstOrDefault(s=>s.Id==targetId);
-        return sourceSession is not null && targetSession is not null && RaceLineupOrder.CanMove(sourceSession,targetSession);
+        source = e.Data.GetData("IMRC.PreviewHeat") as HeatPlan;
+        target = RaceAt(e.OriginalSource);
+        return !_browsingSavedLineups &&
+               source is not null && target is not null &&
+               HeatPlans.Contains(source) && HeatPlans.Contains(target) &&
+               CanReorderPreviewHeat(source, target);
     }
-    private void RaceDragOver(object sender,DragEventArgs e)
+
+    private bool CanDropRace(DragEventArgs e, out string id, out HeatPlan? target)
     {
-        if(HandleDriverDragOver(e))return;
-        e.Effects=CanDropRace(e,out _,out _)?DragDropEffects.Move:DragDropEffects.None;e.Handled=true;
+        id = e.Data.GetData("IMRC.LineupRace") as string ?? "";
+        target = RaceAt(e.OriginalSource);
+        var sourceSession = PreviewSessions.FirstOrDefault(s => s.Id == id);
+        var targetSession = PreviewSessions.FirstOrDefault(s => s.Id == target?.SourceSessionId);
+        return sourceSession is not null && targetSession is not null &&
+               RaceLineupOrder.CanMove(sourceSession, targetSession);
     }
-    private void RaceDrop(object sender,DragEventArgs e)
+
+    private void RaceDragOver(object sender, DragEventArgs e)
     {
-        if(HandleDriverDrop(e))return;
-        if(CanDropRace(e,out var id,out var target))StageRaceMove(id,target!.SourceSessionId);
-        else BuilderStatusText.Text="Move unrun qualifying races within the same qualifying round, or move mains independently. Completed races stay locked.";
-        e.Handled=true;
+        if (HandleDriverDragOver(e)) return;
+        e.Effects = CanDropPreviewHeat(e, out _, out _) || CanDropRace(e, out _, out _)
+            ? DragDropEffects.Move : DragDropEffects.None;
+        e.Handled = true;
     }
+
+    private void RaceDrop(object sender, DragEventArgs e)
+    {
+        if (HandleDriverDrop(e)) return;
+        if (CanDropPreviewHeat(e, out var plan, out var destination))
+        {
+            MovePreviewHeat(plan!, destination!);
+        }
+        else if (CanDropRace(e, out var id, out var target))
+        {
+            StageRaceMove(id, target!.SourceSessionId);
+        }
+        else
+        {
+            BuilderStatusText.Text = "Drag unrun heats within the same qualifying round or move unrun mains independently. Completed races stay locked.";
+        }
+        e.Handled = true;
+    }
+
+    private void MovePreviewHeat(HeatPlan source, HeatPlan target)
+    {
+        if (!HeatPlans.Contains(source) || !HeatPlans.Contains(target) ||
+            !CanReorderPreviewHeat(source, target)) return;
+        HeatPlans.Move(HeatPlans.IndexOf(source), HeatPlans.IndexOf(target));
+        ReorderNumbers();
+        HeatGrid.SelectedItem = source;
+        SaveButton.IsEnabled = true;
+        BuilderStatusText.Text = "Heat moved. The preview is renumbered top to bottom. Press SAVE CHANGES to keep this lineup.";
+    }
+
     private void StageRaceMove(string sourceId,string targetId)
     {
         var source=PreviewSessions.Single(s=>s.Id==sourceId);var target=PreviewSessions.Single(s=>s.Id==targetId);
