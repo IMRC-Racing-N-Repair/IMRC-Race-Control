@@ -460,7 +460,7 @@ public sealed class RaceEngine
             var x = ordered[i];
             var field = ordered.Where(o => o.Runtime.Racer.ScoringGroupId == x.Runtime.Racer.ScoringGroupId).ToList();
             var classIndex = field.IndexOf(x);
-            var classBest = field.SelectMany(o => o.Runtime.Laps).Select(l => (TimeSpan?)l.LapTime).Min();
+
             var runtime = x.Runtime;
             var laps = runtime.Laps;
             var last = laps.LastOrDefault();
@@ -480,7 +480,8 @@ public sealed class RaceEngine
             var pace = GetPace(laps, average);
             var consistency = GetConsistency(laps);
             var gapToLeader = classIndex == 0 ? "LEADER" : GetGap(field[0].Runtime, runtime);
-            var gapBehind = classIndex == field.Count - 1 ? "—" : GetGap(runtime, field[classIndex + 1].Runtime);
+            // GAP AHEAD is the interval to the immediately preceding racer.
+            var gapAhead = classIndex == 0 ? "—" : GetGap(field[classIndex - 1].Runtime, runtime);
 
             rows.Add(new StandingRow
             {
@@ -504,11 +505,11 @@ public sealed class RaceEngine
                 Consistency = consistency,
                 Pace = pace,
                 GapToLeader = gapToLeader,
-                GapBehind = gapBehind,
+                GapBehind = gapAhead,
                 TotalTime = last is null ? "—" : FormatElapsed(last.Elapsed),
                 Status = status,
                 ManualActionText = "PASS",
-                IsFastestLap = best.HasValue && classBest.HasValue && best.Value == classBest.Value,
+                IsFastestLap = best.HasValue && classBest.HasValue && best.Value == sessionBest.Value,
                 IsNewPersonalBest = isNewPersonalBest
             });
         }
