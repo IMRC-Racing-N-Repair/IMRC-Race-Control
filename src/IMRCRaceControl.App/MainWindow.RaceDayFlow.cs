@@ -424,6 +424,15 @@ public partial class MainWindow
             .Select(s => s.Entrant)
             .ToList();
 
+        // Bump-ups are never automatic: present eligible finishers, permit
+        // individual opt-outs, and require an explicit operator confirmation.
+        var approved = ConfirmMainBumpUps(completedSession, finishers);
+        if (approved is null)
+            return $"{seriesMessage} Bump-ups were not confirmed.";
+        finishers = approved;
+        if (finishers.Count == 0)
+            return $"{seriesMessage} No bump-up drivers selected.";
+
         var addedNames = new List<string>();
 
         foreach (var finisher in finishers)
@@ -466,6 +475,68 @@ public partial class MainWindow
         return addedNames.Count == 0
             ? $"{seriesMessage} Bump-up finishers were already present in {MainLabel(completedSession.Heat - 1)}."
             : $"{seriesMessage} BUMP UP → {MainLabel(completedSession.Heat - 1)}: {string.Join(", ", addedNames)}.";
+    }
+
+    private List<SessionEntrant>? ConfirmMainBumpUps(EventSessionDefinition source, List<SessionEntrant> candidates)
+    {
+        var dialog = new Window
+        {
+            Title = "Confirm main bump-ups",
+            Owner = this,
+            WindowStartupLocation = WindowStartupLocation.CenterOwner,
+            Width = 440,
+            Height = Math.Min(550, 210 + candidates.Count * 40),
+            MinHeight = 240,
+            ResizeMode = ResizeMode.CanResize,
+            Background = System.Windows.Media.Brushes.White
+        };
+        var root = new System.Windows.Controls.DockPanel { Margin = new Thickness(16) };
+        dialog.Content = root;
+        var bottom = new System.Windows.Controls.StackPanel
+        {
+            Orientation = System.Windows.Controls.Orientation.Horizontal,
+            HorizontalAlignment = HorizontalAlignment.Right,
+            Margin = new Thickness(0, 12, 0, 0)
+        };
+        System.Windows.Controls.DockPanel.SetDock(bottom, System.Windows.Controls.Dock.Bottom);
+        root.Children.Add(bottom);
+        var cancel = new System.Windows.Controls.Button { Content = "CANCEL", MinWidth = 95, Margin = new Thickness(0, 0, 8, 0) };
+        cancel.Click += (_, _) => dialog.DialogResult = false;
+        bottom.Children.Add(cancel);
+        var confirm = new System.Windows.Controls.Button { Content = "CONFIRM BUMP-UPS", MinWidth = 150 };
+        confirm.Click += (_, _) => dialog.DialogResult = true;
+        bottom.Children.Add(confirm);
+
+        var heading = new System.Windows.Controls.TextBlock
+        {
+            Text = $"{MainLabel(source.Heat)} → {MainLabel(source.Heat - 1)}: select the drivers to advance.",
+            FontSize = 17,
+            FontWeight = FontWeights.Bold,
+            Foreground = System.Windows.Media.Brushes.Black,
+            TextWrapping = TextWrapping.Wrap,
+            Margin = new Thickness(0, 0, 0, 12)
+        };
+        System.Windows.Controls.DockPanel.SetDock(heading, System.Windows.Controls.Dock.Top);
+        root.Children.Add(heading);
+        var list = new System.Windows.Controls.StackPanel();
+        var boxes = new List<(System.Windows.Controls.CheckBox Box, SessionEntrant Entrant)>();
+        foreach (var candidate in candidates)
+        {
+            var box = new System.Windows.Controls.CheckBox
+            {
+                Content = candidate.DisplayName,
+                IsChecked = true,
+                FontSize = 15,
+                Foreground = System.Windows.Media.Brushes.Black,
+                Margin = new Thickness(3, 7, 0, 7)
+            };
+            list.Children.Add(box);
+            boxes.Add((box, candidate));
+        }
+        root.Children.Add(new System.Windows.Controls.ScrollViewer { Content = list, VerticalScrollBarVisibility = System.Windows.Controls.ScrollBarVisibility.Auto });
+        return dialog.ShowDialog() == true
+            ? boxes.Where(x => x.Box.IsChecked == true).Select(x => x.Entrant).ToList()
+            : null;
     }
 
     private static string MainLabel(int mainOrder)
