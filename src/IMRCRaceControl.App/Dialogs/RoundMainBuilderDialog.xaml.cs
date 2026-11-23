@@ -1349,37 +1349,8 @@ public partial class RoundMainBuilderDialog : Window
     // Use each racer's single best completed qualifier, not the last round
     // or the best position within one heat. Compare laps descending and
     // completion time ascending, preserving all previous rounds.
-    private List<string> GetOverallRoundBestRunOrder(string classId)
-    {
-        var performances = PreviewSessions
-            .Where(s => s.SessionType == SessionType.Qualifying &&
-                        string.Equals(s.ClassId, classId, StringComparison.OrdinalIgnoreCase) &&
-                        s.ProgressStatus == EventSessionStatus.Completed)
-            .SelectMany(session => session.Entrants
-                .Where(e => !string.IsNullOrWhiteSpace(e.DriverId))
-                .Select(entrant =>
-                {
-                    var result = session.Results.FirstOrDefault(r => r.CarNumber == entrant.CarNumber);
-                    var laps = session.Laps.Where(l => l.CarNumber == entrant.CarNumber)
-                        .OrderBy(l => l.LapNumber).ToList();
-                    return new
-                    {
-                        entrant.DriverId,
-                        Name = entrant.DisplayName,
-                        Laps = result?.Laps ?? laps.Count,
-                        Elapsed = laps.LastOrDefault()?.Elapsed.TotalSeconds ?? double.MaxValue,
-                        BestLap = laps.Count == 0 ? double.MaxValue : laps.Min(l => l.LapTime.TotalSeconds)
-                    };
-                }))
-            .Where(p => p.Laps > 0)
-            .GroupBy(p => p.DriverId, StringComparer.OrdinalIgnoreCase)
-            .Select(g => g.OrderByDescending(p => p.Laps)
-                .ThenBy(p => p.Elapsed).ThenBy(p => p.BestLap).First())
-            .OrderByDescending(p => p.Laps).ThenBy(p => p.Elapsed)
-            .ThenBy(p => p.BestLap).ThenBy(p => p.Name, StringComparer.OrdinalIgnoreCase)
-            .Select(p => p.DriverId).ToList();
-        return performances;
-    }
+    private List<string> GetOverallRoundBestRunOrder(string classId) =>
+        OverallQualifyingSeed.BestRunOrder(PreviewSessions, classId);
 
     private List<string> GetCurrentQualifyingRankOrder(string classId)
     {
