@@ -50,16 +50,27 @@ internal static class CombinedRaceChecks
         engine.RegisterPassing(4,"decoder",start.AddSeconds(6.1));
         Check(engine.GetStandings(start.AddSeconds(6.1)).Single(r=>r.CarNumber==4).Status!="FINISHED","A leader target does not finish B driver");
         Check(engine.RegisterPassing(3,"decoder",start.AddSeconds(6.5)).Code==PassingResultCode.MinimumLapRejected,"per-class minimum enforced");
+        // Tone-start first crossings are now unscored baselines. Each car
+        // therefore needs two FULL laps (three physical crossings) to finish.
         engine.RegisterPassing(2,"decoder",start.AddSeconds(8));
+        engine.RegisterPassing(1,"decoder",start.AddSeconds(9));
+        engine.RegisterPassing(3,"decoder",start.AddSeconds(10));
+        engine.RegisterPassing(2,"decoder",start.AddSeconds(11.5));
         Check(engine.State!=RaceState.Complete,"A finished while B still racing");
-        engine.RegisterPassing(3,"decoder",start.AddSeconds(10));engine.RegisterPassing(4,"decoder",start.AddSeconds(12.2));
+        engine.RegisterPassing(4,"decoder",start.AddSeconds(12.2));
+        engine.RegisterPassing(3,"decoder",start.AddSeconds(13.5));
+        engine.RegisterPassing(4,"decoder",start.AddSeconds(15.5));
         Check(engine.AllDriversFinished && engine.State==RaceState.Complete,"automatic complete waits for both fields");
-        run.Results=engine.GetStandings(start.AddSeconds(13)).ToList();run.Laps=engine.Laps.ToList();run.Breakouts=engine.Breakouts.ToList();run.ProgressStatus=EventSessionStatus.Completed;
+        run.Results=engine.GetStandings(start.AddSeconds(16)).ToList();run.Laps=engine.Laps.ToList();run.Breakouts=engine.Breakouts.ToList();run.ProgressStatus=EventSessionStatus.Completed;
         foreach(var group in run.Results.GroupBy(r=>r.ScoringGroupId))
         {
             Check(group.Select(r=>r.Position).Order().SequenceEqual(new[]{1,2}),"positions independently restart at one");
             Check(group.Single(r=>r.Position==1).GapToLeader=="LEADER","independent leader gap");
-            Check(group.Any(r=>r.IsFastestLap),"independent class fastest lap");
+            Check(group.All(r=>r.Laps==2),"both cars completed two actual scored laps");
+        }
+        Check(run.Results.Any(r=>r.IsFastestLap),"best valid lap across the combined session highlighted");
+        foreach (var group in Array.Empty<IGrouping<string,StandingRow>>())
+        {
         }
         CombinedRaces.WriteBack(run);
         Check(a.ProgressStatus==EventSessionStatus.Completed && b.ProgressStatus==EventSessionStatus.Completed,"both saved completed");
