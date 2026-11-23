@@ -13,6 +13,12 @@ internal static class LapFinishChecks
         {
             var e = new RaceEngine();
             e.Start(racers, TimeSpan.FromMinutes(5), 3, RaceFormat.Laps, TimeSpan.FromSeconds(1), SessionType.Race, style, now);
+            if (style == StartStyle.Tone)
+            {
+                // One unscored baseline per car before counting actual full laps.
+                foreach (var r in racers) e.RegisterPassing(r.CarNumber, "test", now);
+                Check(e.Laps.Count == 0, "Tone baseline crossings do not count as laps");
+            }
             if (style == StartStyle.LeaderCrossing) e.RegisterPassing(1, "test", now);
             if (style == StartStyle.IndividualCrossing)
                 foreach (var r in racers) e.RegisterPassing(r.CarNumber, "test", now);
@@ -53,6 +59,9 @@ internal static class LapFinishChecks
         var longRace = new RaceEngine();
         longRace.Start(racers.Take(2), TimeSpan.FromMinutes(30), 100, RaceFormat.Laps,
             TimeSpan.FromSeconds(1), SessionType.Race, StartStyle.Tone, now);
+        longRace.RegisterPassing(1, "test", now);
+        longRace.RegisterPassing(2, "test", now);
+        Check(longRace.Laps.Count == 0, "100-lap tone start has no phantom first lap");
         for (var n = 1; n <= 99; n++)
         {
             longRace.RegisterPassing(1, "test", now.AddSeconds(2 * n));
