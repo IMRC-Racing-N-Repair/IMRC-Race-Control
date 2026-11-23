@@ -9,6 +9,7 @@ public sealed class RaceEngine
         public required RacerEntry Racer { get; init; }
         public List<LapRecord> Laps { get; } = [];
         public DateTimeOffset? PersonalStartedAt { get; set; }
+        public DateTimeOffset? ToneFirstCrossingAt { get; set; }
         public bool Finished { get; set; }
         public TimeSpan? FinishElapsed { get; set; }
     }
@@ -219,10 +220,22 @@ public sealed class RaceEngine
             return new PassingResult(true, $"Car {carNumber} clock started at {timestamp:HH:mm:ss.fff}.", Code: PassingResultCode.StartCrossing);
         }
 
+        // Tone start begins the race/master clock immediately. The first
+        // physical crossing of each car sets the lap baseline only, and must
+        // not be scored as a short lap or treated as a breakout.
+        if (!PracticeMode && StartStyle == StartStyle.Tone && racer.ToneFirstCrossingAt is null)
+        {
+            racer.ToneFirstCrossingAt = timestamp;
+            _acceptedPassings.Add(new AcceptedPassing(carNumber, timestamp, source));
+            return new PassingResult(true,
+                $"Car {carNumber} first crossing recorded; lap timing begins on the next crossing.",
+                Code: PassingResultCode.StartCrossing);
+        }
+
         if (racer.PersonalStartedAt is null)
             return new PassingResult(false, $"Car {carNumber} does not have a start time yet.", Code: PassingResultCode.NotAccepting);
 
-        var previousTimestamp = racer.Laps.LastOrDefault()?.Timestamp ?? racer.PersonalStartedAt.Value;
+        var previousTimestamp = racer.Laps.LastOrDefault()?.Timestamp ?? racer.ToneFirstCrossingAt ?? racer.PersonalStartedAt.Value;
         var gap = timestamp - previousTimestamp;
         var minimumLap = racer.Racer.MinimumLapSeconds is double seconds ? TimeSpan.FromSeconds(seconds) : MinimumLapTime;
         if (gap < minimumLap)
@@ -359,6 +372,7 @@ public sealed class RaceEngine
         {
             racer.Laps.Clear();
             racer.PersonalStartedAt = null;
+            racer.ToneFirstCrossingAt = null;
             racer.Finished = false;
             racer.FinishElapsed = null;
         }
@@ -673,7 +687,7 @@ public sealed class RaceEngine
         if (elapsed < TimeSpan.Zero)
             elapsed = TimeSpan.Zero;
 
-        var priorTimestamp = racer.Laps.LastOrDefault()?.Timestamp ?? racer.PersonalStartedAt.Value;
+        var priorTimestamp = racer.Laps.LastOrDefault()?.Timestamp ?? racer.ToneFirstCrossingAt ?? racer.PersonalStartedAt.Value;
         var lapTime = timestamp - priorTimestamp;
         if (lapTime < TimeSpan.Zero)
             lapTime = TimeSpan.Zero;
@@ -701,6 +715,7 @@ public sealed class RaceEngine
         {
             racer.Laps.Clear();
             racer.PersonalStartedAt = null;
+            racer.ToneFirstCrossingAt = null;
             racer.Finished = false;
             racer.FinishElapsed = null;
         }
