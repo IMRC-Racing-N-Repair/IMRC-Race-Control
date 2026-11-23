@@ -215,7 +215,48 @@ public partial class RoundMainBuilderDialog
         System.IO.File.WriteAllText(System.IO.Path.Combine(output,"Race-Order-Checks.txt"),"PASS: drag stages order, saved event unchanged before Save, completed race protected, round headers present, specific round filter works.");
         System.IO.File.WriteAllText(System.IO.Path.Combine(output,"Unified-Lineup-Checks.txt"),"PASS: one visible race list; stable Q1 Heat labels; completed and unrun rosters display on first selection; completed edit/remove/add/reorder controls disabled; saved completed data unchanged.");
         CheckEmptyClassRace(output, ev, classes);
+        CheckDraftHeatReordering(output);
         System.IO.File.WriteAllText(System.IO.Path.Combine(output,"Lineup-Overview-Checks.txt"),"PASS: all classes/rounds remain visible while selecting, editing, adding and removing a heat; source sessions unchanged before saving.");
+    }
+
+    private static void CheckDraftHeatReordering(string output)
+    {
+        var cls = new ClassDefinition { Name = "Draft Heat Order" };
+        var ev = new RaceDayEventDefinition { Name = "Unsaved heat drag regression", ClassIds = [cls.Id] };
+        var before = System.Text.Json.JsonSerializer.Serialize(ev);
+        var dialog = new RoundMainBuilderDialog(ev, [cls], []);
+        dialog.Show();
+        dialog._browsingSavedLineups = false;
+        dialog.HeatPlans.Clear();
+        var first = new HeatPlan { ClassId = cls.Id, ClassName = cls.Name,
+            SessionType = SessionType.Qualifying, Round = 1, Order = 1 };
+        var second = new HeatPlan { ClassId = cls.Id, ClassName = cls.Name,
+            SessionType = SessionType.Qualifying, Round = 1, Order = 2 };
+        dialog.HeatPlans.Add(first);
+        dialog.HeatPlans.Add(second);
+        dialog.ReorderNumbers();
+
+        if (!CanReorderPreviewHeat(first, second))
+            throw new InvalidOperationException("New unsaved qualifying heats were not draggable.");
+        dialog.MovePreviewHeat(first, second);
+        if (!ReferenceEquals(dialog.HeatPlans[0], second) ||
+            !ReferenceEquals(dialog.HeatPlans[1], first) ||
+            second.Order != 1 || first.Order != 2 ||
+            !second.SessionDisplay.Contains("Heat 1/2") ||
+            !first.SessionDisplay.Contains("Heat 2/2") ||
+            !dialog.SaveButton.IsEnabled)
+            throw new InvalidOperationException("Draft drag failed to reorder, renumber or mark changes for saving.");
+        var anotherRound = new HeatPlan { ClassId = cls.Id, ClassName = cls.Name,
+            SessionType = SessionType.Qualifying, Round = 2 };
+        var locked = new HeatPlan { ClassId = cls.Id, ClassName = cls.Name,
+            SessionType = SessionType.Qualifying, Round = 1, IsLocked = true };
+        if (CanReorderPreviewHeat(first, anotherRound) || CanReorderPreviewHeat(first, locked))
+            throw new InvalidOperationException("Draft drag incorrectly allowed a different round or completed heat.");
+        if (System.Text.Json.JsonSerializer.Serialize(ev) != before)
+            throw new InvalidOperationException("Dragging an unsaved heat changed the saved event before Save.");
+        dialog.Close();
+        System.IO.File.WriteAllText(System.IO.Path.Combine(output, "Draft-Heat-Drag-Checks.txt"),
+            "PASS: unsaved heat drag, live top-to-bottom numbering, Save enablement, locked/round restrictions and no saved-event mutation.");
     }
 
     private static void CheckEmptyClassRace(string output, RaceDayEventDefinition original, IReadOnlyList<ClassDefinition> classes)
