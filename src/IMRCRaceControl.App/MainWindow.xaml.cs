@@ -32,6 +32,7 @@ public partial class MainWindow : Window
     private readonly TrafficLogService _trafficLogger = new();
     private readonly DecoderIngressService _decoderIngress = new();
     private int _trackmateUnrecognizedPackets;
+    private int? _breakoutNoticeCar;
     private readonly DispatcherTimer _raceTimer;
     private readonly ObservableCollection<DriverClassAssignment> _driverAssignments = new();
 
@@ -2194,6 +2195,9 @@ public partial class MainWindow : Window
 
             RecentLaps.Clear();
             ClearDriverPassingHighlight();
+        _breakoutNoticeCar = null;
+        BreakoutNoticeText.Text = "";
+        BreakoutNoticePanel.Visibility = Visibility.Collapsed;
             _resultAutoSaved = false;
             _resultAutoSaveInProgress = false;
             _lastRenderedRaceState = RaceState.Ready;
@@ -2236,6 +2240,9 @@ public partial class MainWindow : Window
         RecentLaps.Clear();
         Standings.Clear();
         ClearDriverPassingHighlight();
+        _breakoutNoticeCar = null;
+        BreakoutNoticeText.Text = "";
+        BreakoutNoticePanel.Visibility = Visibility.Collapsed;
         _resultAutoSaved = false;
         _endTonePlayed = false;
         SetRaceSetupEnabled(true);
@@ -2321,6 +2328,9 @@ public partial class MainWindow : Window
         RecentLaps.Clear();
         Standings.Clear();
         ClearDriverPassingHighlight();
+        _breakoutNoticeCar = null;
+        BreakoutNoticeText.Text = "";
+        BreakoutNoticePanel.Visibility = Visibility.Collapsed;
         _resultAutoSaved = false;
         _endTonePlayed = false;
         SetRaceSetupEnabled(true);
@@ -2609,6 +2619,12 @@ public partial class MainWindow : Window
         if (result.Code == PassingResultCode.MinimumLapRejected)
         {
             MarkMinimumLapViolation(carNumber);
+            if (result.Breakout is { } breakout)
+            {
+                _breakoutNoticeCar = carNumber;
+                BreakoutNoticeText.Text = $"Breakout: {breakout.DriverName}: Breakout Lap Time: {breakout.LapTimeDisplay}";
+                BreakoutNoticePanel.Visibility = Visibility.Visible;
+            }
             RefreshDriverLapPanel();
             _toneService.Play(_settings.MinimumLapTone, _settings.MinimumLapToneLength, _settings.MinimumLapToneFile);
             Dispatcher.Invoke(DispatcherPriority.Render, new Action(() => { }));
@@ -2648,6 +2664,12 @@ public partial class MainWindow : Window
 
         if (result.Lap is not null)
         {
+            if (_breakoutNoticeCar == carNumber)
+            {
+                _breakoutNoticeCar = null;
+                BreakoutNoticeText.Text = "";
+                BreakoutNoticePanel.Visibility = Visibility.Collapsed;
+            }
             RecentLaps.Insert(0, result.Lap);
             while (RecentLaps.Count > 250)
                 RecentLaps.RemoveAt(RecentLaps.Count - 1);
