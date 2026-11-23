@@ -26,6 +26,8 @@ public sealed class StandingRow : INotifyPropertyChanged
     private string _gapBehind = "—";
     private string _totalTime = "—";
     private string _status = string.Empty;
+    private int _breakoutCount;
+    private bool _isBreakoutPending;
     private bool _isFastestLap;
     private bool _isNewPersonalBest;
     private string _racePersonalBestText = string.Empty;
@@ -86,6 +88,17 @@ public sealed class StandingRow : INotifyPropertyChanged
     public string TotalTime { get => _totalTime; set => Set(ref _totalTime, value ?? "—"); }
     public string Status { get => _status; set { if (Set(ref _status, value ?? string.Empty)) OnPropertyChanged(nameof(IsFinished)); } }
     public bool IsFinished => Status == "FINISHED";
+    public int BreakoutCount
+    {
+        get => _breakoutCount;
+        set
+        {
+            if (Set(ref _breakoutCount, value))
+                OnPropertyChanged(nameof(BreakoutCountDisplay));
+        }
+    }
+    public string BreakoutCountDisplay => BreakoutCount > 0 ? BreakoutCount.ToString() : string.Empty;
+    public bool IsBreakoutPending { get => _isBreakoutPending; set => Set(ref _isBreakoutPending, value); }
     public bool IsFastestLap { get => _isFastestLap; set => Set(ref _isFastestLap, value); }
     public bool IsNewPersonalBest { get => _isNewPersonalBest; set => Set(ref _isNewPersonalBest, value); }
     public string RacePersonalBestText { get => _racePersonalBestText; set => Set(ref _racePersonalBestText, value ?? string.Empty); }
@@ -122,6 +135,8 @@ public sealed class StandingRow : INotifyPropertyChanged
         GapBehind = source.GapBehind;
         TotalTime = source.TotalTime;
         Status = source.Status;
+        BreakoutCount = source.BreakoutCount;
+        IsBreakoutPending = source.IsBreakoutPending;
         IsFastestLap = source.IsFastestLap;
         IsNewPersonalBest = source.IsNewPersonalBest;
         RacePersonalBestText = source.RacePersonalBestText;
