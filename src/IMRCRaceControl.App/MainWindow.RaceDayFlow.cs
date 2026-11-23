@@ -61,7 +61,8 @@ public partial class MainWindow
                     not EventSessionStatus.Skipped)
                 .ToList();
 
-            if (remainingMains.Count > 1)
+            // Auto-sort mains only before the operator has supplied a custom lineup order.
+            if (remainingMains.Count > 1 && !remainingMains.Any(s => s.LineupOrder.HasValue))
             {
                 var queueSlots = remainingMains
                     .Select(s => s.QueueOrder)
