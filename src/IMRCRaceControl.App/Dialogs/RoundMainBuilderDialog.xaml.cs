@@ -2001,35 +2001,23 @@ public partial class RoundMainBuilderDialog : Window
         var proposed = PreviewSessions
             .Where(s => s.ProgressStatus != EventSessionStatus.Skipped)
             .ToList();
-        var knownMax = proposed.Select(s => s.QueueOrder).Where(q => q > 0).DefaultIfEmpty(0).Max();
+        var knownMax = proposed.Select(s => s.QueueOrder).Where(q => q > 0)
+            .DefaultIfEmpty(0).Max();
         var stagedOrder = BuiltSessions.Select((s, i) => new { s.Id, Index = i })
             .ToDictionary(x => x.Id, x => x.Index, StringComparer.OrdinalIgnoreCase);
-        proposed = proposed
-            .OrderBy(s => _pendingRaceOrder.TryGetValue(s.Id, out var custom) ? custom :
-                s.LineupOrder ?? (s.QueueOrder > 0 ? s.QueueOrder : knownMax + stagedOrder.GetValueOrDefault(s.Id) + 1))
+        var manualMains = proposed.Any(s => s.SessionType == SessionType.Race &&
+            (_pendingRaceOrder.ContainsKey(s.Id) || s.LineupOrder.HasValue));
+        var sorted = proposed
+            .OrderBy(s => s.ScheduleStageOrder)
+            .ThenBy(s => s.SessionType == SessionType.Race && manualMains ? 0 : s.ScheduleRoundOrder)
+            .ThenBy(s => _pendingRaceOrder.TryGetValue(s.Id, out var custom) ? custom :
+                s.LineupOrder ??
+                (s.QueueOrder > 0 ? s.QueueOrder : knownMax + stagedOrder.GetValueOrDefault(s.Id) + 1))
             .ThenBy(s => s.QueueOrder)
             .ToList();
-
-        var conflicts = new List<string>();
-        for (var i = 0; i + 1 < proposed.Count; i++)
-        {
-            var first = proposed[i];
-            var second = proposed[i + 1];
-            // Two class sessions linked into one combined on-track race are not
-            // consecutive separate races and must not trigger this warning.
-            if (!string.IsNullOrWhiteSpace(first.CombinedRaceId) &&
-                string.Equals(first.CombinedRaceId, second.CombinedRaceId, StringComparison.OrdinalIgnoreCase))
-                continue;
-            if (first.ProgressStatus == EventSessionStatus.Completed &&
-                second.ProgressStatus == EventSessionStatus.Completed)
-                continue; // historical results cannot be changed
-            var firstDrivers = first.Entrants.Where(e => !string.IsNullOrWhiteSpace(e.DriverId))
-                .GroupBy(e => e.DriverId, StringComparer.OrdinalIgnoreCase)
-                .ToDictionary(g => g.Key, g => g.First().DisplayName, StringComparer.OrdinalIgnoreCase);
-            foreach (var entrant in second.Entrants.Where(e => firstDrivers.ContainsKey(e.DriverId))
-                .GroupBy(e => e.DriverId, StringComparer.OrdinalIgnoreCase).Select(g => g.First()))
-                conflicts.Add($"{firstDrivers[entrant.DriverId]}  •  {(first.RaceNumber > 0 ? $"Race {first.RaceNumber}: " : "")}{first.Name}  →  {(second.RaceNumber > 0 ? $"Race {second.RaceNumber}: " : "")}{second.Name}");
-        }
+        var conflicts = ConsecutiveRaceDetector.Find(sorted)
+            .Select(c => $"{c.DriverName}  •  {c.FirstRace}  →  {c.SecondRace}")
+            .ToList();
         if (conflicts.Count == 0) return true;
 
         var popup = new Window
