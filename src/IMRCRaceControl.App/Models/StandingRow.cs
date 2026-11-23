@@ -5,6 +5,8 @@ namespace IMRCRaceControl.Models;
 
 public sealed class StandingRow : INotifyPropertyChanged
 {
+    private int? _overallQualifyingPosition;
+    private string _qualifyingMainBand = string.Empty;
     private int _position;
     private int _carNumber;
     private string _driverName = string.Empty;
@@ -42,7 +44,27 @@ public sealed class StandingRow : INotifyPropertyChanged
     public string ScoringGroupId { get; set; } = string.Empty;
     public string ClassGroupName => ShowClass ? ClassName : string.Empty;
     public bool ShowClass => !string.IsNullOrEmpty(ScoringGroupId);
-    public int Position { get => _position; set => Set(ref _position, value); }
+    public int Position
+    {
+        get => _position;
+        set
+        {
+            if (Set(ref _position, value))
+                OnPropertyChanged(nameof(OverallPositionDisplay));
+        }
+    }
+    // Display only: never overwrite Position, which remains the official heat result.
+    public int? OverallQualifyingPosition
+    {
+        get => _overallQualifyingPosition;
+        set
+        {
+            if (Set(ref _overallQualifyingPosition, value))
+                OnPropertyChanged(nameof(OverallPositionDisplay));
+        }
+    }
+    public string OverallPositionDisplay => OverallQualifyingPosition?.ToString() ?? Position.ToString();
+    public string QualifyingMainBand { get => _qualifyingMainBand; set => Set(ref _qualifyingMainBand, value ?? string.Empty); }
     public int CarNumber { get => _carNumber; set => Set(ref _carNumber, value); }
     public string DriverName { get => _driverName; set => Set(ref _driverName, value ?? string.Empty); }
     public int Laps { get => _laps; set => Set(ref _laps, value); }
