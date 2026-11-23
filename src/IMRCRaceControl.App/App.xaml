@@ -878,8 +878,8 @@
             <Style.Triggers>
                 <Trigger Property="ItemsControl.AlternationIndex" Value="1"><Setter Property="Background" Value="{DynamicResource DashboardAlternateRowBrush}"/></Trigger>
                 <DataTrigger Binding="{Binding IsFastestLap}" Value="True">
-                    <Setter Property="Background" Value="{DynamicResource DashboardNewBestLapHighlightBrush}"/>
-                    <Setter Property="Foreground" Value="{DynamicResource DashboardNewBestLapHighlightTextBrush}"/>
+                    <Setter Property="Background" Value="{DynamicResource DashboardFastestLapHighlightBrush}"/>
+                    <Setter Property="Foreground" Value="{DynamicResource DashboardFastestLapHighlightTextBrush}"/>
                 </DataTrigger>
                 <MultiDataTrigger><MultiDataTrigger.Conditions>
                     <Condition Binding="{Binding IsFinished}" Value="True"/>
