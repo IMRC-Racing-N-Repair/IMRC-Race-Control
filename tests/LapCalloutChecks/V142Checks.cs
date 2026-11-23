@@ -15,6 +15,8 @@ static class V142Checks
         void Start() => engine.Start(racers, TimeSpan.FromMinutes(1), 1, RaceFormat.Laps, TimeSpan.FromSeconds(1), SessionType.Race, StartStyle.Tone, now);
         Start();
         Check(engine.GetStandings(now).All(r => !r.IsFinished), "New race has no finished-driver color");
+        Check(engine.RegisterPassing(1, "test", now.AddSeconds(2)).Code == PassingResultCode.StartCrossing, "Tone first crossing is not scored");
+        Check(engine.GetStandings(now.AddSeconds(2)).All(r => !r.IsFinished), "Baseline does not finish driver");
         engine.RegisterPassing(1, "test", now.AddSeconds(4));
         var rows = engine.GetStandings(now.AddSeconds(4));
         Check(rows.Single(r => r.CarNumber == 1).IsFinished && !rows.Single(r => r.CarNumber == 2).IsFinished, "One driver finishes while opponent stays active");
