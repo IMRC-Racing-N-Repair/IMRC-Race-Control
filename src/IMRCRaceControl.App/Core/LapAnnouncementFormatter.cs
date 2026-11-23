@@ -4,8 +4,8 @@ namespace IMRCRaceControl.Core;
 
 public static class LapAnnouncementFormatter
 {
-    // Truncate to tenths, allowing a 10 ms grace window just below the next
-    // tenth. Work in ticks to avoid binary floating-point boundary errors.
+    // Truncate toward zero to tenths. Never round up near a tenth boundary:
+    // a 4.399 lap is announced as 4.3, not 4.4.
     // This affects speech only; the timing engine retains the exact lap.
     public static string Format(TimeSpan lap, bool tenthsOnly)
     {
@@ -13,10 +13,7 @@ public static class LapAnnouncementFormatter
             return string.Empty;
 
         const long tenth = TimeSpan.TicksPerSecond / 10;
-        const long grace = TimeSpan.TicksPerMillisecond * 10;
         var tenths = lap.Ticks / tenth;
-        if (lap.Ticks % tenth >= tenth - grace)
-            tenths++;
 
         var digit = (tenths % 10).ToString(CultureInfo.InvariantCulture);
         return tenthsOnly ? digit
