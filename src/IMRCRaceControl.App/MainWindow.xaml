@@ -77,6 +77,7 @@
                             <RowDefinition Height="Auto"/>
                             <RowDefinition Height="*"/>
                             <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
                         </Grid.RowDefinitions>
 
                         <Border x:Name="DashboardRaceHeader" Background="{DynamicResource DashboardPanelBrush}" BorderBrush="{DynamicResource BorderBrush}"
@@ -626,7 +627,15 @@
                             </Grid>
                         </Grid>
 
-                        <controls:TrackRecordStrip x:Name="DashboardTrackRecordStrip" Grid.Row="3"/>
+                        <Border x:Name="BreakoutNoticePanel" Grid.Row="3" Visibility="Collapsed"
+                                Background="{DynamicResource DashboardPanelBrush}"
+                                BorderBrush="{DynamicResource DashboardMinimumLapGlowBrush}"
+                                BorderThickness="2,0,0,0" Padding="8,4" Margin="0,3,0,3">
+                            <TextBlock x:Name="BreakoutNoticeText" Text=""
+                                       Foreground="{DynamicResource DashboardMinimumLapGlowBrush}"
+                                       FontSize="12" FontWeight="Bold"/>
+                        </Border>
+                        <controls:TrackRecordStrip x:Name="DashboardTrackRecordStrip" Grid.Row="4"/>
 
                         <!-- Legacy/internal controls are intentionally hidden. The dashboard is event-driven. -->
                         <Grid Visibility="Collapsed">
