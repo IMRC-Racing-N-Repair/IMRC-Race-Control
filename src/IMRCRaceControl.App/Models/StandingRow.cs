@@ -6,6 +6,7 @@ namespace IMRCRaceControl.Models;
 public sealed class StandingRow : INotifyPropertyChanged
 {
     private int? _overallQualifyingPosition;
+    private bool _showOverallQualifyingPosition;
     private string _qualifyingMainBand = string.Empty;
     private int _position;
     private int _carNumber;
@@ -63,7 +64,18 @@ public sealed class StandingRow : INotifyPropertyChanged
                 OnPropertyChanged(nameof(OverallPositionDisplay));
         }
     }
-    public string OverallPositionDisplay => OverallQualifyingPosition?.ToString() ?? Position.ToString();
+    public bool ShowOverallQualifyingPosition
+    {
+        get => _showOverallQualifyingPosition;
+        set
+        {
+            if (Set(ref _showOverallQualifyingPosition, value))
+                OnPropertyChanged(nameof(OverallPositionDisplay));
+        }
+    }
+    public string OverallPositionDisplay => ShowOverallQualifyingPosition
+        ? OverallQualifyingPosition?.ToString() ?? "—"
+        : Position.ToString();
     public string QualifyingMainBand { get => _qualifyingMainBand; set => Set(ref _qualifyingMainBand, value ?? string.Empty); }
     public int CarNumber { get => _carNumber; set => Set(ref _carNumber, value); }
     public string DriverName { get => _driverName; set => Set(ref _driverName, value ?? string.Empty); }
