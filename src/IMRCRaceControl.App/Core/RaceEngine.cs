@@ -533,7 +533,7 @@ public sealed class RaceEngine
                 TotalTime = last is null ? "—" : FormatElapsed(last.Elapsed),
                 Status = status,
                 ManualActionText = "PASS",
-                IsFastestLap = best.HasValue && classBest.HasValue && best.Value == sessionBest.Value,
+                IsFastestLap = best.HasValue && sessionBest.HasValue && best.Value == sessionBest.Value,
                 BreakoutCount = carBreakouts.Count,
                 IsBreakoutPending = breakoutPending,
                 IsNewPersonalBest = isNewPersonalBest
