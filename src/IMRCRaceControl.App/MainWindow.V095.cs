@@ -119,6 +119,17 @@ public partial class MainWindow
 
         var loaded = _loadedSession;
         var roundSessions = Core.OverallPositionScope.Sessions(_activeEvent.Sessions, loaded);
+        // Overall qualifying position uses the best run in any completed earlier
+        // round plus the live projected pace of the selected heat.
+        if (loaded.SessionType == SessionType.Qualifying)
+        {
+            var classIds = roundSessions.Select(s => s.ClassId).ToHashSet(StringComparer.OrdinalIgnoreCase);
+            roundSessions.AddRange(_activeEvent.Sessions.Where(s =>
+                s.SessionType == SessionType.Qualifying &&
+                s.Round < loaded.Round &&
+                s.ProgressStatus == EventSessionStatus.Completed &&
+                classIds.Contains(s.ClassId)));
+        }
         var liveCars = Core.OverallPositionScope.LiveCars(loaded);
         var liveLaps = _raceEngine.Laps.ToLookup(l => l.CarNumber);
 
@@ -260,7 +271,18 @@ public partial class MainWindow
             }
         }
 
-        var ranked = candidates
+        var bestPerDriver = candidates
+            .GroupBy(c => $"{c.ClassId}|{c.DriverId}", StringComparer.OrdinalIgnoreCase)
+            .Select(group => group
+                .Where(c => c.HasPerformance)
+                .OrderByDescending(c => c.ComparisonLaps)
+                .ThenBy(c => c.ComparisonTime ?? TimeSpan.MaxValue)
+                .ThenBy(c => c.BestLap ?? TimeSpan.MaxValue)
+                .FirstOrDefault()
+                ?? group.OrderByDescending(c => c.IsCurrentHeat).First())
+            .ToList();
+
+        var ranked = bestPerDriver
             .Where(c => c.HasPerformance)
             .OrderByDescending(c => c.ComparisonLaps)
             .ThenBy(c => c.ComparisonTime ?? TimeSpan.MaxValue)
@@ -271,11 +293,28 @@ public partial class MainWindow
 
         var projectedPositionByKey = Core.OverallPositionScope.Positions(ranked,c=>c.ClassId,c=>c.Key);
 
-        UpdateProjectionMovement(candidates, projectedPositionByKey);
+        UpdateProjectionMovement(bestPerDriver, projectedPositionByKey);
+
+        // Only the displayed POS changes. Official per-heat Position values and
+        // saved race results remain untouched.
+        var bestByIdentity = bestPerDriver.ToDictionary(
+            c => $"{c.ClassId}|{c.DriverId}", c => c, StringComparer.OrdinalIgnoreCase);
+        foreach (var standing in Standings)
+        {
+            var active = candidates.FirstOrDefault(c => c.IsCurrentHeat && c.CarNumber == standing.CarNumber);
+            var best = active is null ? null :
+                bestByIdentity.GetValueOrDefault($"{active.ClassId}|{active.DriverId}");
+            var overall = best is not null &&
+                projectedPositionByKey.TryGetValue(best.Key, out var rank) ? (int?)rank : null;
+            standing.OverallQualifyingPosition = loaded.SessionType == SessionType.Qualifying ? overall : null;
+            standing.QualifyingMainBand = standing.OverallQualifyingPosition is int overallRank
+                ? MainBandForQualifyingPosition(active!.ClassId, overallRank)
+                : string.Empty;
+        }
 
         var classColors = candidates.Select(c=>c.ClassId).Distinct()
             .ToDictionary(id=>id,ColorFor);
-        var rows = candidates
+        var rows = bestPerDriver
             .Select(c =>
             {
                 var hasMovement =
@@ -312,8 +351,29 @@ public partial class MainWindow
             ? $"{loaded.RoundLabel} • ALL COMBINED CLASSES • Positions within each class • " +
               (loaded.SessionType == SessionType.Qualifying ? "Pace live, laps/time when finished" : "Laps/time")
             : roundSessions.Count > 1
-            ? $"{_loadedSession.ClassName} • Q{_loadedSession.Round} • {roundSessions.Count} heats • PACE while live, finished LAPS/TIME when complete"
-            : $"{_loadedSession.ClassName} • Q{_loadedSession.Round} • PACE while live, finished LAPS/TIME when complete";
+            ? $"{_loadedSession.ClassName} • Best of Q1–Q{_loadedSession.Round} • PACE while live, prior qualifying runs retained"
+            : $"{_loadedSession.ClassName} • Best of Q1–Q{_loadedSession.Round} • PACE while live, prior qualifying runs retained";
+    }
+
+    private string MainBandForQualifyingPosition(string classId, int position)
+    {
+        var cls = Classes.FirstOrDefault(c => string.Equals(c.Id, classId, StringComparison.OrdinalIgnoreCase));
+        if (cls is null || position <= 0) return string.Empty;
+        var rules = (cls.MainRules ?? []).OrderBy(r => r.Order).ToList();
+        var defaultCapacity = Math.Clamp(cls.MaxRacersPerMain, 1, 30);
+        var remaining = position;
+        for (var main = 0; main < 26; main++)
+        {
+            var rule = main < rules.Count ? rules[main] : null;
+            var capacity = rule is null ? defaultCapacity : Math.Clamp(rule.MaxRacers, 1, 30);
+            var bumpIn = rule is not null && main < rules.Count - 1
+                ? Math.Clamp(rule.BumpInsFromLower, 0, capacity - 1) : 0;
+            var directSlots = Math.Max(1, capacity - bumpIn);
+            if (remaining <= directSlots)
+                return $"{(char)('A' + main)} MAIN";
+            remaining -= directSlots;
+        }
+        return string.Empty;
     }
 
     private static bool TryParsePaceResult(
