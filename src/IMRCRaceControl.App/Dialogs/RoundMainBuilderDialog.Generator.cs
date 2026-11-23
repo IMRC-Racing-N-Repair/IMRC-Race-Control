@@ -36,7 +36,7 @@ public partial class RoundMainBuilderDialog
             else
                 sort.ItemsSource = Enum.GetValues<QualificationOrder>().Select(v => new GeneratorSort(v,v == QualificationOrder.PreviousRound ? "Previous Round Results" : v.ToDisplay())).ToList();
             sort.SelectedIndex = 0;
-            if (mode.SelectedValue is BuildMode.Mains) sort.SelectedValue = MainSortOrder.QualifyingRank;
+            if (mode.SelectedValue is BuildMode.Mains) sort.SelectedValue = MainSortOrder.OverallRoundResults;
             else sort.SelectedValue = QualificationOrder.Random;
             round.Text = mode.SelectedValue is BuildMode.Mains ? "Mains" : NextRound().ToString();
         }
