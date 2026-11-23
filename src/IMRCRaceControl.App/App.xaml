@@ -828,12 +828,14 @@
             <Border Style="{StaticResource RaceDriverBorderStyle}">
                 <Border Style="{StaticResource ClassDriverAccent}">
                     <StackPanel VerticalAlignment="Center">
-                        <TextBlock FontWeight="Bold" FontSize="16" TextAlignment="Center"
-                                   TextTrimming="CharacterEllipsis" ToolTip="{Binding DriverName}">
-                            <Run Text="{Binding DriverName}"/>
-                            <Run Text="{Binding BreakoutCountDisplay, Mode=OneWay}" BaselineAlignment="Superscript"
-                                 FontSize="8" Foreground="{DynamicResource DashboardMinimumLapGlowBrush}"/>
-                        </TextBlock>
+                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                            <TextBlock Text="{Binding DriverName}" FontWeight="Bold" FontSize="16"
+                                       TextAlignment="Center" TextTrimming="CharacterEllipsis"
+                                       ToolTip="{Binding DriverName}"/>
+                            <TextBlock Text="{Binding BreakoutCountDisplay, Mode=OneWay}" FontSize="8" FontWeight="Bold"
+                                       Foreground="{DynamicResource DashboardMinimumLapGlowBrush}"
+                                       VerticalAlignment="Top" Margin="2,-1,0,0"/>
+                        </StackPanel>
                         <TextBlock x:Name="RacePBLine"
                                    Text="{Binding RacePersonalBestText}"
                                    Foreground="{DynamicResource DashboardTextBrush}"
