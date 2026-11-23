@@ -16,8 +16,12 @@ public static class RaceSchedule
     {
         var list=sessions.ToList();
         var custom=list.Where(s=>s.LineupOrder.HasValue).Select(DashboardRoundChoice.From).ToHashSet();
-        return list.OrderBy(s=>s.ScheduleStageOrder).ThenBy(s=>s.ScheduleRoundOrder)
-            .ThenBy(s=>custom.Contains(DashboardRoundChoice.From(s)) ? s.QueueOrder : s.RaceNumber).ThenBy(s=>s.QueueOrder);
+        var manuallyOrderedMains = list.Any(s=>s.SessionType==SessionType.Race && s.LineupOrder.HasValue);
+        return list.OrderBy(s=>s.ScheduleStageOrder)
+            .ThenBy(s=>s.SessionType==SessionType.Race && manuallyOrderedMains ? 0 : s.ScheduleRoundOrder)
+            .ThenBy(s=>s.SessionType==SessionType.Race && manuallyOrderedMains || custom.Contains(DashboardRoundChoice.From(s))
+                ? s.QueueOrder : s.RaceNumber)
+            .ThenBy(s=>s.QueueOrder);
     }
 
     public static List<DashboardRoundChoice> AvailableRounds(IEnumerable<EventSessionDefinition> sessions) =>
