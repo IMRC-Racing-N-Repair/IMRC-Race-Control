@@ -3,6 +3,8 @@
 Keep all release history in this file. Add each new version at the top; do not create version-specific changelog files.
 
 ## 0.17.15
+- Show multiple simultaneous breakout notices as compact orange chips at the bottom of the race screen. Keep all consecutive breakouts (even from the same driver) visible until that driver records a valid lap; support undo and clear on new/restarted races.
+- Make rounded practice cards follow the selected Light, Dark, or Blue theme while retaining a subtle gradient/radiant overlay, theme accent stripe, and soft shadow.
 - Mains seeding now offers **OVERALL ROUND RESULTS** (default for new mains): rank racers by their best single completed qualifying run across every round, rather than the final round only. The prior round-placement ranking remains available as a separate choice.
 - Tone-start races keep the master clock running from the start tone but ignore each racer's first crossing for scored laps and breakout detection. That crossing becomes the baseline for Lap 1; later complete laps use crossing-to-crossing time. Practice and alternative start styles retain their behavior.
 - Before saving a generated or edited lineup, detect drivers appearing in consecutive races and show the driver and both race names/numbers with CHANGE LINEUP or CONTINUE ANYWAY. CHANGE returns to editing; every subsequent save checks again. Combined class sessions in the same on-track race are excluded.
