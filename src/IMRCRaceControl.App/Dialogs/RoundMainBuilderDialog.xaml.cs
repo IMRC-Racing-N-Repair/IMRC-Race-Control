@@ -2065,6 +2065,7 @@ public partial class RoundMainBuilderDialog : Window
 
         foreach (var plan in mains)
         {
+            if (plan.IsLocked) continue;
             var mainLabel = MainLetter(Math.Max(0, plan.MainOrder - 1));
 
             plan.Name = plan.MainRunCount > 1
