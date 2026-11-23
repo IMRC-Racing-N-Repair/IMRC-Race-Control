@@ -613,11 +613,14 @@ public partial class MainWindow
             .ThenBy(s => s.SessionType == SessionType.Race ? s.MainLeg : s.Heat)
             .ToList();
 
-        var order = 1;
-        foreach (var session in completed)
-            session.QueueOrder = order++;
-        foreach (var session in remaining)
-            session.QueueOrder = order++;
+        // Completed/skipped race queue positions are immutable. Reuse only
+        // available unrun queue slots when rebuilding the event order.
+        var fixedSlots = completed.Select(s => s.QueueOrder).Where(q => q > 0).ToHashSet();
+        var availableSlots = _activeEvent.Sessions.Select(s => s.QueueOrder)
+            .Where(q => q > 0 && !fixedSlots.Contains(q)).Distinct().OrderBy(q => q).ToList();
+        var nextSlot = Math.Max(0, _activeEvent.Sessions.Max(s => s.QueueOrder)) + 1;
+        for (var i = 0; i < remaining.Count; i++)
+            remaining[i].QueueOrder = i < availableSlots.Count ? availableSlots[i] : nextSlot++;
         RaceLineupOrder.Apply(_activeEvent.Sessions);
     }
 
@@ -655,10 +658,11 @@ public partial class MainWindow
             .Where(s => s.ProgressStatus is EventSessionStatus.Completed or EventSessionStatus.Skipped)
             .OrderBy(s => s.QueueOrder)
             .ToList();
-        var order = 1;
-        foreach (var session in completed)
-            session.QueueOrder = order++;
-        foreach (var session in orderedRemaining)
-            session.QueueOrder = order++;
+        var fixedSlots = completed.Select(s => s.QueueOrder).Where(q => q > 0).ToHashSet();
+        var availableSlots = _activeEvent.Sessions.Select(s => s.QueueOrder)
+            .Where(q => q > 0 && !fixedSlots.Contains(q)).Distinct().OrderBy(q => q).ToList();
+        var nextSlot = Math.Max(0, _activeEvent.Sessions.Max(s => s.QueueOrder)) + 1;
+        for (var i = 0; i < orderedRemaining.Count; i++)
+            orderedRemaining[i].QueueOrder = i < availableSlots.Count ? availableSlots[i] : nextSlot++;
     }
 }
