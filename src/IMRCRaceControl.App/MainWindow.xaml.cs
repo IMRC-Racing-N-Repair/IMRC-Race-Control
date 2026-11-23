@@ -32,7 +32,9 @@ public partial class MainWindow : Window
     private readonly TrafficLogService _trafficLogger = new();
     private readonly DecoderIngressService _decoderIngress = new();
     private int _trackmateUnrecognizedPackets;
-    private int? _breakoutNoticeCar;
+    // Each active breakout remains visible until its driver records a valid lap.
+    // Derive from engine history so undo/redo and multiple consecutive breakouts are safe.
+    private readonly ObservableCollection<string> _activeBreakoutNotices = new();
     private readonly DispatcherTimer _raceTimer;
     private readonly ObservableCollection<DriverClassAssignment> _driverAssignments = new();
 
@@ -98,6 +100,7 @@ public partial class MainWindow : Window
         _stateWriter = new BackgroundRaceStateWriter(database.SaveApplicationStateAsync, settingsService.SaveAsync, database.UpdateEventClassIdsAsync, database.UpdateEventRegistrationAsync);
         _startupWarning = startupWarning;
         InitializeComponent();
+        BreakoutNoticesItems.ItemsSource = _activeBreakoutNotices;
         ConfigureDriverDirectorySearch();
         RaceClassSections.Attach(Standings);
         RaceClassSections.Attach(RoundProjectionRows);
@@ -817,6 +820,7 @@ public partial class MainWindow : Window
         SessionRacers.Clear();
         Standings.Clear();
         RecentLaps.Clear();
+        ClearBreakoutNotices();
 
         LoadEventToEditor(_activeEvent);
         UpdateRaceDashboardAvailability();
@@ -1831,6 +1835,7 @@ public partial class MainWindow : Window
         _lapSpeech.Stop();
         _raceEngine.Reset();
         RecentLaps.Clear();
+        ClearBreakoutNotices();
         Standings.Clear();
 
         foreach (var other in _activeEvent.Sessions.Where(s =>
@@ -2195,9 +2200,7 @@ public partial class MainWindow : Window
 
             RecentLaps.Clear();
             ClearDriverPassingHighlight();
-        _breakoutNoticeCar = null;
-        BreakoutNoticeText.Text = "";
-        BreakoutNoticePanel.Visibility = Visibility.Collapsed;
+        ClearBreakoutNotices();
             _resultAutoSaved = false;
             _resultAutoSaveInProgress = false;
             _lastRenderedRaceState = RaceState.Ready;
@@ -2240,9 +2243,7 @@ public partial class MainWindow : Window
         RecentLaps.Clear();
         Standings.Clear();
         ClearDriverPassingHighlight();
-        _breakoutNoticeCar = null;
-        BreakoutNoticeText.Text = "";
-        BreakoutNoticePanel.Visibility = Visibility.Collapsed;
+        ClearBreakoutNotices();
         _resultAutoSaved = false;
         _endTonePlayed = false;
         SetRaceSetupEnabled(true);
@@ -2328,9 +2329,7 @@ public partial class MainWindow : Window
         RecentLaps.Clear();
         Standings.Clear();
         ClearDriverPassingHighlight();
-        _breakoutNoticeCar = null;
-        BreakoutNoticeText.Text = "";
-        BreakoutNoticePanel.Visibility = Visibility.Collapsed;
+        ClearBreakoutNotices();
         _resultAutoSaved = false;
         _endTonePlayed = false;
         SetRaceSetupEnabled(true);
@@ -2621,12 +2620,7 @@ public partial class MainWindow : Window
         if (result.Code == PassingResultCode.MinimumLapRejected)
         {
             MarkMinimumLapViolation(carNumber);
-            if (result.Breakout is { } breakout)
-            {
-                _breakoutNoticeCar = carNumber;
-                BreakoutNoticeText.Text = $"Breakout: {breakout.DriverName}: Breakout Lap Time: {breakout.LapTimeDisplay}";
-                BreakoutNoticePanel.Visibility = Visibility.Visible;
-            }
+            RefreshBreakoutNotices();
             RefreshDriverLapPanel();
             _toneService.Play(_settings.MinimumLapTone, _settings.MinimumLapToneLength, _settings.MinimumLapToneFile);
             Dispatcher.Invoke(DispatcherPriority.Render, new Action(() => { }));
@@ -2666,12 +2660,7 @@ public partial class MainWindow : Window
 
         if (result.Lap is not null)
         {
-            if (_breakoutNoticeCar == carNumber)
-            {
-                _breakoutNoticeCar = null;
-                BreakoutNoticeText.Text = "";
-                BreakoutNoticePanel.Visibility = Visibility.Collapsed;
-            }
+            RefreshBreakoutNotices();
             RecentLaps.Insert(0, result.Lap);
             while (RecentLaps.Count > 250)
                 RecentLaps.RemoveAt(RecentLaps.Count - 1);
@@ -2724,10 +2713,38 @@ public partial class MainWindow : Window
             return;
 
         RebuildRecentLaps();
+        RefreshBreakoutNotices();
         _resultAutoSaved = false;
         if (_raceEngine.State is RaceState.Armed or RaceState.Running or RaceState.TimeExpired)
             _raceTimer.Start();
         RefreshRaceUi(DateTimeOffset.Now);
+    }
+
+    private void ClearBreakoutNotices()
+    {
+        _activeBreakoutNotices.Clear();
+        BreakoutNoticePanel.Visibility = Visibility.Collapsed;
+    }
+
+    private void RefreshBreakoutNotices()
+    {
+        // Only a VALID scored crossing clears that driver's outstanding notices.
+        // Keep each rejected crossing, including multiple breakouts by one driver.
+        var latestValidByCar = _raceEngine.Laps
+            .GroupBy(lap => lap.CarNumber)
+            .ToDictionary(g => g.Key, g => g.Max(lap => lap.Timestamp));
+        var active = _raceEngine.Breakouts
+            .Where(b => !latestValidByCar.TryGetValue(b.CarNumber, out var validAt)
+                        || b.Timestamp > validAt)
+            .OrderBy(b => b.Timestamp)
+            .ThenBy(b => b.Sequence)
+            .Select(b => $"Breakout: {b.DriverName}  •  {b.LapTimeDisplay}")
+            .ToArray();
+
+        _activeBreakoutNotices.Clear();
+        foreach (var notice in active)
+            _activeBreakoutNotices.Add(notice);
+        BreakoutNoticePanel.Visibility = active.Length > 0 ? Visibility.Visible : Visibility.Collapsed;
     }
 
     private void RebuildRecentLaps()
