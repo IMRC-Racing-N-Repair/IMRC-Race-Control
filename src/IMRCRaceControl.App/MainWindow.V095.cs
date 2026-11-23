@@ -146,6 +146,7 @@ public partial class MainWindow
         foreach (var session in roundSessions)
         {
             var current = Core.OverallPositionScope.IsCurrent(loaded,session);
+            var completedLapLookup = session.Laps.ToLookup(l => l.CarNumber);
 
             foreach (var entrant in session.Entrants.OrderBy(e => e.CarNumber))
             {
@@ -204,8 +205,7 @@ public partial class MainWindow
                 else if (session.ProgressStatus == EventSessionStatus.Completed)
                 {
                     var result = session.Results.FirstOrDefault(r => r.CarNumber == entrant.CarNumber);
-                    var storedLaps = session.Laps
-                        .Where(l => l.CarNumber == entrant.CarNumber)
+                    var storedLaps = completedLapLookup[entrant.CarNumber]
                         .OrderBy(l => l.LapNumber)
                         .ToList();
 
