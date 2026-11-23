@@ -142,7 +142,14 @@ public sealed class RaceEngine
             if (style == StartStyle.Tone)
             {
                 StartedAt = _armedAt;
-                foreach (var racer in _racers.Values.Where(r => !r.Finished)) racer.PersonalStartedAt = _armedAt;
+                foreach (var racer in _racers.Values.Where(r => !r.Finished))
+                {
+                    racer.PersonalStartedAt = _armedAt;
+                    // If the operator switches to Tone during an active run,
+                    // existing laps must not cause a new first-crossing discard.
+                    racer.ToneFirstCrossingAt = racer.Laps.LastOrDefault()?.Timestamp
+                        ?? _acceptedPassings.LastOrDefault(p => p.CarNumber == racer.Racer.CarNumber)?.Timestamp;
+                }
             }
             else if (style == StartStyle.LeaderCrossing)
             {
