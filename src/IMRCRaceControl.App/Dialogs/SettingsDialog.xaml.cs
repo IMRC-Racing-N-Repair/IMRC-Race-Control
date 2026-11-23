@@ -104,6 +104,9 @@ public partial class SettingsDialog : Window
         DataContext = this;
 
         _sourceSettings = settings;
+        RaceStartShortcutText.Text = string.IsNullOrWhiteSpace(settings.RaceStartShortcut) ? "S" : settings.RaceStartShortcut;
+        RaceFalseStartShortcutText.Text = string.IsNullOrWhiteSpace(settings.RaceFalseStartShortcut) ? "F" : settings.RaceFalseStartShortcut;
+        PracticeIdleMultiplierText.Text = settings.PracticeIdleLapMultiplier.ToString("0.##", CultureInfo.InvariantCulture);
         ClassFirstRegistrationCheck.IsChecked = !settings.EventRegistrationDriverFirst;
         WebOverallCheck.IsChecked = settings.WebShowOverallPosition;
         SpectatorHeaderCheck.IsChecked = settings.SpectatorShowHeader;
@@ -540,6 +543,26 @@ public partial class SettingsDialog : Window
             MessageBox.Show(this, ex.Message, "Save settings", MessageBoxButton.OK, MessageBoxImage.Warning);
             return;
         }
+
+        var startKey = RaceStartShortcutText.Text.Trim().ToUpperInvariant();
+        var falseKey = RaceFalseStartShortcutText.Text.Trim().ToUpperInvariant();
+        if (startKey.Length != 1 || falseKey.Length != 1 ||
+            startKey[0] is < 'A' or > 'Z' ||
+            falseKey[0] is < 'A' or > 'Z' || startKey == falseKey)
+        {
+            MessageBox.Show(this, "Choose two different A–Z keys for Start and False Start.", "Race keybinds", MessageBoxButton.OK, MessageBoxImage.Warning);
+            return;
+        }
+        if (!double.TryParse(PracticeIdleMultiplierText.Text.Trim(),
+            NumberStyles.Float, CultureInfo.InvariantCulture, out var idleMultiple) ||
+            idleMultiple is < 2 or > 60)
+        {
+            MessageBox.Show(this, "Enter a practice idle multiplier between 2 and 60.", "Practice settings", MessageBoxButton.OK, MessageBoxImage.Warning);
+            return;
+        }
+        _sourceSettings.RaceStartShortcut = startKey;
+        _sourceSettings.RaceFalseStartShortcut = falseKey;
+        _sourceSettings.PracticeIdleLapMultiplier = idleMultiple;
 
         _saved = true;
         ThemeService.Apply(SelectedTheme);
