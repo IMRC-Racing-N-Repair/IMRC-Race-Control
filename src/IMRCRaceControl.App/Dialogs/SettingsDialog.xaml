@@ -248,21 +248,33 @@
             </TabItem>
 
 
+            <TabItem Header="KEYBINDS"><ScrollViewer VerticalScrollBarVisibility="Auto"><StackPanel Margin="16">
+                    <TextBlock Text="RACE KEYBINDS" FontSize="20" FontWeight="Bold" Margin="0,0,0,12"/>
+                    <TextBlock Text="Start race" FontWeight="SemiBold"/>
+                    <TextBox x:Name="RaceStartShortcutText" MaxLength="1" Width="100" HorizontalAlignment="Left" Margin="0,4,0,14"/>
+                    <TextBlock Text="False start" FontWeight="SemiBold"/>
+                    <TextBox x:Name="RaceFalseStartShortcutText" MaxLength="1" Width="100" HorizontalAlignment="Left" Margin="0,4,0,14"/>
+                    <TextBlock Text="Use different letters A–Z. Defaults: S to start, F for false start. Shortcuts operate only on the race screen when no text field is being edited." TextWrapping="Wrap" Foreground="{DynamicResource MutedBrush}"/>
+                </StackPanel></ScrollViewer></TabItem>
+
             <TabItem Header="PRACTICE"><ScrollViewer VerticalScrollBarVisibility="Auto"><StackPanel Margin="16"><TextBlock Text="LIVE PRACTICE INFORMATION" FontWeight="Bold" FontSize="20"/><TextBlock Text="Choose the extra statistics shown on active practice cards. Laps, Best and Average remain visible." TextWrapping="Wrap" Margin="0,8,0,12"/><ItemsControl ItemsSource="{Binding PracticeStatOptions}"><ItemsControl.ItemsPanel><ItemsPanelTemplate><WrapPanel/></ItemsPanelTemplate></ItemsControl.ItemsPanel><ItemsControl.ItemTemplate><DataTemplate><CheckBox Content="{Binding Label}" IsChecked="{Binding IsVisible, Mode=TwoWay}" Width="180" Margin="0,4,12,4"/></DataTemplate></ItemsControl.ItemTemplate></ItemsControl><StackPanel Margin="0,20,0,0">
                             <TextBlock Text="PRACTICE CARD BEHAVIOR" FontWeight="Bold" FontSize="16"/>
                             <TextBlock Text="Practice cards fill the screen in a configurable grid. A card appears only after that driver's first detected crossing." Foreground="{DynamicResource MutedBrush}" TextWrapping="Wrap" Margin="0,4,0,10"/>
 
                             <TextBlock Text="Cards per row" FontWeight="SemiBold"/>
                             <ComboBox x:Name="PracticeCardsPerRowCombo" Margin="0,4,0,10"/>
+                            <TextBlock Text="Idle timeout (times average lap)" FontWeight="SemiBold"/>
+                            <TextBox x:Name="PracticeIdleMultiplierText" Width="100" HorizontalAlignment="Left" Margin="0,4,0,4"/>
+                            <TextBlock Text="Practice card clears after this many average laps of inactivity. Range 2–60, default 20." Foreground="{DynamicResource MutedBrush}" TextWrapping="Wrap" Margin="0,0,0,12"/>
 
-                            <TextBlock Text="The Practice screen always reserves at least two rows. With 4 / 5 / 6 cards per row, full-size capacity is 8 / 10 / 12 active racers before the cards begin shrinking." Foreground="{DynamicResource MutedBrush}" TextWrapping="Wrap" Margin="0,0,0,12"/>
+                            <TextBlock Text="Practice cards expand to the available space; extra cards arrange into additional rows." Foreground="{DynamicResource MutedBrush}" TextWrapping="Wrap" Margin="0,0,0,12"/>
 
                             <TextBlock Text="Default live statistics:" FontWeight="SemiBold"/>
                             <TextBlock Text="• Top 2 Consecutive&#10;• Avg Top 5&#10;• Consistency" Foreground="{DynamicResource MutedBrush}" Margin="0,3,0,10"/>
 
                             <TextBlock Text="Lap rows alternate between two subtle shades to make long practice runs easier to read." Foreground="{DynamicResource MutedBrush}" TextWrapping="Wrap" Margin="0,0,0,10"/>
 
-                            <TextBlock Text="A Practice card retires after roughly 10 × that driver's average lap with no new crossing. Up to 36 active cards are displayed; additional active stints remain tracked in the database/session state until a display slot opens. The completed stint is stored in local SQLite." Foreground="{DynamicResource MutedBrush}" TextWrapping="Wrap"/>
+                            <TextBlock Text="A Practice card retires after the configured multiple of that driver's average lap with no new crossing. Up to 36 active cards are displayed; additional active stints remain tracked in the database/session state until a display slot opens. The completed stint is stored in local SQLite." Foreground="{DynamicResource MutedBrush}" TextWrapping="Wrap"/>
                         </StackPanel>
                     </StackPanel></ScrollViewer></TabItem></TabControl>
 
