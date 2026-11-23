@@ -79,8 +79,10 @@ public partial class RoundMainBuilderDialog
     {
         id = e.Data.GetData("IMRC.LineupRace") as string ?? "";
         target = RaceAt(e.OriginalSource);
-        var sourceSession = PreviewSessions.FirstOrDefault(s => s.Id == id);
-        var targetSession = PreviewSessions.FirstOrDefault(s => s.Id == target?.SourceSessionId);
+        var sourceId = id;
+        var targetId = target?.SourceSessionId;
+        var sourceSession = PreviewSessions.FirstOrDefault(s => s.Id == sourceId);
+        var targetSession = PreviewSessions.FirstOrDefault(s => s.Id == targetId);
         return sourceSession is not null && targetSession is not null &&
                RaceLineupOrder.CanMove(sourceSession, targetSession);
     }
