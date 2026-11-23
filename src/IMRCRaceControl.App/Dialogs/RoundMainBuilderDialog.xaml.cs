@@ -2015,6 +2015,11 @@ public partial class RoundMainBuilderDialog : Window
         {
             var first = proposed[i];
             var second = proposed[i + 1];
+            // Two class sessions linked into one combined on-track race are not
+            // consecutive separate races and must not trigger this warning.
+            if (!string.IsNullOrWhiteSpace(first.CombinedRaceId) &&
+                string.Equals(first.CombinedRaceId, second.CombinedRaceId, StringComparison.OrdinalIgnoreCase))
+                continue;
             if (first.ProgressStatus == EventSessionStatus.Completed &&
                 second.ProgressStatus == EventSessionStatus.Completed)
                 continue; // historical results cannot be changed
@@ -2023,7 +2028,7 @@ public partial class RoundMainBuilderDialog : Window
                 .ToDictionary(g => g.Key, g => g.First().DisplayName, StringComparer.OrdinalIgnoreCase);
             foreach (var entrant in second.Entrants.Where(e => firstDrivers.ContainsKey(e.DriverId))
                 .GroupBy(e => e.DriverId, StringComparer.OrdinalIgnoreCase).Select(g => g.First()))
-                conflicts.Add($"{firstDrivers[entrant.DriverId]}  •  {first.Name}  →  {second.Name}");
+                conflicts.Add($"{firstDrivers[entrant.DriverId]}  •  {(first.RaceNumber > 0 ? $"Race {first.RaceNumber}: " : "")}{first.Name}  →  {(second.RaceNumber > 0 ? $"Race {second.RaceNumber}: " : "")}{second.Name}");
         }
         if (conflicts.Count == 0) return true;
 
