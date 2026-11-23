@@ -2472,6 +2472,7 @@ public partial class MainWindow : Window
         for (var targetIndex = 0; targetIndex < rows.Count; targetIndex++)
         {
             var snapshot = rows[targetIndex];
+            snapshot.ShowOverallQualifyingPosition = _loadedSession?.SessionType == SessionType.Qualifying;
             var existing = Standings.FirstOrDefault(r => r.CarNumber == snapshot.CarNumber);
 
             if (existing is null)
@@ -2489,6 +2490,7 @@ public partial class MainWindow : Window
             else
             {
                 existing.CopyTimingFrom(snapshot);
+                existing.ShowOverallQualifyingPosition = snapshot.ShowOverallQualifyingPosition;
                 existing.IsLastPassing = IsPassingHighlightActive(existing.CarNumber, now);
                 existing.IsMinimumLapViolationGlow = IsMinimumLapGlowActive(existing.CarNumber, now);
                 existing.IsCheckedIn = _checkedInCars.Contains(existing.CarNumber);
