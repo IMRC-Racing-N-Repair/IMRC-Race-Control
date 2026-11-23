@@ -114,7 +114,7 @@ public partial class SettingsDialog : Window
         SpectatorNextCheck.IsChecked = settings.SpectatorShowNextUp;
         var spectatorColumns = settings.SpectatorVisibleColumns ?? settings.DashboardVisibleColumns;
         foreach (var id in DashboardColumnCatalog.OptionalColumns.Where(c => c != "MANUAL"))
-            SpectatorColumnChecks.Children.Add(new CheckBox { Content = id, Tag = id, Width = 170, Margin = new Thickness(0,4,0,4), IsChecked = spectatorColumns.Contains(id) });
+            SpectatorColumnChecks.Children.Add(new CheckBox { Content = id == "GAP BEHIND" ? "GAP AHEAD" : id, Tag = id, Width = 170, Margin = new Thickness(0,4,0,4), IsChecked = spectatorColumns.Contains(id) });
         _originalTheme = settings.Theme;
         SelectedTheme = settings.Theme;
         StartTone = settings.StartTone;
@@ -178,7 +178,7 @@ public partial class SettingsDialog : Window
             DashboardColumnOptions.Add(new DashboardColumnOption
             {
                 Id = id,
-                Label = id,
+                Label = id == "GAP BEHIND" ? "GAP AHEAD" : id,
                 IsVisible = visible.Contains(id)
             });
         }
