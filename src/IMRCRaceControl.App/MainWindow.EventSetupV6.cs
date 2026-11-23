@@ -618,7 +618,7 @@ public partial class MainWindow
         var fixedSlots = completed.Select(s => s.QueueOrder).Where(q => q > 0).ToHashSet();
         var availableSlots = _activeEvent.Sessions.Select(s => s.QueueOrder)
             .Where(q => q > 0 && !fixedSlots.Contains(q)).Distinct().OrderBy(q => q).ToList();
-        var nextSlot = Math.Max(0, _activeEvent.Sessions.Max(s => s.QueueOrder)) + 1;
+        var nextSlot = Math.Max(0, _activeEvent.Sessions.Select(s => s.QueueOrder).DefaultIfEmpty(0).Max()) + 1;
         for (var i = 0; i < remaining.Count; i++)
             remaining[i].QueueOrder = i < availableSlots.Count ? availableSlots[i] : nextSlot++;
         RaceLineupOrder.Apply(_activeEvent.Sessions);
@@ -661,7 +661,7 @@ public partial class MainWindow
         var fixedSlots = completed.Select(s => s.QueueOrder).Where(q => q > 0).ToHashSet();
         var availableSlots = _activeEvent.Sessions.Select(s => s.QueueOrder)
             .Where(q => q > 0 && !fixedSlots.Contains(q)).Distinct().OrderBy(q => q).ToList();
-        var nextSlot = Math.Max(0, _activeEvent.Sessions.Max(s => s.QueueOrder)) + 1;
+        var nextSlot = Math.Max(0, _activeEvent.Sessions.Select(s => s.QueueOrder).DefaultIfEmpty(0).Max()) + 1;
         for (var i = 0; i < orderedRemaining.Count; i++)
             orderedRemaining[i].QueueOrder = i < availableSlots.Count ? availableSlots[i] : nextSlot++;
     }
