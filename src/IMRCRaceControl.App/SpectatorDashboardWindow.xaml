@@ -155,7 +155,7 @@
                                             ElementStyle="{StaticResource SpectatorCenteredText}"/>
                         <DataGridTextColumn Header="GAP LEADER" Binding="{Binding GapToLeader}" Width="105"
                                             ElementStyle="{StaticResource SpectatorCenteredText}"/>
-                        <DataGridTextColumn Header="GAP BEHIND" Binding="{Binding GapBehind}" Width="105"
+                        <DataGridTextColumn Header="GAP AHEAD" Binding="{Binding GapBehind}" Width="105"
                                             ElementStyle="{StaticResource SpectatorCenteredText}"/>
                         <DataGridTextColumn Header="TOP 2" Binding="{Binding Top2}" Width="105"
                                             ElementStyle="{StaticResource SpectatorCenteredText}"/>
