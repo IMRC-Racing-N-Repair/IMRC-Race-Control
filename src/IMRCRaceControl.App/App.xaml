@@ -764,6 +764,11 @@
                     <Setter Property="BorderBrush" Value="{DynamicResource DriverCrossingBrush}"/>
                     <Setter Property="BorderThickness" Value="{DynamicResource DriverCrossingThickness}"/>
                 </DataTrigger>
+                <!-- Keep orange until this driver produces the next valid lap. -->
+                <DataTrigger Binding="{Binding IsBreakoutPending}" Value="True">
+                    <Setter Property="BorderBrush" Value="{DynamicResource DashboardMinimumLapGlowBrush}"/>
+                    <Setter Property="BorderThickness" Value="2"/>
+                </DataTrigger>
                 <!-- Breakout has priority over check-in and crossing, including underline mode. -->
                 <DataTrigger Binding="{Binding IsMinimumLapViolationGlow}" Value="True">
                     <Setter Property="BorderBrush" Value="{DynamicResource DashboardMinimumLapGlowBrush}"/>
@@ -819,8 +824,12 @@
             <Border Style="{StaticResource RaceDriverBorderStyle}">
                 <Border Style="{StaticResource ClassDriverAccent}">
                     <StackPanel VerticalAlignment="Center">
-                        <TextBlock Text="{Binding DriverName}" FontWeight="Bold" TextAlignment="Center"
-                                   TextTrimming="CharacterEllipsis" ToolTip="{Binding DriverName}"/>
+                        <TextBlock FontWeight="Bold" FontSize="16" TextAlignment="Center"
+                                   TextTrimming="CharacterEllipsis" ToolTip="{Binding DriverName}">
+                            <Run Text="{Binding DriverName}"/>
+                            <Run Text="{Binding BreakoutCountDisplay}" BaselineAlignment="Superscript"
+                                 FontSize="8" Foreground="{DynamicResource DashboardMinimumLapGlowBrush}"/>
+                        </TextBlock>
                         <TextBlock x:Name="RacePBLine"
                                    Text="{Binding RacePersonalBestText}"
                                    Foreground="{DynamicResource DashboardTextBrush}"
@@ -865,8 +874,8 @@
             <Style.Triggers>
                 <Trigger Property="ItemsControl.AlternationIndex" Value="1"><Setter Property="Background" Value="{DynamicResource DashboardAlternateRowBrush}"/></Trigger>
                 <DataTrigger Binding="{Binding IsFastestLap}" Value="True">
-                    <Setter Property="Background" Value="{DynamicResource DashboardFastestLapHighlightBrush}"/>
-                    <Setter Property="Foreground" Value="{DynamicResource DashboardFastestLapHighlightTextBrush}"/>
+                    <Setter Property="Background" Value="{DynamicResource DashboardNewBestLapHighlightBrush}"/>
+                    <Setter Property="Foreground" Value="{DynamicResource DashboardNewBestLapHighlightTextBrush}"/>
                 </DataTrigger>
                 <MultiDataTrigger><MultiDataTrigger.Conditions>
                     <Condition Binding="{Binding IsFinished}" Value="True"/>
