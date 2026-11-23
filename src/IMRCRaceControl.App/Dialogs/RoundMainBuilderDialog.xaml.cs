@@ -946,7 +946,13 @@ public partial class RoundMainBuilderDialog : Window
                     continue;
 
                 if (CurrentMode == BuildMode.QualifyingRound)
+                {
                     entrants = SortQualifying(cls.Id, entrants, round, CurrentQualSort);
+                    // For ranked/previous-round groups, put slower seeds in earlier heats.
+                    // Random and manual modes retain their explicitly requested order.
+                    if (CurrentQualSort is QualificationOrder.Ranked or QualificationOrder.PreviousRound)
+                        entrants.Reverse();
+                }
                 else
                     entrants = SortForMains(cls.Id, entrants, CurrentMainSort);
 
@@ -954,10 +960,15 @@ public partial class RoundMainBuilderDialog : Window
                 {
                     var target = Math.Clamp(cls.MaxRacersPerHeat, 1, 30);
                     var count = Math.Max(1, (int)Math.Ceiling(entrants.Count / (double)target));
+                    var baseSize = entrants.Count / count;
+                    var extra = entrants.Count % count;
+                    var offset = 0;
 
                     for (var heat = 0; heat < count; heat++)
                     {
-                        var group = entrants.Skip(heat * target).Take(target).Select(CloneEntrant).ToList();
+                        var groupSize = baseSize + (heat < extra ? 1 : 0);
+                        var group = entrants.Skip(offset).Take(groupSize).Select(CloneEntrant).ToList();
+                        offset += groupSize;
                         Renumber(group);
 
                         var plan = new HeatPlan
