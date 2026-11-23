@@ -69,9 +69,6 @@ internal static class CombinedRaceChecks
             Check(group.All(r=>r.Laps==2),"both cars completed two actual scored laps");
         }
         Check(run.Results.Any(r=>r.IsFastestLap),"best valid lap across the combined session highlighted");
-        foreach (var group in Array.Empty<IGrouping<string,StandingRow>>())
-        {
-        }
         CombinedRaces.WriteBack(run);
         Check(a.ProgressStatus==EventSessionStatus.Completed && b.ProgressStatus==EventSessionStatus.Completed,"both saved completed");
         Check(a.Results.Count==2 && b.Results.Count==2 && a.Laps.Count==4 && b.Laps.Count==4,"results split to source heat");
