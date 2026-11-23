@@ -53,6 +53,21 @@ public sealed class PracticeCardViewModel : INotifyPropertyChanged
         set { if (_isSaving == value) return; _isSaving = value; OnPropertyChanged(); }
     }
 
+    private double _idleLapMultiplier = 20.0;
+    public double IdleLapMultiplier
+    {
+        get => _idleLapMultiplier;
+        set
+        {
+            var adjusted = Math.Clamp(value, 2.0, 60.0);
+            if (Math.Abs(_idleLapMultiplier - adjusted) < 0.001) return;
+            _idleLapMultiplier = adjusted;
+            OnPropertyChanged();
+            OnPropertyChanged(nameof(InactivityTimeout));
+            OnPropertyChanged(nameof(InactivityDisplay));
+        }
+    }
+
     public ObservableCollection<PracticeLapEntry> Laps { get; } = new();
     public ObservableCollection<PracticeStatDisplay> VisibleStats { get; } = new();
 
@@ -78,7 +93,7 @@ public sealed class PracticeCardViewModel : INotifyPropertyChanged
             if (Laps.Count == 0)
                 return TimeSpan.FromSeconds(60);
 
-            var seconds = Math.Max(5.0, AverageLap.TotalSeconds * 10.0);
+            var seconds = Math.Max(5.0, AverageLap.TotalSeconds * IdleLapMultiplier);
             return TimeSpan.FromSeconds(seconds);
         }
     }
