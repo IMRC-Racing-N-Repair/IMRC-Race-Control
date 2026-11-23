@@ -831,7 +831,7 @@
                         <TextBlock FontWeight="Bold" FontSize="16" TextAlignment="Center"
                                    TextTrimming="CharacterEllipsis" ToolTip="{Binding DriverName}">
                             <Run Text="{Binding DriverName}"/>
-                            <Run Text="{Binding BreakoutCountDisplay}" BaselineAlignment="Superscript"
+                            <Run Text="{Binding BreakoutCountDisplay, Mode=OneWay}" BaselineAlignment="Superscript"
                                  FontSize="8" Foreground="{DynamicResource DashboardMinimumLapGlowBrush}"/>
                         </TextBlock>
                         <TextBlock x:Name="RacePBLine"
