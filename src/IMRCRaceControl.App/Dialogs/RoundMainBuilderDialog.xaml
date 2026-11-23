@@ -25,7 +25,7 @@
                 </Grid>
             </DockPanel>
             <TextBlock Text="ROUNDS / MAINS LINEUPS" FontSize="23" FontWeight="Bold"/>
-            <TextBlock Text="Filter all saved lineups above. Drag races within the same round to change running order. Use Show round / mains to view one round. Completed races are read-only."
+            <TextBlock Text="Drag the MOVE handle on a heat to change its race order, even before saving. HEAT UP / HEAT DOWN also work. Completed races remain locked."
                        Foreground="{DynamicResource MutedBrush}" Margin="0,2,0,6"/>
         </StackPanel>
 
@@ -169,6 +169,17 @@
                                     </ContextMenu>
                                 </DataGrid.ContextMenu>
                                 <DataGrid.Columns>
+                                    <DataGridTemplateColumn Header="MOVE" Width="48" MinWidth="48">
+                                        <DataGridTemplateColumn.CellTemplate>
+                                            <DataTemplate>
+                                                <TextBlock Text="≡" FontSize="22" FontWeight="Bold"
+                                                           HorizontalAlignment="Center" VerticalAlignment="Center"
+                                                           Foreground="{DynamicResource AccentBrush}"
+                                                           Cursor="SizeAll"
+                                                           ToolTip="Drag this row up or down to reorder the heat"/>
+                                            </DataTemplate>
+                                        </DataGridTemplateColumn.CellTemplate>
+                                    </DataGridTemplateColumn>
                                     <DataGridTextColumn Header="#" Binding="{Binding RaceNumberDisplay}" Width="30" MinWidth="30"/>
                                     <DataGridTemplateColumn Header="CLASS" Width="1.7*" MinWidth="145"><DataGridTemplateColumn.CellTemplate><DataTemplate><TextBlock Text="{Binding ClassDisplay}" TextTrimming="CharacterEllipsis" ToolTip="{Binding ClassName}" VerticalAlignment="Center"/></DataTemplate></DataGridTemplateColumn.CellTemplate></DataGridTemplateColumn>
                                     <DataGridTextColumn Header="SESSION" Binding="{Binding SessionDisplay}" Width="1.35*" MinWidth="120"/>
