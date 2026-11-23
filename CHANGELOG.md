@@ -20,7 +20,7 @@ Keep all release history in this file. Add each new version at the top; do not c
 - Announce lap times by truncating to tenths, never rounding (4.399 speaks as 4.3); update speech regression expectations.
 - Allow uncompleted A/B/C mains to be moved independently across main legs; preserve manual race order and protect completed race data.
 - Prompt operators to check/uncheck and confirm bump-up drivers after a lower-main series ends; no automatic additions without confirmation.
-- Requires Windows UI and timing-decoder regression testing prior to publication.
+- Requires Windows UI, race-director workflow, and timing-decoder regression testing prior to publication. This build is intended as an unpublished testing draft.
 
 ## 0.17.14
 - Refresh live practice driver panels with rounded 12px corners, a subtle dark-blue gradient, a slim cyan header accent, and a soft shadow while preserving large readable lap timing and flat statistics.
