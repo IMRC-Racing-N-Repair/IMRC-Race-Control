@@ -2012,11 +2012,25 @@ public partial class RoundMainBuilderDialog : Window
         if (plan.SessionType == SessionType.Race)
             return Math.Max(1, plan.MainOrder);
 
-        return HeatPlans
+        // Completed heats retain their saved heat numbers and results.
+        var inRound = HeatPlans
             .Where(h => h.ClassId == plan.ClassId && h.Round == plan.Round && h.SessionType == SessionType.Qualifying)
-            .OrderBy(h => h.Order)
-            .ToList()
-            .IndexOf(plan) + 1;
+            .OrderBy(h => h.Order).ToList();
+        var reserved = inRound.Where(h => h.IsLocked)
+            .Select(h => PreviewSessions.FirstOrDefault(s => s.Id == h.SourceSessionId)?.Heat ?? 0)
+            .Where(n => n > 0).ToHashSet();
+        if (plan.IsLocked)
+            return PreviewSessions.FirstOrDefault(s => s.Id == plan.SourceSessionId)?.Heat ?? 1;
+        var availableNumber = 1;
+        foreach (var heat in inRound.Where(h => !h.IsLocked))
+        {
+            while (reserved.Contains(availableNumber))
+                availableNumber++;
+            if (ReferenceEquals(heat, plan))
+                return availableNumber;
+            availableNumber++;
+        }
+        return availableNumber;
     }
 
     private void Cancel_Click(object sender, RoutedEventArgs e) => DialogResult = false;
@@ -2033,12 +2047,12 @@ public partial class RoundMainBuilderDialog : Window
         for (var i = 0; i < qualifying.Count; i++)
         {
             var plan = qualifying[i];
-
+            if (plan.IsLocked) continue;
+            var heatNumber = GetHeatIndex(plan);
             plan.Name = qualifying.Count == 1
                 ? $"{plan.ClassName} Q{plan.Round}"
-                : $"{plan.ClassName} Q{plan.Round} Heat {i + 1}";
-
-            plan.SessionDisplay = $"Q{plan.Round} • Heat {i + 1}/{qualifying.Count}";
+                : $"{plan.ClassName} Q{plan.Round} Heat {heatNumber}";
+            plan.SessionDisplay = $"Q{plan.Round} • Heat {heatNumber}/{qualifying.Count}";
         }
 
         }
