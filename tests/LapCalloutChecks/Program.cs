@@ -126,8 +126,12 @@ var liveEdit = new RaceEngine();
 var liveStart = DateTimeOffset.Parse("2026-10-26T12:00:00Z");
 var liveCars = new[] { new RacerEntry { CarNumber=1,DriverName="One",Enabled=true }, new RacerEntry { CarNumber=2,DriverName="Two",Enabled=true } };
 liveEdit.Start(liveCars,TimeSpan.FromSeconds(10),5,RaceFormat.Timed,TimeSpan.Zero,SessionType.Race,StartStyle.Tone,liveStart);
-liveEdit.RegisterPassing(1,"test",liveStart.AddSeconds(5));
-liveEdit.RegisterPassing(2,"test",liveStart.AddSeconds(6));
+Equal(PassingResultCode.StartCrossing, liveEdit.RegisterPassing(1,"test",liveStart.AddSeconds(5)).Code,
+    "Tone first crossing only starts a lap baseline");
+Equal(PassingResultCode.StartCrossing, liveEdit.RegisterPassing(2,"test",liveStart.AddSeconds(6)).Code,
+    "Second tone driver first crossing is unscored");
+liveEdit.RegisterPassing(1,"test",liveStart.AddSeconds(8));
+liveEdit.RegisterPassing(2,"test",liveStart.AddSeconds(9));
 var liveBefore=JsonSerializer.Serialize(liveEdit.Laps);
 liveEdit.Tick(liveStart.AddSeconds(11));
 Equal(RaceState.TimeExpired,liveEdit.State,"Live edit fixture expired");
@@ -383,6 +387,22 @@ Equal(1, finishEngine.GetStandings(start.AddSeconds(11)).Count(r => r.IsFinished
 Equal(true, finishEngine.RegisterPassing(2, "test", start.AddSeconds(16)).Lap!.Finished, "Later starter finishes after own clock");
 finishEngine.UndoLastPassing(start.AddSeconds(16));
 Equal(false, finishEngine.GetStandings(start.AddSeconds(16)).Single(r => r.CarNumber == 2).IsFinished, "Undo removes completed outline");
+
+// The first physical passing after a tone must never count or become a breakout.
+var toneBaseline = new RaceEngine();
+toneBaseline.Start(racers, TimeSpan.FromMinutes(5), 50, RaceFormat.Timed,
+    TimeSpan.FromSeconds(3), SessionType.Qualifying, StartStyle.Tone, start);
+var baseline = toneBaseline.RegisterPassing(1, "test", start.AddMilliseconds(250));
+Equal(PassingResultCode.StartCrossing, baseline.Code, "Tone first passing is a baseline");
+Equal<LapRecord?>(null, baseline.Lap, "Tone first passing is not a scored lap");
+Equal(0, toneBaseline.Breakouts.Count, "Tone first passing is not a breakout");
+Equal(0, toneBaseline.Laps.Count, "Tone first passing creates no lap");
+var toneLap = toneBaseline.RegisterPassing(1, "test", start.AddMilliseconds(4500));
+Equal(PassingResultCode.LapAccepted, toneLap.Code, "Second passing creates first valid tone lap");
+Equal(TimeSpan.FromMilliseconds(4250), toneLap.Lap!.LapTime, "First tone lap measured crossing to crossing");
+Equal(start, toneBaseline.MasterStartedAt!.Value, "Tone starts master clock immediately");
+toneBaseline.UndoLastPassing(start.AddSeconds(5));
+Equal(0, toneBaseline.Laps.Count, "Undo returns to tone baseline without a phantom lap");
 
 // Master clock starts at START, even when personal scoring waits for a crossing.
 foreach (var style in new[] { StartStyle.Tone, StartStyle.IndividualCrossing, StartStyle.LeaderCrossing })
