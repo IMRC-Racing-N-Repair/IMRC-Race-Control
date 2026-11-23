@@ -730,7 +730,7 @@ var orderM1=new EventSessionDefinition {SessionType=SessionType.Race,MainLeg=1,Q
 var orderM2=new EventSessionDefinition {SessionType=SessionType.Race,MainLeg=2,QueueOrder=6};
 Equal(true,RaceLineupOrder.CanMove(orderA,orderB),"Race ordering within round");
 Equal(false,RaceLineupOrder.CanMove(orderA,orderQ2),"Race ordering cannot cross qualifying round");
-Equal(false,RaceLineupOrder.CanMove(orderM1,orderM2),"Race ordering cannot cross mains round");
+Equal(true,RaceLineupOrder.CanMove(orderM1,orderM2),"Unfinished mains can be reordered independently across main rounds");
 Equal(false,RaceLineupOrder.CanMove(orderA,orderLocked),"Race ordering cannot move completed race");
 orderA.LineupOrder=2;orderB.LineupOrder=1;
 RaceLineupOrder.Apply(new[]{orderA,orderB,orderLocked,orderQ2,orderM1,orderM2});
