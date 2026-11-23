@@ -2,6 +2,21 @@
 
 Keep all release history in this file. Add each new version at the top; do not create version-specific changelog files.
 
+## 0.17.15
+- Generate evenly balanced qualifying heats instead of filling the first heat before the next (12 racers with max 9 become 6/6).
+- Default ranked and previous-round qualifying heats to slower-seeded racers first; mains retain lower-main-first generation.
+- Renumber uncompleted qualifying heats in their displayed order without changing completed heats or their saved heat numbers.
+- Add configurable race START (S) and FALSE START (F) keyboard shortcuts under Settings > Keybinds; ignore typing in input fields and repeat keypresses.
+- Add small orange driver-name breakout counters, a bottom breakout lap notice, and persistent orange driver highlighting until a valid lap is accepted; honor the existing breakout highlight color.
+- Add a configurable Practice idle multiplier (default 20× average lap, range 2–60) to Settings > Practice.
+- Highlight the fastest valid lap across the whole live session in green while preserving the configurable Fastest Lap color.
+- Rename GAP BEHIND to GAP AHEAD and calculate the positive interval to the next car ahead; show a dash for the leader.
+- Show best-of-qualifiers projected overall position in the race POS display while preserving the official per-heat scoring position; include estimated A/B/C Main cutoffs.
+- Announce lap times by truncating to tenths, never rounding (4.399 speaks as 4.3); update speech regression expectations.
+- Allow uncompleted A/B/C mains to be moved independently across main legs; preserve manual race order and protect completed race data.
+- Prompt operators to check/uncheck and confirm bump-up drivers after a lower-main series ends; no automatic additions without confirmation.
+- Requires Windows UI and timing-decoder regression testing prior to publication.
+
 ## 0.17.14
 - Refresh live practice driver panels with rounded 12px corners, a subtle dark-blue gradient, a slim cyan header accent, and a soft shadow while preserving large readable lap timing and flat statistics.
 - Shorten the practice Top 2 Consecutive display label to Top 2 Cons. and align stat values on a common horizontal row without changing saved stat identifiers.
