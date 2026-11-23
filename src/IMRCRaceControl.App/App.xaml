@@ -884,12 +884,24 @@
             </Style.Triggers>
         </Style>
 <DataTemplate x:Key="SharedPracticeCardTemplate">
-                                                <Border Margin="3"
-                                                        Background="{DynamicResource DashboardPanelBrush}"
-                                                        BorderBrush="{DynamicResource BorderStrongBrush}"
-                                                        BorderThickness="0,0,0,1"
-                                                        CornerRadius="0"
-                                                        Padding="6">
+                                                <Border Margin="5" BorderThickness="1" CornerRadius="12" Padding="9" SnapsToDevicePixels="True">
+                                                    <Border.Background>
+                                                        <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+                                                            <GradientStop Color="#203749" Offset="0"/>
+                                                            <GradientStop Color="#172735" Offset="0.46"/>
+                                                            <GradientStop Color="#101C29" Offset="1"/>
+                                                        </LinearGradientBrush>
+                                                    </Border.Background>
+                                                    <Border.BorderBrush>
+                                                        <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+                                                            <GradientStop Color="#4C7B9E" Offset="0"/>
+                                                            <GradientStop Color="#24445B" Offset="0.7"/>
+                                                            <GradientStop Color="#416480" Offset="1"/>
+                                                        </LinearGradientBrush>
+                                                    </Border.BorderBrush>
+                                                    <Border.Effect>
+                                                        <DropShadowEffect Color="#000000" BlurRadius="12" ShadowDepth="3" Opacity="0.38"/>
+                                                    </Border.Effect>
                                                     <!--
                                                         The card uses a fixed design surface and a Viewbox.
                                                         With two rows it renders at normal spectator size.
@@ -901,7 +913,7 @@
                                                              StretchDirection="Both"
                                                              HorizontalAlignment="Stretch"
                                                              VerticalAlignment="Stretch">
-                                                        <Grid Width="360" Height="270" Margin="0">
+                                                        <Grid Width="360" Height="270" Margin="0" TextElement.Foreground="{DynamicResource DashboardTextBrush}">
                                                             <Grid.RowDefinitions>
                                                                 <RowDefinition Height="50"/>
                                                                 <RowDefinition Height="52"/>
@@ -910,15 +922,19 @@
                                                                 <RowDefinition Height="20"/>
                                                             </Grid.RowDefinitions>
 
+                                                            <!-- Subtle accent band: the name and lap count sit on one open header, not nested cards. -->
+                                                            <Border Grid.Row="0" CornerRadius="6" Background="#19374C" Margin="0,0,0,5"/>
+                                                            <Border Grid.Row="0" HorizontalAlignment="Left" Width="4" Background="#37B5F1" CornerRadius="2" Margin="0,4,0,9"/>
+
                                                             <!-- Driver -->
-                                                            <Grid>
+                                                            <Grid Margin="10,0,8,5">
                                                                 <Grid.ColumnDefinitions>
                                                                     <ColumnDefinition Width="*"/>
                                                                     <ColumnDefinition Width="Auto"/>
                                                                 </Grid.ColumnDefinitions>
 
                                                                 <StackPanel VerticalAlignment="Center">
-                                                                    <Border Style="{StaticResource DriverCrossingBorderStyle}" Padding="4,1"><TextBlock Text="{Binding DriverName}"
+                                                                    <Border Style="{StaticResource DriverCrossingBorderStyle}" Padding="3,1"><TextBlock Text="{Binding DriverName}"
                                                                                FontSize="24"
                                                                                FontWeight="Bold"
                                                                                TextTrimming="CharacterEllipsis"
@@ -934,7 +950,7 @@
                                                             </Grid>
 
                                                             <!-- Primary timing -->
-                                                            <UniformGrid Grid.Row="1" Columns="3">
+                                                            <UniformGrid Grid.Row="1" Columns="3" Margin="0,1,0,1">
                                                                 <StackPanel Margin="2" VerticalAlignment="Center">
                                                                     <TextBlock Text="LAST"
                                                                                TextAlignment="Center"
