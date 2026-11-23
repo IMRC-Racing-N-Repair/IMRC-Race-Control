@@ -61,7 +61,7 @@ public partial class RoundMainBuilderDialog : Window
         public bool IsLocked { get; init; }
         public string EditStatus => IsLocked ? "READ ONLY — Restart this race on the dashboard to change its lineup." : "EDITABLE";
         public string StatusDisplay { get; init; } = "PLANNED";
-        public string RoundGroup => SessionType == SessionType.Qualifying ? $"QUALIFYING ROUND {Round}" : $"MAINS • ROUND {MainLeg}";
+        public string RoundGroup => SessionType == SessionType.Qualifying ? $"QUALIFYING ROUND {Round}" : "MAINS";
         public int Order { get; set; }
         public int RaceNumber { get; set; }
         [System.Text.Json.Serialization.JsonIgnore]
