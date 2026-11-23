@@ -404,6 +404,35 @@ Equal(start, toneBaseline.MasterStartedAt!.Value, "Tone starts master clock imme
 toneBaseline.UndoLastPassing(start.AddSeconds(5));
 Equal(0, toneBaseline.Laps.Count, "Undo returns to tone baseline without a phantom lap");
 
+// Back-to-back warning operates on physical races, not nested combined class rows.
+var combinedOne = new EventSessionDefinition
+{
+    Id = "combined-first", Name = "Class A Q1", CombinedRaceId = "race-combined",
+    Entrants = [new SessionEntrant { DriverId = "driver-a", DriverName = "Driver A" }]
+};
+var combinedTwo = new EventSessionDefinition
+{
+    Id = "combined-second", Name = "Class B Q1", CombinedRaceId = "race-combined",
+    Entrants = [new SessionEntrant { DriverId = "driver-b", DriverName = "Driver B" }]
+};
+var nextHeat = new EventSessionDefinition
+{
+    Id = "next-heat", Name = "Class C Q1",
+    Entrants = [new SessionEntrant { DriverId = "driver-a", DriverName = "Driver A" }]
+};
+var combinedWarnings = ConsecutiveRaceDetector.Find([combinedOne, combinedTwo, nextHeat]);
+Equal(1, combinedWarnings.Count, "Warn when a racer in any combined class runs the next race");
+Equal("driver-a", combinedWarnings[0].DriverId, "Combined warning identifies correct driver");
+Equal(true, combinedWarnings[0].FirstRace.Contains("Class A Q1") &&
+    combinedWarnings[0].FirstRace.Contains("Class B Q1"), "Warning describes combined class races");
+Equal(0, ConsecutiveRaceDetector.Find([combinedOne, combinedTwo]).Count,
+    "Combined class rows are one physical race and do not warn each other");
+combinedOne.ProgressStatus = EventSessionStatus.Completed;
+combinedTwo.ProgressStatus = EventSessionStatus.Completed;
+nextHeat.ProgressStatus = EventSessionStatus.Completed;
+Equal(0, ConsecutiveRaceDetector.Find([combinedOne, combinedTwo, nextHeat]).Count,
+    "Completed historical pairs do not trigger a new warning");
+
 // Master clock starts at START, even when personal scoring waits for a crossing.
 foreach (var style in new[] { StartStyle.Tone, StartStyle.IndividualCrossing, StartStyle.LeaderCrossing })
 {
