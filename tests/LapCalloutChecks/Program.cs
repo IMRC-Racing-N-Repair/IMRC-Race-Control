@@ -327,10 +327,11 @@ Equal(false, audio.Advance(90, 180, false, 0, 50, toneRoundTrip).Contains("halfw
 
 TimeSpan Lap(decimal seconds) => TimeSpan.FromTicks((long)(seconds * TimeSpan.TicksPerSecond));
 foreach (var (seconds, full, digit) in new (decimal, string, string)[] {
-    (4.339m, "4 3", "3"), (15.444m, "15 4", "4"), (4.297m, "4 3", "3"),
+    (4.339m, "4 3", "3"), (15.444m, "15 4", "4"), (4.297m, "4 2", "2"),
     (5.0m, "5 0", "0"), (5.1m, "5 1", "1"), (4.2899999m, "4 2", "2"),
-    (4.290m, "4 3", "3"), (4.350m, "4 3", "3"), (4.389m, "4 3", "3"),
-    (4.390m, "4 4", "4"), (4.990m, "5 0", "0"), (59.999m, "60 0", "0"),
+    (4.290m, "4 2", "2"), (4.350m, "4 3", "3"), (4.389m, "4 3", "3"),
+    (4.390m, "4 3", "3"), (4.399m, "4 3", "3"),
+    (4.990m, "4 9", "9"), (59.999m, "59 9", "9"),
     (0m, "", ""), (-1m, "", "") })
 {
     Equal(full, LapAnnouncementFormatter.Format(Lap(seconds), false), $"Full {seconds}");
