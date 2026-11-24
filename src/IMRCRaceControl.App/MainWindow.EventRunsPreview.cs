@@ -42,7 +42,7 @@ public partial class MainWindow
         try
         {
             preview.Show();
-            preview.Dispatcher.Invoke(()=>{},System.Windows.Threading.DispatcherPriority.ApplicationIdle);
+            preview.Dispatcher.Invoke(()=>{},System.Windows.Threading.DispatcherPriority.Loaded);
             foreach(var property in new[]{nameof(EventRunRow.RaceNumber),nameof(EventRunRow.RacerCount),nameof(EventRunRow.ClassDisplay)})
             {
                 main._eventSessionSortProperty=property;

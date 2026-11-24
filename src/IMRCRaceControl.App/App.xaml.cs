@@ -35,7 +35,7 @@ public partial class App : Application
         {
             // Let WPF finish startup before any smoke check pumps dispatcher
             // events. Never enter the operator startup path in preview mode.
-            Dispatcher.BeginInvoke(DispatcherPriority.Normal, new Action(() =>
+            _ = Dispatcher.BeginInvoke(DispatcherPriority.Normal, new Action(() =>
             {
                 try { preview(); Shutdown(0); }
                 catch (Exception ex)

@@ -91,6 +91,10 @@ public partial class RoundMainBuilderDialog
 {
     internal static void ExportOverviewPreview(string output)
     {
+        void Stage(string name) => System.IO.File.AppendAllText(
+            System.IO.Path.Combine(output, "RentalPreviewProgress.txt"),
+            $"{DateTimeOffset.UtcNow:O} | LINEUP-{name}{Environment.NewLine}");
+        Stage("CONSTRUCT-SAVED");
         var classes=new[]{new ClassDefinition {Name="Slash Pro Stock"},new ClassDefinition {Name="25.5 Foam Tire Truck"}};
         var ev=new RaceDayEventDefinition {Name="Lineup editing checks",ClassIds=classes.Select(c=>c.Id).ToList()};
         foreach(var cls in classes)
@@ -100,6 +104,7 @@ public partial class RoundMainBuilderDialog
         ev.Sessions[0].ProgressStatus=EventSessionStatus.Completed;
         var originalCompleted=System.Text.Json.JsonSerializer.Serialize(ev.Sessions[0]);
         var dialog=new RoundMainBuilderDialog(ev,classes,[]);dialog.Show();dialog.UpdateLayout();
+        Stage("SAVED-SHOWN");
         dialog.Dispatcher.Invoke(()=>{},System.Windows.Threading.DispatcherPriority.Loaded);
         if(dialog.HeatGrid.Items.Count!=6)throw new InvalidOperationException("Saved lineup overview did not show all six races.");
         var first=dialog.HeatGrid.Items.Cast<HeatPlan>().First();var label=first.SessionDisplay;dialog.HeatGrid.SelectedItem=first;
@@ -111,14 +116,19 @@ public partial class RoundMainBuilderDialog
         var other=dialog.HeatGrid.Items.Cast<HeatPlan>().First(h=>h.ClassId==classes[1].Id && h.Round==2);dialog.HeatGrid.SelectedItem=other;
         if(dialog.HeatGrid.Items.Count!=6 || dialog.HeatPlans.Count!=1 || dialog.HeatPlans[0].Round!=2)throw new InvalidOperationException("Changing class/round hid the lineup.");
         if(dialog.EntrantGrid.Items.Count!=1 || !dialog.RosterEditActions.IsEnabled)throw new InvalidOperationException("Unrun race selection did not display editable drivers immediately.");
+        Stage("ADD-EMPTY-HEAT");
         dialog.AddHeat_Click(dialog,new RoutedEventArgs());
         if(dialog.HeatGrid.Items.Count!=7 || dialog.HeatPlans.Count!=2 || dialog.HeatPlans.Any(h=>h.ClassId!=classes[1].Id || h.Round!=2))throw new InvalidOperationException("Add heat used the wrong class/round.");
+        Stage("REMOVE-EMPTY-HEAT");
+        if (dialog.HeatGrid.SelectedItem is not HeatPlan empty || empty.Entrants.Count != 0)
+            throw new InvalidOperationException("Adding an empty heat did not select that heat for removal.");
         dialog.RemoveHeat_Click(dialog,new RoutedEventArgs());
         if(dialog.HeatGrid.Items.Count!=6 || ev.Sessions.Count!=6 || dialog.HeatPlans.Any(h=>h.ClassId!=classes[1].Id || h.Round!=2))throw new InvalidOperationException("Removing preview heat changed saved sessions or overview.");
         if(System.Text.Json.JsonSerializer.Serialize(ev.Sessions[0])!=originalCompleted)throw new InvalidOperationException("Browsing changed completed race data.");
         var dragSource=ev.Sessions.First(s=>s.ClassId==classes[1].Id && s.Round==1);
         var dragTarget=ev.Sessions.First(s=>s.ClassId==classes[0].Id && s.Round==1 && s.ProgressStatus==EventSessionStatus.Planned);
         var savedQueue=ev.Sessions.ToDictionary(s=>s.Id,s=>s.QueueOrder);
+        Stage("STAGE-RACE-ORDER");
         dialog.StageRaceMove(dragSource.Id,dragTarget.Id);
         if(!dialog.SaveButton.IsEnabled || dialog.PendingRaceOrder.Count==0 || ev.Sessions.Any(s=>s.QueueOrder!=savedQueue[s.Id]))throw new InvalidOperationException("Drag did not stage race order without modifying saved races.");
         if(System.Text.Json.JsonSerializer.Serialize(ev.Sessions[0])!=originalCompleted)throw new InvalidOperationException("Drag changed completed race.");
@@ -133,6 +143,7 @@ public partial class RoundMainBuilderDialog
         dialog._pendingRaceOrder.Clear();
         dialog._lineupSnapshot=null;
         dialog.SavedRoundFilter.SelectedIndex=0;
+        Stage("DRIVER-DRAG");
         dialog.OpenSavedLineup(ev.Sessions.First(s=>s.ClassId==classes[1].Id && s.Round==1).Id);
         var driverSource=dialog.HeatPlans.First();var driverTarget=dialog.HeatPlans.Last();var driver=driverSource.Entrants.Single();
         var originalEvent=System.Text.Json.JsonSerializer.Serialize(ev);
@@ -166,14 +177,19 @@ public partial class RoundMainBuilderDialog
         if(!dialog.SaveButton.IsEnabled || dialog._stagedLineups.Count!=2)throw new InvalidOperationException("A round filter discarded pending changes or disabled Save.");
         dialog.OpenSavedLineup(firstEditedId);
         if(dialog.HeatPlans.Single(h=>h.SourceSessionId==firstEditedId).Entrants[0].DriverName!="First draft edit")throw new InvalidOperationException("Reopening a scope did not restore its draft.");
+        Stage("SAVE-BATCH");
         dialog.PrepareSaveBatch();
         if(dialog.OrderOnlySave || !dialog.BuiltSessions.Any(s=>s.Id==firstEditedId && s.Entrants[0].DriverName=="First draft edit") ||
             !dialog.BuiltSessions.Any(s=>s.Id==secondEditedId && s.Entrants[0].DriverName=="Second draft edit"))throw new InvalidOperationException("One Save did not include both edited scopes.");
         if(System.Text.Json.JsonSerializer.Serialize(ev)!=originalEvent)throw new InvalidOperationException("Staging scopes changed the saved event before Save.");
-        dialog._stagedLineups.Clear();dialog._lineupSnapshot=null;dialog.Close();
+        Stage("CLOSE-SAVED");
+        dialog._stagedLineups.Clear();dialog._lineupSnapshot=null;
+        dialog.SuppressAutomatedPreviewPrompts = true;
+        dialog.Close();
         System.IO.File.WriteAllText(System.IO.Path.Combine(output,"Lineup-Draft-Checks.txt"),"PASS: switch class/round/filter without saving, restore prior edits, collect both scopes in one save and preserve the original event before save.");
         var combinedEvent=CombinedRaces.Clone(ev);
         foreach(var saved in combinedEvent.Sessions)saved.ProgressStatus=EventSessionStatus.Planned;
+        Stage("CONSTRUCT-COMBINED");
         var combinedDialog=new RoundMainBuilderDialog(combinedEvent,classes,[]);combinedDialog.Show();combinedDialog.UpdateLayout();
         var members=combinedEvent.Sessions.Where(s=>s.Round==2).ToList();
         var beforeCombine=System.Text.Json.JsonSerializer.Serialize(combinedEvent);
@@ -206,16 +222,24 @@ public partial class RoundMainBuilderDialog
             scheduledMembers[i].CombinedRaceOrder=i;
             scheduledMembers[i].ProgressStatus=EventSessionStatus.Loaded;
         }
+        Stage("EVENT-RUNS-PREVIEW");
         MainWindow.ExportEventRunsPreview(output,scheduleFixture);
+        Stage("SEPARATE-COMBINED");
         combinedDialog.SeparateCombined_Click(combinedDialog,new RoutedEventArgs());
         if(combinedDialog.HeatGrid.Items.Count!=6 || combinedDialog.HeatGrid.Items.Cast<HeatPlan>().Any(h=>h.IsCombinedHeader || h.IsCombinedChild))throw new InvalidOperationException("Separate did not restore independent race rows.");
-        combinedDialog._pendingCombinedRaces.Clear();combinedDialog._lineupSnapshot=null;combinedDialog.Close();
+        Stage("CLOSE-COMBINED");
+        combinedDialog._pendingCombinedRaces.Clear();combinedDialog._lineupSnapshot=null;
+        combinedDialog.SuppressAutomatedPreviewPrompts = true;
+        combinedDialog.Close();
         System.IO.File.WriteAllText(System.IO.Path.Combine(output,"Combined-Lineup-Checks.txt"),"PASS: combined header, indented children, partner visible when selecting a child, individual roster, staged metadata, separation, no event mutation before Save.");
         System.IO.File.WriteAllText(System.IO.Path.Combine(output,"Driver-Drag-Checks.txt"),"PASS: shared button/drop movement, renumbering, cancelled/self/wrong-class/completed/full/duplicate driver/duplicate transponder drops leave lineups intact; saved event unchanged before Save.");
         System.IO.File.WriteAllText(System.IO.Path.Combine(output,"Race-Order-Checks.txt"),"PASS: drag stages order, saved event unchanged before Save, completed race protected, round headers present, specific round filter works.");
         System.IO.File.WriteAllText(System.IO.Path.Combine(output,"Unified-Lineup-Checks.txt"),"PASS: one visible race list; stable Q1 Heat labels; completed and unrun rosters display on first selection; completed edit/remove/add/reorder controls disabled; saved completed data unchanged.");
+        Stage("EMPTY-CLASS-RACE");
         CheckEmptyClassRace(output, ev, classes);
+        Stage("DRAFT-HEAT-DRAG");
         CheckDraftHeatReordering(output);
+        Stage("ALL-CHECKS-PASSED");
         System.IO.File.WriteAllText(System.IO.Path.Combine(output,"Lineup-Overview-Checks.txt"),"PASS: all classes/rounds remain visible while selecting, editing, adding and removing a heat; source sessions unchanged before saving.");
     }
 
@@ -304,6 +328,7 @@ public partial class RoundMainBuilderDialog
         dialog._stagedLineups.Clear();
         dialog._pendingRaceOrder.Clear();
         dialog._lineupSnapshot = null;
+        dialog.SuppressAutomatedPreviewPrompts = true;
         dialog.Close();
 
         var reopened = new RoundMainBuilderDialog(ev, available, [], editSessionId: race.Id);
@@ -318,6 +343,7 @@ public partial class RoundMainBuilderDialog
             throw new InvalidOperationException("A driver added later did not stay in the reserved race.");
         reopened._stagedLineups.Clear();
         reopened._lineupSnapshot = null;
+        reopened.SuppressAutomatedPreviewPrompts = true;
         reopened.Close();
         System.IO.File.WriteAllText(System.IO.Path.Combine(output, "Empty-Class-Race-Checks.txt"),
             "PASS: blank and race context menus, unavailable duplicate classes, staged empty race, class check-in on Save, reopening and adding a driver.");

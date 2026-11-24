@@ -211,7 +211,11 @@ public partial class RoundMainBuilderDialog : Window
             else
             {
                 ShowSavedLineups();
-                if (_raceEvent.ClassIds.Count > 0) Dispatcher.BeginInvoke(new Action(OpenCompactGenerator));
+                if (_raceEvent.ClassIds.Count > 0)
+                    Dispatcher.BeginInvoke(new Action(() =>
+                    {
+                        if (!SuppressAutomatedPreviewPrompts && IsVisible) OpenCompactGenerator();
+                    }));
             }
         };
     }

@@ -40,7 +40,7 @@ public partial class SpectatorDashboardWindow
         try
         {
             screen.Show();
-            screen.Dispatcher.Invoke(()=>{},System.Windows.Threading.DispatcherPriority.ApplicationIdle);
+            screen.Dispatcher.Invoke(()=>{},System.Windows.Threading.DispatcherPriority.Loaded);
             screen.UpdateLayout();
             static IEnumerable<DependencyObject> Descendants(DependencyObject parent)
             {
