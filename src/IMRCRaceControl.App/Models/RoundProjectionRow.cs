@@ -12,6 +12,7 @@ public sealed class RoundProjectionRow : INotifyPropertyChanged
     private string _paceFinish = "—";
     private string _movementState = string.Empty;
     private string _movementDisplay = "—";
+    private string _paceGapDisplay = "—";
     private bool _isCurrentHeat;
 
     public string Key { get; init; } = string.Empty;
@@ -61,13 +62,34 @@ public sealed class RoundProjectionRow : INotifyPropertyChanged
     public string MovementState
     {
         get => _movementState;
-        set => Set(ref _movementState, value ?? string.Empty);
+        set { Set(ref _movementState, value ?? string.Empty); OnPropertyChanged(nameof(MovementBadge)); }
     }
 
     public string MovementDisplay
     {
         get => _movementDisplay;
-        set => Set(ref _movementDisplay, value ?? "—");
+        set { Set(ref _movementDisplay, value ?? "—"); OnPropertyChanged(nameof(MovementBadge)); }
+    }
+
+    // A concise rank-change superscript beside the driver's name.
+    public string MovementBadge => MovementState switch
+    {
+        "UP" when TryGetMovement(out var count) => $"+{count}",
+        "DOWN" when TryGetMovement(out var count) => $"-{count}",
+        _ => string.Empty
+    };
+
+    private bool TryGetMovement(out int count)
+    {
+        var tokens = MovementDisplay.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        count = tokens.Length == 2 && int.TryParse(tokens[1], out var value) ? value : 0;
+        return count > 0;
+    }
+
+    public string PaceGapDisplay
+    {
+        get => _paceGapDisplay;
+        set => Set(ref _paceGapDisplay, value ?? "—");
     }
 
     public bool IsCurrentHeat
@@ -85,6 +107,7 @@ public sealed class RoundProjectionRow : INotifyPropertyChanged
         PaceFinish = source.PaceFinish;
         MovementState = source.MovementState;
         MovementDisplay = source.MovementDisplay;
+        PaceGapDisplay = source.PaceGapDisplay;
         IsCurrentHeat = source.IsCurrentHeat;
     }
 
