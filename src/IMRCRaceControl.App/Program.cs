@@ -13,6 +13,12 @@ internal static class Program
             return;
         }
         var app = new App();
+        if (args.Length == 2 && (args[0] == "--export-brand" || args[0] == "--export-rentals"))
+        {
+            System.IO.Directory.CreateDirectory(args[1]);
+            app.PreviewErrorFile = System.IO.Path.Combine(args[1], args[0] == "--export-rentals"
+                ? "Transponder-UI-Error.txt" : "Brand-UI-Error.txt");
+        }
         app.InitializeComponent();
         if (args.Length == 2 && args[0] == "--export-brand")
         {

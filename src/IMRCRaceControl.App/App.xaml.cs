@@ -6,6 +6,9 @@ namespace IMRCRaceControl;
 
 public partial class App : Application
 {
+    // Only set by explicit command-line smoke previews; normal operators retain the error dialog.
+    internal string? PreviewErrorFile { get; set; }
+
     public App()
     {
         // Implicit styles use the exact runtime type. Dialog subclasses of Window
@@ -66,7 +69,7 @@ public partial class App : Application
             ThemeService.Apply(settings.Theme);
             ThemeService.ApplyDashboard(settings);
             // Render a loading screen before the synchronous dashboard construction.
-            splash.SetStatus("Preparing dashboard…");
+            splash?.SetStatus("Preparing dashboard…");
             await Dispatcher.InvokeAsync(() => { }, DispatcherPriority.ContextIdle);
             var window = new MainWindow(settings, settingsService, database, startupWarning);
             MainWindow = window;
@@ -85,10 +88,18 @@ public partial class App : Application
         }
     }
 
-    private static void App_DispatcherUnhandledException(
+    private void App_DispatcherUnhandledException(
         object sender,
         DispatcherUnhandledExceptionEventArgs e)
     {
+        if (PreviewErrorFile is { } previewErrorFile)
+        {
+            // A modal error dialog cannot be dismissed by an unattended build runner.
+            // Fail the smoke check with the actual exception rather than hiding it or passing.
+            try { File.WriteAllText(previewErrorFile, e.Exception.ToString()); }
+            finally { Environment.Exit(1); }
+            return;
+        }
         var path = AppCrashLogger.Log("Unhandled WPF UI exception", e.Exception);
 
         MessageBox.Show(

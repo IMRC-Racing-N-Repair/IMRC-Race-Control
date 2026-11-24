@@ -530,7 +530,7 @@
                                                 </DataGrid.RowStyle>
                                                 <DataGrid.GroupStyle><StaticResource ResourceKey="RaceClassGroupStyle"/></DataGrid.GroupStyle>
                                                 <DataGrid.Columns>
-                                                    <DataGridTextColumn Header="POS" Binding="{Binding ProjectedPositionDisplay}"
+                                                    <DataGridTextColumn Header="POS" Binding="{Binding ProjectedPositionDisplay, Mode=OneWay}"
                                                                         ElementStyle="{StaticResource DashboardCenteredCellTextStyle}" Width="40"/>
 
                                                     <DataGridTemplateColumn Header="DRIVER" Width="*">
@@ -549,7 +549,7 @@
                                                                                        FontWeight="SemiBold"/>
                                                                         </Border>
                                                                         <TextBlock x:Name="MovementBadgeText"
-                                                                                   Text="{Binding MovementBadge}"
+                                                                                   Text="{Binding MovementBadge, Mode=OneWay}"
                                                                                    FontSize="9" FontWeight="Bold"
                                                                                    HorizontalAlignment="Right" VerticalAlignment="Top"
                                                                                    Margin="0,-5,-2,0"

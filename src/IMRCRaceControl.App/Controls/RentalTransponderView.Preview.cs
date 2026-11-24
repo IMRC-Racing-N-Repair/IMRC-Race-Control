@@ -21,9 +21,13 @@ public partial class RentalTransponderView
         // Exercise the actual shared dashboard/pop-out style, not a copied precedence rule.
         var highlightRow=new StandingRow { DriverName="BREAKOUT PRIORITY",IsCheckedIn=false,IsLastPassing=true,IsMinimumLapViolationGlow=true };
         var highlightBorder=new System.Windows.Controls.Border { DataContext=highlightRow,Style=(Style)Application.Current.FindResource("RaceDriverBorderStyle"),Child=new System.Windows.Controls.TextBlock {Text=highlightRow.DriverName,FontSize=22,Foreground=Brushes.White} };
-        var highlightWindow=new Window {Width=500,Height=160,Background=Brushes.Black,Content=highlightBorder};highlightWindow.Show();
+        var highlightWindow=new Window {Width=500,Height=160,Background=Brushes.Black,Content=highlightBorder};
+        Stage("BREAKOUT-WINDOW-SHOW");
+        highlightWindow.Show();
+        Stage("BREAKOUT-WINDOW-SHOWN");
         foreach(var color in new[]{Colors.Orange,Colors.Magenta})
         {
+            Stage($"BREAKOUT-COLOR-{color}");
             highlightWindow.Resources["DashboardMinimumLapGlowBrush"]=new SolidColorBrush(color);
             highlightWindow.Resources["DriverCrossingBrush"]=Brushes.Lime;
             highlightWindow.Resources["DriverCrossingThickness"]=new Thickness(0,0,0,3);
@@ -36,8 +40,10 @@ public partial class RentalTransponderView
         highlightWindow.Close();
         File.WriteAllText(Path.Combine(output,"Breakout-Highlight-Checks.txt"),"PASS: breakout overrides simultaneous crossing/check-in; configured colors update; underline crossing resumes after breakout expires.");
 
+        Stage("BREAKOUT-HIGHLIGHT-DONE");
         foreach (var theme in Enum.GetValues<AppTheme>())
         {
+            Stage($"RENTAL-{theme}-BEGIN");
             ThemeService.Apply(theme);
             var settings = new AppSettings();
             var driver = new DriverProfile { FirstName = "Alex", LastName = "Rivera" };
@@ -64,9 +70,12 @@ public partial class RentalTransponderView
             var view = new RentalTransponderView();
             view.Configure(settings, decoded, settings.Events, (change, _) => { change(); return Task.CompletedTask; }, settings.Events.Last().Id);
             var window = new Window { Title = "Transponder", Width = 1280, Height = 780, Content = view, WindowStartupLocation = WindowStartupLocation.CenterScreen };
+            Stage($"RENTAL-{theme}-SHOW");
             window.Show(); window.UpdateLayout();
+            Stage($"RENTAL-{theme}-SHOWN");
             window.Dispatcher.Invoke(() => { }, System.Windows.Threading.DispatcherPriority.ApplicationIdle);
             // Exercise the same add/error handlers used by typing and decoder drops.
+            Stage($"RENTAL-{theme}-ADD-REMOVE");
             view.NumberInput.Text = "001000001"; view.AddClicked(view, new RoutedEventArgs());
             if (!view.StatusText.Text.Contains("already", StringComparison.OrdinalIgnoreCase) || settings.RentalTransponders.Inventory.Count != 3)
                 throw new InvalidDataException("Rental duplicate validation did not surface in the page.");
@@ -85,11 +94,13 @@ public partial class RentalTransponderView
             window.UpdateLayout();
             if (view.InventoryGrid.Columns[1].ActualWidth < 140 || view.HistoryGrid.Columns[1].ActualWidth < 90 || view.DecoderGrid.Columns[0].ActualWidth < 90)
                 throw new InvalidDataException("Transponder columns are too narrow to read.");
+            Stage($"RENTAL-{theme}-RENDER");
             var image = new RenderTargetBitmap((int)Math.Ceiling(view.ActualWidth), (int)Math.Ceiling(view.ActualHeight), 96, 96, PixelFormats.Pbgra32);
             image.Render(view);
             var encoder = new PngBitmapEncoder(); encoder.Frames.Add(BitmapFrame.Create(image));
             using (var file = File.Create(Path.Combine(output, $"Transponder-{theme}.png"))) encoder.Save(file);
             window.Close();
+            Stage($"RENTAL-{theme}-DONE");
         }
         Stage("RENTAL-VIEWS-DONE");
         var printSettings = new AppSettings();

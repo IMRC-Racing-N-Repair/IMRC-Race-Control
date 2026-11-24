@@ -18,7 +18,7 @@ Checked @('run','--project','tests/LapCalloutChecks/LapCalloutChecks.csproj','-c
 Checked @('run','--project','tests/LapCalloutChecks/LapCalloutChecks.csproj','-c','Release','--','--livetime-import-only')
 Checked @('tool','restore')
 # Clean generated payloads so a release never includes stale files.
-Remove-Item 'artifacts/publish','artifacts/releases' -Recurse -Force -ErrorAction SilentlyContinue
+Remove-Item 'artifacts/publish','artifacts/releases','artifacts/branding' -Recurse -Force -ErrorAction SilentlyContinue
 Checked (@('publish',$project,'-c','Release','-r','win-x64','--self-contained','true','-o','artifacts/publish',"-p:UpdateRepository=$Repository",'-p:PublishSingleFile=false') + $liveTimeArgs)
 # Keep Windows UI smoke previews from leaving unattended modal dialogs
 # running indefinitely. A hang must fail explicitly with a useful step name.
@@ -37,7 +37,11 @@ function Invoke-Preview([string]$Executable, [string[]]$Arguments, [string]$Labe
 $branding = Join-Path (Get-Location) 'artifacts/branding'
 $appExe = Join-Path (Get-Location) 'artifacts/publish/IMRCRaceControl.exe'
 $brandExit = Invoke-Preview $appExe @('--export-brand',"`"$branding`"") 'Brand and lineup UI checks'
-if ($brandExit -ne 0) { throw "Brand asset rendering failed (exit $brandExit)" }
+if ($brandExit -ne 0) {
+    $details = Join-Path $branding "Brand-UI-Error.txt"
+    if (Test-Path $details) { Get-Content $details | Write-Host }
+    throw "Brand asset rendering failed (exit $brandExit)"
+}
 try {
     $rentalExit = Invoke-Preview $appExe @('--export-rentals',"`"$branding`"") 'Rental UI checks'
 }

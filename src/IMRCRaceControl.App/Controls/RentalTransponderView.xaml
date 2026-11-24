@@ -28,7 +28,7 @@
     <TextBlock Text="Decoder" FontSize="25" FontWeight="SemiBold"/>
     <TextBlock Grid.Row="1" Text="Live crossings • drag a number to rentals, or double-click it to fill the number box." TextWrapping="Wrap" Foreground="{DynamicResource MutedBrush}" Margin="0,8,0,12"/>
     <DataGrid x:Name="DecoderGrid" Grid.Row="2" AutoGenerateColumns="False" IsReadOnly="True" CanUserAddRows="False" SelectionMode="Single" PreviewMouseLeftButtonDown="DecoderMouseDown" PreviewMouseMove="DecoderMouseMove" MouseDoubleClick="DecoderDoubleClick" EnableRowVirtualization="True">
-     <DataGrid.Columns><DataGridTextColumn Header="Transponder" Binding="{Binding TransponderId}" Width="*" MinWidth="100"/><DataGridTextColumn Header="Last seen" Binding="{Binding LastSeenDisplay}" Width="108"/><DataGridTextColumn Header="Hits" Binding="{Binding Crossings}" Width="45"/></DataGrid.Columns>
+     <DataGrid.Columns><DataGridTextColumn Header="Transponder" Binding="{Binding TransponderId}" Width="*" MinWidth="100"/><DataGridTextColumn Header="Last seen" Binding="{Binding LastSeenDisplay, Mode=OneWay}" Width="108"/><DataGridTextColumn Header="Hits" Binding="{Binding Crossings}" Width="45"/></DataGrid.Columns>
     </DataGrid>
     <TextBlock Grid.Row="3" Text="Shows the most recent 1,000 distinct decoder numbers. Rental inventory has no fixed limit." TextWrapping="Wrap" Foreground="{DynamicResource MutedBrush}" Margin="0,10,0,0"/>
    </Grid>
