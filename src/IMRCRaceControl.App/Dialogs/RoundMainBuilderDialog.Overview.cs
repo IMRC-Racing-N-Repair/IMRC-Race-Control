@@ -231,7 +231,9 @@ public partial class RoundMainBuilderDialog
         {
             SuppressAutomatedPreviewPrompts = true
         };
-        dialog.Show();
+        // Test the newly generated draft model without showing the window.
+        // Calling Show() fires Loaded and may schedule an operator-only
+        // generator modal, which blocks unattended Windows smoke tests.
         dialog._browsingSavedLineups = false;
         dialog.HeatPlans.Clear();
         var first = new HeatPlan { ClassId = cls.Id, ClassName = cls.Name,
