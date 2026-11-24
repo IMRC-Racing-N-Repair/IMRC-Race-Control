@@ -2,6 +2,12 @@
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
     <Application.Resources>
+        <!-- Shared by the standings and qualifying projection grids; must not be scoped to either grid. -->
+        <Style x:Key="DashboardCenteredCellTextStyle" TargetType="TextBlock">
+            <Setter Property="TextAlignment" Value="Center"/>
+            <Setter Property="HorizontalAlignment" Value="Stretch"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+        </Style>
         <!-- Core palette -->
         <SolidColorBrush x:Key="PageBrush" Color="#101214"/>
         <SolidColorBrush x:Key="PanelBrush" Color="#171A1D"/>

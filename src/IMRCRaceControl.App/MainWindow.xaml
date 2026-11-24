@@ -239,11 +239,6 @@
                                         <Setter Property="HorizontalAlignment" Value="Stretch"/>
                                         <Setter Property="VerticalAlignment" Value="Center"/>
                                     </Style>
-                                    <Style x:Key="DashboardCenteredCellTextStyle" TargetType="TextBlock">
-                                        <Setter Property="TextAlignment" Value="Center"/>
-                                        <Setter Property="HorizontalAlignment" Value="Stretch"/>
-                                        <Setter Property="VerticalAlignment" Value="Center"/>
-                                    </Style>
                                 </DataGrid.Resources>
                                 <DataGrid.ColumnHeaderStyle>
                                     <Style TargetType="DataGridColumnHeader" BasedOn="{StaticResource {x:Type DataGridColumnHeader}}">

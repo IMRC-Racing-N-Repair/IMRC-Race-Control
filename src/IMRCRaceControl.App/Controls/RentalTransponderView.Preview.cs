@@ -15,9 +15,14 @@ public partial class RentalTransponderView
         Directory.CreateDirectory(output);
         var checkpoint = Path.Combine(output, "RentalPreviewProgress.txt");
         void Stage(string name) => File.AppendAllText(checkpoint, $"{DateTimeOffset.UtcNow:O} | {name}{Environment.NewLine}");
-        if (phase is not ("all" or "highlights" or "rentals" or "reports" or "registration" or "records" or "lineups" or "spectator"))
+        if (phase is not ("all" or "dashboard" or "highlights" or "rentals" or "reports" or "registration" or "records" or "lineups" or "spectator"))
             throw new ArgumentException("Unknown Windows preview phase: " + phase);
         Stage("BEGIN-" + phase);
+        if (phase is "all" or "dashboard")
+        {
+            MainWindow.CheckDashboardStartupPreview(output);
+            Stage("DASHBOARD-XAML-DONE");
+        }
         if (phase is "all" or "highlights")
         {
         SeasonalThemeChecks.Run(output);

@@ -246,7 +246,7 @@
                         </DataGrid.RowStyle>
                         <DataGrid.GroupStyle><StaticResource ResourceKey="RaceClassGroupStyle"/></DataGrid.GroupStyle>
                         <DataGrid.Columns>
-                            <DataGridTextColumn ElementStyle="{StaticResource SpectatorText}" Header="POS" Binding="{Binding ProjectedPositionDisplay}" Width="50"/>
+                            <DataGridTextColumn ElementStyle="{StaticResource SpectatorText}" Header="POS" Binding="{Binding ProjectedPositionDisplay, Mode=OneWay}" Width="50"/>
 
                             <DataGridTemplateColumn Header="DRIVER" Width="*">
                                 <DataGridTemplateColumn.CellTemplate>

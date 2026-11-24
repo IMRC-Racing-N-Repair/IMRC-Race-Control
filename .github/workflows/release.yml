@@ -65,6 +65,9 @@ jobs:
       - name: Brand Windows UI checks
         shell: pwsh
         run: ./scripts/Build-Installer.ps1 -Repository "https://github.com/${{ github.repository }}" -Phase Brand
+      - name: Dashboard XAML startup checks
+        shell: pwsh
+        run: ./scripts/Build-Installer.ps1 -Repository "https://github.com/${{ github.repository }}" -Phase Dashboard
       - name: Highlights Windows UI checks
         shell: pwsh
         run: ./scripts/Build-Installer.ps1 -Repository "https://github.com/${{ github.repository }}" -Phase Highlights

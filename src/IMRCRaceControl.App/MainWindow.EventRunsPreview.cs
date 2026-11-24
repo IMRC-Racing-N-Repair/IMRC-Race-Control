@@ -11,6 +11,49 @@ namespace IMRCRaceControl;
 
 public partial class MainWindow
 {
+    internal static void CheckDashboardStartupPreview(string output)
+    {
+        void Stage(string name) => File.AppendAllText(Path.Combine(output, "RentalPreviewProgress.txt"),
+            $"{DateTimeOffset.UtcNow:O} | DASHBOARD-{name}{Environment.NewLine}");
+        if (Application.Current.TryFindResource("DashboardCenteredCellTextStyle") is not Style sharedStyle ||
+            sharedStyle.TargetType != typeof(TextBlock))
+            throw new InvalidDataException("Dashboard text style must be accessible to both sibling tables.");
+        var main = new MainWindow(SettingsService.CreateDefaults(),
+            new SettingsService(Path.Combine(output, "preview-settings.json")),
+            new RaceControlDatabaseService(Path.Combine(output, "preview.db")),
+            previewOnly: true, previewTrace: Stage);
+        try
+        {
+            var grid = main.FindName("RoundProjectionGrid") as DataGrid;
+            // Inspect the actual projection columns rather than a duplicate test template.
+            // Find the grid by its identifying headers if the XAML name changes.
+            grid ??= FindProjectionGrid(main);
+            foreach (var name in new[] { "POS", "PACE / FINISH", "PACE GAP" })
+            {
+                if (grid.Columns.SingleOrDefault(c => Equals(c.Header, name)) is not DataGridTextColumn column ||
+                    !ReferenceEquals(column.ElementStyle, sharedStyle))
+                    throw new InvalidDataException($"Projection column {name} does not use the shared centered style.");
+            }
+            File.WriteAllText(Path.Combine(output, "Dashboard-Startup-Checks.txt"),
+                "PASS: real dashboard XAML initializes; shared centered styles resolve on all three projection columns.");
+        }
+        finally { main.Close(); }
+
+        static DataGrid FindProjectionGrid(DependencyObject root)
+        {
+            var queue = new Queue<DependencyObject>();
+            queue.Enqueue(root);
+            while (queue.Count > 0)
+            {
+                var item = queue.Dequeue();
+                if (item is DataGrid data && data.Columns.Any(c => Equals(c.Header, "PACE GAP"))) return data;
+                foreach (var child in LogicalTreeHelper.GetChildren(item).OfType<DependencyObject>())
+                    queue.Enqueue(child);
+            }
+            throw new InvalidDataException("Qualifying projection grid was not found.");
+        }
+    }
+
     internal static void CheckCompactRunRow(DataGrid grid, Func<object,bool> isRun, Func<object,bool> isSingle)
     {
         static IEnumerable<DataGridRow> Rows(DependencyObject parent)

@@ -3,6 +3,7 @@
 Keep all release history in this file. Add each new version at the top; do not create version-specific changelog files.
 
 ## 0.17.16
+- Fix the qualifying dashboard XAML resource scope: share the centered cell style between standings and projection grids, and require a dedicated real-dashboard startup regression before installer packaging.
 - Stabilize event schedule column fitting against layout feedback and isolate dashboard-based schedule and spectator UI previews from operator database saves and startup; retain combined-race sorting and selection checks.
 - Isolate automated WPF preview startup from normal application startup and run each UI validation in a separate workflow step with live diagnostic checkpoints; preserve required checks and draft-only packaging.
 - Carry forward all 0.17.15 race-flow changes into this cumulative unpublished draft.

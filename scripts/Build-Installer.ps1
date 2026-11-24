@@ -1,5 +1,5 @@
 param([Parameter(Mandatory=$true)][string]$Repository, [string]$LiveTimePasswordResource,
-    [ValidateSet('All','Prepare','Brand','Highlights','Rentals','Reports','Registration','Records','Lineups','Spectator','Package')][string]$Phase = 'All')
+    [ValidateSet('All','Prepare','Brand','Dashboard','Highlights','Rentals','Reports','Registration','Records','Lineups','Spectator','Package')][string]$Phase = 'All')
 $ErrorActionPreference = 'Stop'
 $liveTimeArgs = @()
 if ($LiveTimePasswordResource) {
@@ -63,12 +63,13 @@ function Invoke-Preview([string]$Executable, [string[]]$Arguments, [string]$Labe
 if ($Phase -in @('All','Brand')) {
     $null = Invoke-Preview $appExe @('--export-brand',"`"$branding`"") 'Brand UI checks'
 }
-foreach ($part in @('Highlights','Rentals','Reports','Registration','Records','Lineups','Spectator')) {
+foreach ($part in @('Dashboard','Highlights','Rentals','Reports','Registration','Records','Lineups','Spectator')) {
     if ($Phase -in @('All',$part)) {
         $null = Invoke-Preview $appExe @('--export-rentals',"`"$branding`"",$part.ToLowerInvariant()) "$part UI checks"
     }
 }
 if ($Phase -notin @('All','Package')) { return }
+if (-not (Test-Path (Join-Path $branding 'Dashboard-Startup-Checks.txt'))) { throw 'Missing dashboard XAML startup validation' }
 foreach ($theme in @('Light','Dark','Blue')) {
     if (-not (Test-Path (Join-Path $branding "Transponder-$theme.png"))) { throw "Missing Transponder preview for $theme" }
 }
