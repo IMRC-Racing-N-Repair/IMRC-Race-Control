@@ -3,6 +3,8 @@
 Keep all release history in this file. Add each new version at the top; do not create version-specific changelog files.
 
 ## 0.17.15
+- Center the live qualifying POSITION, PACE / FINISH, and pace-gap figures; move the incremental +/− position change to a small colored superscript at the upper-right of each driver's name.
+- Replace the MOVE column with PACE GAP: time behind the current class leader for the same projected lap count, lap deficit where counts differ, and a negative time for the leader when faster than the established previous qualifying TQ (dash otherwise). Preserve the existing qualifying-rank and race scoring calculations.
 - Persistently highlight the race-wide fastest valid BEST LAP cell for the entire active session using the configured fastest-lap color; transfer the highlight only when a faster valid lap replaces it, independent of personal-best notifications.
 - Restore drag-and-drop for newly generated heats before the first Save; add a visible MOVE grip and keep HEAT UP / HEAT DOWN available. Renumber the editable preview immediately without changing saved/completed races.
 - Display simultaneous breakout notices one per line beneath the race results, with a bounded scroll area for larger fields.
