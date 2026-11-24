@@ -8,7 +8,15 @@
             <Setter Property="HorizontalAlignment" Value="Stretch"/>
             <Setter Property="VerticalAlignment" Value="Center"/>
         </Style>
-        <Style x:Key="ProjectionPositionTextStyle" TargetType="TextBlock" BasedOn="{StaticResource DashboardCenteredCellTextStyle}">
+        <Style x:Key="ProjectionCurrentTextStyle" TargetType="TextBlock" BasedOn="{StaticResource DashboardCenteredCellTextStyle}">
+            <Setter Property="Foreground" Value="{DynamicResource DashboardTextBrush}"/>
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding IsCurrentHeat}" Value="True">
+                    <Setter Property="Foreground" Value="{DynamicResource WarnBrush}"/>
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
+        <Style x:Key="ProjectionPositionTextStyle" TargetType="TextBlock" BasedOn="{StaticResource ProjectionCurrentTextStyle}">
             <Setter Property="FontSize" Value="17"/>
             <Setter Property="FontWeight" Value="Bold"/>
             <Setter Property="Margin" Value="3,0"/>

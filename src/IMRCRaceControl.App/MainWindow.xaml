@@ -506,7 +506,7 @@
                                                     </Style>
                                                 </DataGrid.ColumnHeaderStyle>
                                                 <DataGrid.CellStyle>
-                                                    <Style TargetType="DataGridCell">
+                                                    <Style TargetType="DataGridCell" BasedOn="{StaticResource SharedDashboardCellStyle}">
                                                         <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
                                                         <Setter Property="VerticalContentAlignment" Value="Center"/>
                                                         <Setter Property="Padding" Value="2,1"/>
@@ -544,7 +544,7 @@
                                                                     <Grid VerticalAlignment="Center">
                                                                         <Border Style="{StaticResource ClassDriverAccent}"
                                                                                 HorizontalAlignment="Stretch" VerticalAlignment="Center">
-                                                                            <TextBlock x:Name="MovementDriverText"
+                                                                            <TextBlock x:Name="MovementDriverText" Style="{StaticResource ProjectionCurrentTextStyle}"
                                                                                        Text="{Binding DriverName}" TextTrimming="CharacterEllipsis"
                                                                                        ToolTip="{Binding DriverName}"
                                                                                        HorizontalAlignment="Center" VerticalAlignment="Center" TextAlignment="Center"
@@ -591,9 +591,9 @@
                                                     </DataGridTemplateColumn>
 
                                                     <DataGridTextColumn Header="PACE / FINISH" Binding="{Binding PaceFinish, Mode=OneWay}"
-                                                                        ElementStyle="{StaticResource DashboardCenteredCellTextStyle}" Width="118"/>
+                                                                        ElementStyle="{StaticResource ProjectionCurrentTextStyle}" Width="118"/>
                                                     <DataGridTextColumn Header="PACE GAP" Binding="{Binding PaceGapDisplay, Mode=OneWay}"
-                                                                        ElementStyle="{StaticResource DashboardCenteredCellTextStyle}" Width="86"/>
+                                                                        ElementStyle="{StaticResource ProjectionCurrentTextStyle}" Width="86"/>
                                                 </DataGrid.Columns>
                                             </DataGrid>
                                         </Grid>

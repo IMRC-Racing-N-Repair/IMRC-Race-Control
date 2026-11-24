@@ -28,35 +28,87 @@ public partial class MainWindow
             // Inspect the actual projection columns rather than a duplicate test template.
             // Find the grid by its identifying headers if the XAML name changes.
             grid ??= FindProjectionGrid(main);
+            var currentStyle = Application.Current.TryFindResource("ProjectionCurrentTextStyle") as Style;
+            if (currentStyle is null || !ReferenceEquals(currentStyle.BasedOn, sharedStyle))
+                throw new InvalidDataException("Projection text must use the shared centered style.");
             foreach (var name in new[] { "POS", "PACE / FINISH", "PACE GAP" })
             {
                 if (grid.Columns.SingleOrDefault(c => Equals(c.Header, name)) is not DataGridTextColumn column)
                     throw new InvalidDataException($"Projection column {name} is missing.");
                 var expected = name == "POS"
                     ? Application.Current.TryFindResource("ProjectionPositionTextStyle") as Style
-                    : sharedStyle;
+                    : currentStyle;
                 if (expected is null || !ReferenceEquals(column.ElementStyle, expected))
                     throw new InvalidDataException($"Projection column {name} does not use its shared centered style.");
-                if (name == "POS" && (!ReferenceEquals(expected.BasedOn, sharedStyle) || column.Width.Value < 48 ||
+                if (name == "POS" && (!ReferenceEquals(expected.BasedOn, currentStyle) || column.Width.Value < 48 ||
                     !expected.Setters.OfType<Setter>().Any(setter => setter.Property == TextBlock.FontSizeProperty && setter.Value is double size && size >= 16) ||
                     !expected.Setters.OfType<Setter>().Any(setter => setter.Property == FrameworkElement.MarginProperty && setter.Value is Thickness margin && margin.Left >= 3 && margin.Right >= 3)))
                     throw new InvalidDataException("Projection position must be larger, centered and padded.");
             }
-            var racer = new RoundProjectionRow { IsCurrentHeat = true };
-            var cell = new DataGridCell { Style = grid.CellStyle, DataContext = racer };
-            if (cell.VerticalContentAlignment != VerticalAlignment.Center ||
-                cell.Foreground is not SolidColorBrush live || Application.Current.TryFindResource("WarnBrush") is not SolidColorBrush yellow ||
-                live.Color != yellow.Color)
-                throw new InvalidDataException("Current heat cells must use the theme's yellow text and centered content.");
-            racer.IsCurrentHeat = false;
-            if (cell.Foreground is not SolidColorBrush inactive || Application.Current.TryFindResource("DashboardTextBrush") is not SolidColorBrush normal ||
-                inactive.Color != normal.Color)
-                throw new InvalidDataException("Historical rows must return to ordinary text when leaving the current heat.");
+            // A detached DataGridCell has no presentation resource scope and
+            // does not reliably evaluate its style triggers. Test the actual
+            // generated cells and text blocks in a hosted projection grid.
+            var racer = new RoundProjectionRow { Key = "live", DriverName = "Live driver",
+                ProjectedPosition = 1, PaceFinish = "8/0:54.021", PaceGapDisplay = "—", IsCurrentHeat = true };
+            var historical = new RoundProjectionRow { Key = "past", DriverName = "Past driver",
+                ProjectedPosition = 2, PaceFinish = "8/0:54.073", PaceGapDisplay = "+0.052" };
+            ((Panel)grid.Parent).Children.Remove(grid);
+            grid.DataContext = main;
+            grid.ItemsSource = new[] { racer, historical };
+            grid.EnableRowVirtualization = false;
+            grid.EnableColumnVirtualization = false;
+            var host = new Window { Width = 560, Height = 260, Content = grid, ShowInTaskbar = false };
+            try
+            {
+                host.Show();
+                void Layout()
+                {
+                    host.Dispatcher.Invoke(() => {}, System.Windows.Threading.DispatcherPriority.Loaded);
+                    host.UpdateLayout();
+                }
+                Layout();
+                CheckRow(racer, "WarnBrush");
+                CheckRow(historical, "DashboardTextBrush");
+                racer.IsCurrentHeat = false;
+                historical.IsCurrentHeat = true;
+                Layout();
+                CheckRow(racer, "DashboardTextBrush");
+                CheckRow(historical, "WarnBrush");
+
+                void CheckRow(RoundProjectionRow item, string resource)
+                {
+                    if (grid.ItemContainerGenerator.ContainerFromItem(item) is not DataGridRow row)
+                        throw new InvalidDataException("Projection row was not realized: " + item.DriverName);
+                    var expected = (SolidColorBrush)host.FindResource(resource);
+                    var cells = Descendants(row).OfType<DataGridCell>().ToList();
+                    if (cells.Count != 4)
+                        throw new InvalidDataException("Projection row must contain four realized cells.");
+                    foreach (var cell in cells)
+                    {
+                        var text = Descendants(cell).OfType<TextBlock>()
+                            .FirstOrDefault(t => t.Visibility == Visibility.Visible && !string.IsNullOrEmpty(t.Text));
+                        if (text is null || text.Foreground is not SolidColorBrush actual ||
+                            actual.Color != expected.Color || text.VerticalAlignment != VerticalAlignment.Center)
+                            throw new InvalidDataException($"Projection {item.DriverName} / {cell.Column.Header}: expected {expected.Color} and centered text, got {text?.Foreground} / {text?.VerticalAlignment}.");
+                    }
+                }
+            }
+            finally { host.Close(); }
             File.WriteAllText(Path.Combine(output, "Dashboard-Startup-Checks.txt"),
                 "PASS: real dashboard XAML initializes; centered and padded projection columns resolve; current-heat text follows the theme and resets for historical rows.");
         }
         finally { main.Close(); }
         Controls.NextRaceStrip.CheckResponsiveLayout(output);
+
+        static IEnumerable<DependencyObject> Descendants(DependencyObject root)
+        {
+            for (var i = 0; i < VisualTreeHelper.GetChildrenCount(root); i++)
+            {
+                var child = VisualTreeHelper.GetChild(root, i);
+                yield return child;
+                foreach (var nested in Descendants(child)) yield return nested;
+            }
+        }
 
         static DataGrid FindProjectionGrid(DependencyObject root)
         {
