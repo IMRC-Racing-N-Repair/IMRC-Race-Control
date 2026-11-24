@@ -7,7 +7,8 @@
         MinWidth="980"
         MinHeight="650"
         WindowStartupLocation="CenterOwner">
-    <Grid Margin="10">
+    <AdornerDecorator>
+    <Grid x:Name="LineupDragRoot" Margin="10">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
@@ -25,7 +26,7 @@
                 </Grid>
             </DockPanel>
             <TextBlock Text="ROUNDS / MAINS LINEUPS" FontSize="23" FontWeight="Bold"/>
-            <TextBlock Text="Drag the MOVE handle on a heat to change its race order, even before saving. HEAT UP / HEAT DOWN also work. Completed races remain locked."
+            <TextBlock Text="Drag a race and follow the green insertion line to place it above or below another race. Completed races remain locked."
                        Foreground="{DynamicResource MutedBrush}" Margin="0,2,0,6"/>
         </StackPanel>
 
@@ -146,7 +147,7 @@
 
                             <DataGrid x:Name="HeatGrid" SelectionMode="Extended" PreviewMouseRightButtonDown="HeatGrid_RightClick" ContextMenuOpening="HeatGrid_ContextMenuOpening" AllowDrop="True"
                                       PreviewMouseLeftButtonDown="RaceDragStart" PreviewMouseMove="RaceDragMove"
-                                      DragOver="RaceDragOver" Drop="RaceDrop"
+                                      DragOver="RaceDragOver" DragLeave="RaceDragLeave" Drop="RaceDrop"
                                       Grid.Row="1"
                                       ItemsSource="{Binding HeatPlans}"
                                       AutoGenerateColumns="False"
@@ -381,4 +382,5 @@
                     Foreground="#101318" MinWidth="125"/>
         </Grid>
     </Grid>
+    </AdornerDecorator>
 </Window>

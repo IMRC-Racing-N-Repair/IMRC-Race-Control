@@ -57,12 +57,12 @@ public partial class RoundMainBuilderDialog
         if (!_browsingSavedLineups && HeatPlans.Contains(plan) && !plan.IsLocked &&
             !plan.IsCombinedHeader && !plan.IsCombinedChild)
         {
-            DragDrop.DoDragDrop(HeatGrid, new DataObject("IMRC.PreviewHeat", plan), DragDropEffects.Move);
+            DragWithVisual(HeatGrid, new DataObject("IMRC.PreviewHeat", plan), $"{plan.ClassName} · {plan.SessionDisplay}", $"{plan.RacerCount} racers · Move race");
             return;
         }
         var source = PreviewSessions.FirstOrDefault(s => s.Id == id);
         if (source is not null && RaceLineupOrder.Movable(source))
-            DragDrop.DoDragDrop(HeatGrid, new DataObject("IMRC.LineupRace", id!), DragDropEffects.Move);
+            DragWithVisual(HeatGrid, new DataObject("IMRC.LineupRace", id!), $"Race {plan.RaceNumberDisplay} · {plan.ClassName}", $"{plan.SessionDisplay} · {plan.RacerCount} racers");
     }
 
     private bool CanDropPreviewHeat(DragEventArgs e, out HeatPlan? source, out HeatPlan? target)
@@ -92,6 +92,7 @@ public partial class RoundMainBuilderDialog
         if (HandleDriverDragOver(e)) return;
         e.Effects = CanDropPreviewHeat(e, out _, out _) || CanDropRace(e, out _, out _)
             ? DragDropEffects.Move : DragDropEffects.None;
+        ShowDropTarget(e, e.Effects == DragDropEffects.Move, false);
         e.Handled = true;
     }
 
@@ -100,11 +101,11 @@ public partial class RoundMainBuilderDialog
         if (HandleDriverDrop(e)) return;
         if (CanDropPreviewHeat(e, out var plan, out var destination))
         {
-            MovePreviewHeat(plan!, destination!);
+            MovePreviewHeat(plan!, destination!, DropAfter(e));
         }
         else if (CanDropRace(e, out var id, out var target))
         {
-            StageRaceMove(id, target!.SourceSessionId);
+            StageRaceMove(id, target!.SourceSessionId, DropAfter(e));
         }
         else
         {
@@ -113,18 +114,26 @@ public partial class RoundMainBuilderDialog
         e.Handled = true;
     }
 
-    private void MovePreviewHeat(HeatPlan source, HeatPlan target)
+    private void MovePreviewHeat(HeatPlan source, HeatPlan target, bool? after = null)
     {
         if (!HeatPlans.Contains(source) || !HeatPlans.Contains(target) ||
             !CanReorderPreviewHeat(source, target)) return;
-        HeatPlans.Move(HeatPlans.IndexOf(source), HeatPlans.IndexOf(target));
+        var from = HeatPlans.IndexOf(source);
+        var to = HeatPlans.IndexOf(target);
+        if (after.HasValue)
+        {
+            to += after.Value ? 1 : 0;
+            if (from < to) to--;
+        }
+        if (from == to) return;
+        HeatPlans.Move(from, to);
         ReorderNumbers();
         HeatGrid.SelectedItem = source;
         SaveButton.IsEnabled = true;
         BuilderStatusText.Text = "Heat moved. The preview is renumbered top to bottom. Press SAVE CHANGES to keep this lineup.";
     }
 
-    private void StageRaceMove(string sourceId,string targetId)
+    private void StageRaceMove(string sourceId,string targetId,bool after = false)
     {
         var source=PreviewSessions.Single(s=>s.Id==sourceId);var target=PreviewSessions.Single(s=>s.Id==targetId);
         if(!RaceLineupOrder.CanMove(source,target))return;
@@ -134,7 +143,7 @@ public partial class RoundMainBuilderDialog
         if(moving.Contains(target))return;
         group.RemoveAll(moving.Contains);
         var to=group.FindIndex(s=>s.Id==targetId);
-        group.InsertRange(to,moving);
+        group.InsertRange(to+(after?1:0),moving);
         for(int i=0;i<group.Count;i++)_pendingRaceOrder[group[i].Id]=i+1;
         RefreshLineupOverview();SaveButton.IsEnabled=true;
         BuilderStatusText.Text="Race moved independently. SAVE CHANGES to keep the new position; completed races stay locked.";

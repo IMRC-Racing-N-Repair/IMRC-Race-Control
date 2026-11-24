@@ -23,7 +23,7 @@ public partial class RoundMainBuilderDialog
         if(Math.Abs(point.X-_driverDragOrigin.X)<SystemParameters.MinimumHorizontalDragDistance && Math.Abs(point.Y-_driverDragOrigin.Y)<SystemParameters.MinimumVerticalDragDistance)return;
         _draggedDriver=null;
         if(_browsingSavedLineups || drag.Source.IsLocked || !drag.Source.Entrants.Contains(drag.Driver))return;
-        DragDrop.DoDragDrop(EntrantGrid,new DataObject("IMRC.LineupDriver",drag),DragDropEffects.Move);
+        DragWithVisual(EntrantGrid,new DataObject("IMRC.LineupDriver",drag),drag.Driver.DisplayName,$"Car {drag.Driver.CarNumber} · {drag.Source.ClassName} · Move driver");
     }
     private string? DriverMoveError(HeatPlan source,HeatPlan? target,SessionEntrant driver)
     {
@@ -50,6 +50,7 @@ public partial class RoundMainBuilderDialog
     {
         if(e.Data.GetData("IMRC.LineupDriver") is not DriverDrag drag)return false;
         e.Effects=DriverMoveError(drag.Source,RaceAt(e.OriginalSource),drag.Driver) is null?DragDropEffects.Move:DragDropEffects.None;
+        ShowDropTarget(e,e.Effects==DragDropEffects.Move,true);
         e.Handled=true;return true;
     }
     private bool HandleDriverDrop(DragEventArgs e)

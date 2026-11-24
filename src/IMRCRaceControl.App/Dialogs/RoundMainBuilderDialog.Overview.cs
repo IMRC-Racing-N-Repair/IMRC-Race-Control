@@ -128,8 +128,13 @@ public partial class RoundMainBuilderDialog
         var dragSource=ev.Sessions.First(s=>s.ClassId==classes[1].Id && s.Round==1);
         var dragTarget=ev.Sessions.First(s=>s.ClassId==classes[0].Id && s.Round==1 && s.ProgressStatus==EventSessionStatus.Planned);
         var savedQueue=ev.Sessions.ToDictionary(s=>s.Id,s=>s.QueueOrder);
+        Stage("DRAG-VISUALS");
+        dialog.CheckDragVisuals();
         Stage("STAGE-RACE-ORDER");
-        dialog.StageRaceMove(dragSource.Id,dragTarget.Id);
+        dialog.StageRaceMove(dragSource.Id,dragTarget.Id,true);
+        if(dialog.PendingRaceOrder[dragSource.Id]!=dialog.PendingRaceOrder[dragTarget.Id]+1)throw new InvalidOperationException("Saved race drop-after did not match insertion marker.");
+        dialog.StageRaceMove(dragSource.Id,dragTarget.Id,false);
+        if(dialog.PendingRaceOrder[dragSource.Id]+1!=dialog.PendingRaceOrder[dragTarget.Id])throw new InvalidOperationException("Saved race drop-before did not match insertion marker.");
         if(!dialog.SaveButton.IsEnabled || dialog.PendingRaceOrder.Count==0 || ev.Sessions.Any(s=>s.QueueOrder!=savedQueue[s.Id]))throw new InvalidOperationException("Drag did not stage race order without modifying saved races.");
         if(System.Text.Json.JsonSerializer.Serialize(ev.Sessions[0])!=originalCompleted)throw new InvalidOperationException("Drag changed completed race.");
         if(System.Windows.Data.CollectionViewSource.GetDefaultView(dialog.HeatGrid.ItemsSource).Groups?.Count!=2)throw new InvalidOperationException("Qualifying rounds are not grouped.");
@@ -270,7 +275,7 @@ public partial class RoundMainBuilderDialog
 
         if (!CanReorderPreviewHeat(first, second))
             throw new InvalidOperationException("New unsaved qualifying heats were not draggable.");
-        dialog.MovePreviewHeat(first, second);
+        dialog.MovePreviewHeat(first, second, true);
         if (!ReferenceEquals(dialog.HeatPlans[0], second) ||
             !ReferenceEquals(dialog.HeatPlans[1], first) ||
             second.Order != 1 || first.Order != 2 ||
@@ -278,6 +283,8 @@ public partial class RoundMainBuilderDialog
             !first.SessionDisplay.Contains("Heat 2/2") ||
             !dialog.SaveButton.IsEnabled)
             throw new InvalidOperationException("Draft drag failed to reorder, renumber or mark changes for saving.");
+        dialog.MovePreviewHeat(first, second, false);
+        if (!ReferenceEquals(dialog.HeatPlans[0], first)) throw new InvalidOperationException("Draft drop-before did not match insertion marker.");
         var anotherRound = new HeatPlan { ClassId = cls.Id, ClassName = cls.Name,
             SessionType = SessionType.Qualifying, Round = 2 };
         var locked = new HeatPlan { ClassId = cls.Id, ClassName = cls.Name,
