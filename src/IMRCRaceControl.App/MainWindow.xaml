@@ -31,7 +31,7 @@
 
                 <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                     <controls:BrandLogo Width="165" Height="64" ToolTip="IMRC Race Control"/>
-                    <TextBlock Text="  v0.17.17" Margin="4,2,0,0"
+                    <TextBlock Text="  v0.17.18" Margin="4,2,0,0"
                                Foreground="{DynamicResource MutedBrush}" FontSize="10"
                                VerticalAlignment="Center"/>
                 </StackPanel>
@@ -784,7 +784,7 @@
                                             CornerRadius="4"
                                             IsHitTestVisible="False">
                                         <TextBlock x:Name="PracticeLayoutStatusText"
-                                                   Text="0 active racers • 5 per row • 2 rows"
+                                                   Text="0 active racers • 5 per row • 1 row"
                                                    FontSize="10"
                                                    Foreground="{DynamicResource MutedBrush}"/>
                                     </Border>

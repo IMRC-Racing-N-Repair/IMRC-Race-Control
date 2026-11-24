@@ -101,6 +101,16 @@ Equal(originalStint, assignedLap.Card.StintId, "Assigned card retains its origin
 Equal(practiceDriver.DisplayName, assignedLap.Card.DriverName, "Assigned card shows selected driver");
 Equal("Sportsman", assignedLap.Card.ClassName, "Assigned card shows selected class");
 Equal(2, assignedLap.Card.LapCount, "Assigned card keeps previous lap and adds next decoder hit");
+Equal(2, assignedLap.Card.NewestLaps[0].LapNumber, "Newest practice lap displayed at top");
+Equal(1, assignedLap.Card.NewestLaps[1].LapNumber, "First practice lap displayed at bottom");
+Equal(1, assignedLap.Card.Laps[0].LapNumber, "Canonical practice laps remain chronological");
+var practiceOrderCard = new PracticeCardViewModel();
+practiceOrderCard.AddLap(new PracticeLapEntry { LapNumber = 1, LapTime = TimeSpan.FromSeconds(6) });
+practiceOrderCard.AddLap(new PracticeLapEntry { LapNumber = 2, LapTime = TimeSpan.FromSeconds(5) });
+Equal("-1.000", practiceOrderCard.NewestLaps[0].LapDeltaDisplay, "Newest-first display preserves previous-lap delta");
+Equal("5.000", practiceOrderCard.LastLapDisplay, "Newest-first display preserves last-lap calculation");
+practiceOrderCard.Laps.Clear();
+Equal(0, practiceOrderCard.NewestLaps.Count, "Clearing canonical laps clears newest-first display");
 Equal(0, practiceCards.Single(c => c.TransponderId == "123456").LapCount, "Same driver's other transponder has independent timing");
 
 // Completed race exports must stay scoped to saved race cars, including zero-lap drivers.

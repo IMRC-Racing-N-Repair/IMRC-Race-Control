@@ -68,7 +68,27 @@ public sealed class PracticeCardViewModel : INotifyPropertyChanged
         }
     }
 
+    // Keep the canonical list chronological for statistics, speech and history.
+    // The live UI gets its own read-only, newest-first observable projection.
     public ObservableCollection<PracticeLapEntry> Laps { get; } = new();
+    private readonly ObservableCollection<PracticeLapEntry> _newestLaps = new();
+    public ReadOnlyObservableCollection<PracticeLapEntry> NewestLaps { get; }
+
+    public PracticeCardViewModel()
+    {
+        NewestLaps = new ReadOnlyObservableCollection<PracticeLapEntry>(_newestLaps);
+        Laps.CollectionChanged += (_, e) =>
+        {
+            if (e.Action == System.Collections.Specialized.NotifyCollectionChangedAction.Add &&
+                e.NewItems is { Count: 1 } && e.NewStartingIndex == Laps.Count - 1)
+            {
+                _newestLaps.Insert(0, (PracticeLapEntry)e.NewItems[0]!);
+                return;
+            }
+            _newestLaps.Clear();
+            foreach (var lap in Laps.Reverse()) _newestLaps.Add(lap);
+        };
+    }
     public ObservableCollection<PracticeStatDisplay> VisibleStats { get; } = new();
 
     public int LapCount => Laps.Count;

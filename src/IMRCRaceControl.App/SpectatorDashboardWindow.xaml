@@ -325,6 +325,12 @@
             <ItemsControl.ItemsPanel><ItemsPanelTemplate><UniformGrid
                 Columns="{Binding PracticeGridColumns}" Rows="{Binding PracticeGridRows}"/>
             </ItemsPanelTemplate></ItemsControl.ItemsPanel>
+            <ItemsControl.ItemContainerStyle>
+                <Style TargetType="ContentPresenter">
+                    <Setter Property="HorizontalAlignment" Value="Stretch"/>
+                    <Setter Property="VerticalAlignment" Value="Stretch"/>
+                </Style>
+            </ItemsControl.ItemContainerStyle>
         </ItemsControl>
         <TextBlock x:Name="PracticeEmptyText" Grid.Row="2" Text="Waiting for practice crossings" Visibility="Collapsed"
                    FontSize="24" HorizontalAlignment="Center" VerticalAlignment="Center"/>

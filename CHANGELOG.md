@@ -2,6 +2,10 @@
 
 Keep all release history in this file. Add each new version at the top; do not create version-specific changelog files.
 
+## 0.17.18
+- Live practice laps now appear newest-first, with compact timing and lap rows. The chosen 4/5/6 columns remain fixed; cards use full height when one row is needed, shorten automatically when more drivers join, and expand again when drivers time out. Shared dashboard and spectator card template; chronological scoring and saved history remain unchanged.
+- Add practice layout and newest-first regression checks.
+
 ## 0.17.17
 - Show a floating race or driver preview that follows the mouse in Rounds / Mains Lineups. Valid race destinations show a theme-colored insertion line above or below the target row; valid driver destinations highlight the entire receiving heat. Invalid targets and cancelled drags do not change the lineup. Keep completed races locked and edits pending until Save Changes.
 - Match floating drag previews and drop indicators to the active theme (panel, accent, border and text colors); add regression checks for theme resource updates, overlay positioning, before/after race insertion and destination highlighting.

@@ -16,7 +16,7 @@ public partial class MainWindow
             nameof(PracticeGridRows),
             typeof(int),
             typeof(MainWindow),
-            new PropertyMetadata(2));
+            new PropertyMetadata(1));
 
     public int PracticeGridColumns
     {
@@ -27,6 +27,6 @@ public partial class MainWindow
     public int PracticeGridRows
     {
         get => (int)GetValue(PracticeGridRowsProperty);
-        set => SetValue(PracticeGridRowsProperty, Math.Max(2, value));
+        set => SetValue(PracticeGridRowsProperty, Math.Max(1, value));
     }
 }
