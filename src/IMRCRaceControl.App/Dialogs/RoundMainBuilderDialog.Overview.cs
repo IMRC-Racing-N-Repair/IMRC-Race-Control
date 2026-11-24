@@ -9,6 +9,9 @@ public partial class RoundMainBuilderDialog
 {
     private bool _overviewEditing;
     private bool _refreshingOverview;
+    private bool _openingSavedLineup;
+    private Dictionary<string,int>? _selectionOrder;
+    private Dictionary<string,int>? _selectionRaceNumbers;
     private void RefreshLineupOverview()
     {
         if (HeatGrid is null) return;
@@ -43,7 +46,17 @@ public partial class RoundMainBuilderDialog
                 plan.SessionDisplay=$"Q{plan.Round} • Heat {heat}/{total}";
             }
             if (_overviewEditing && SavedRoundFilter.SelectedItem is SavedRoundChoice {MainLeg:int leg})list=list.Where(p=>p.SessionType==SessionType.Race && p.MainLeg==leg).ToList();
-            list=GroupCombinedOverview(OrderOverview(list));
+            list=OrderOverview(list);
+            if (_selectionOrder is not null)
+            {
+                // Opening a roster is a read/selection operation, not a sort.
+                // Preserve the exact visible order and race labels through the rebuild.
+                list=list.OrderBy(h=>_selectionOrder.GetValueOrDefault(h.SourceSessionId,int.MaxValue)).ToList();
+                foreach(var plan in list)
+                    if(_selectionRaceNumbers!.TryGetValue(plan.SourceSessionId,out var number))
+                        plan.RaceNumber=number;
+            }
+            list=GroupCombinedOverview(list);
             var view=new System.Windows.Data.ListCollectionView(list);
             view.GroupDescriptions.Add(new System.Windows.Data.PropertyGroupDescription(nameof(HeatPlan.RoundGroup)));
             HeatGrid.ItemsSource=view;
@@ -56,8 +69,26 @@ public partial class RoundMainBuilderDialog
     private void HeatGrid_RightClick(object sender,MouseButtonEventArgs e)
     {
         if(e.OriginalSource is not DependencyObject source || ItemsControl.ContainerFromElement(HeatGrid,source) is not DataGridRow row) return;
-        HeatGrid.SelectedItem=row.Item;
+        if(row.Item is HeatPlan plan) SelectRaceForRoster(plan);
     }
+    private void SelectRaceForRoster(HeatPlan row)
+    {
+        if(_holdingCombine || _openingSavedLineup)return;
+        var current=HeatGrid.Items.OfType<HeatPlan>().FirstOrDefault(h=>ReferenceEquals(h,row))
+            ?? HeatGrid.Items.OfType<HeatPlan>().FirstOrDefault(h=>row.SourceSessionId.Length>0 && h.SourceSessionId==row.SourceSessionId);
+        if(current is null)return;
+        _refreshingOverview=true;
+        try
+        {
+            ClearHeatSelection();
+            HeatGrid.SelectedItem=current;
+        }
+        finally {_refreshingOverview=false;}
+        if(current.SourceSessionId.Length>0 && (_browsingSavedLineups || !HeatPlans.Contains(current)))
+            OpenSavedLineup(current.SourceSessionId);
+        else UpdateSelectedLineup();
+    }
+
     private bool ResolveHeatDrivers(HeatPlan source)
     {
         var targets=HeatPlans.Where(h=>h!=source && !h.IsLocked && h.ClassId==source.ClassId && h.SessionType==source.SessionType && h.Round==source.Round && (source.SessionType!=SessionType.Race || h.MainLeg==source.MainLeg)).ToList();
@@ -116,6 +147,27 @@ public partial class RoundMainBuilderDialog
                !initialOrder.SequenceEqual(dialog.HeatGrid.Items.Cast<HeatPlan>().Select(h=>h.SourceSessionId)) ||
                dialog._pendingRaceOrder.Count!=0 || dialog._stagedLineups.Count!=0)
                 throw new InvalidOperationException("Selecting a different race must not move races, stage edits or select two rows.");
+        }
+        // Repeated clicks use the same entry point as PreviewMouseLeftButtonDown.
+        // Use a non-default saved order, then verify that selecting every roster
+        // leaves both the order and the visible race numbers intact.
+        var clickOrder=dialog.HeatGrid.Items.Cast<HeatPlan>().Select(h=>(h.SourceSessionId,h.RaceNumber)).ToArray();
+        for(var pass=0;pass<3;pass++)
+        foreach(var entry in clickOrder.Reverse())
+        {
+            var row=dialog.HeatGrid.Items.Cast<HeatPlan>().Single(h=>h.SourceSessionId==entry.SourceSessionId);
+            dialog.SelectRaceForRoster(row);
+            dialog.UpdateLayout();
+            if(dialog.HeatGrid.SelectedItems.Count!=1 ||
+               (dialog.HeatGrid.SelectedItem as HeatPlan)?.SourceSessionId!=entry.SourceSessionId ||
+               !clickOrder.SequenceEqual(dialog.HeatGrid.Items.Cast<HeatPlan>().Select(h=>(h.SourceSessionId,h.RaceNumber))) ||
+               dialog._pendingRaceOrder.Count!=0 || dialog._stagedLineups.Count!=0)
+                throw new InvalidOperationException("Repeated roster clicks changed selection, race order, numbers or staged edits.");
+            if(dialog.EntrantGrid.Items.Count!=1)throw new InvalidOperationException("Race click did not display its roster.");
+            var selectedContainers=dialog.HeatGrid.Items.Cast<HeatPlan>()
+                .Select(h=>dialog.HeatGrid.ItemContainerGenerator.ContainerFromItem(h) as DataGridRow)
+                .Count(r=>r?.IsSelected==true);
+            if(selectedContainers!=1)throw new InvalidOperationException("More than one visible race row is selected.");
         }
         var first=dialog.HeatGrid.Items.Cast<HeatPlan>().First();var label=first.SessionDisplay;dialog.HeatGrid.SelectedItem=first;
         if(dialog.EntrantGrid.Items.Count!=1 || dialog.SelectedHeatTitle.Text=="SELECT A RACE")throw new InvalidOperationException("Completed race selection did not display its drivers immediately.");

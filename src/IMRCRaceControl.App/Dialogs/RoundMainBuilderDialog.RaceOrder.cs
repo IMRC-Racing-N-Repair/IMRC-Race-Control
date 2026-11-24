@@ -34,12 +34,17 @@ public partial class RoundMainBuilderDialog
         }
         _raceDragPlan = null;
         _raceDragId = null;
-        // Ordinary row clicks select only. Dragging starts on the MOVE column.
-        if (e.OriginalSource is not DependencyObject node) return;
+        if (e.OriginalSource is not DependencyObject node || RaceAt(node) is not HeatPlan row) return;
         var cell = FindDragCell(node);
-        if (cell?.Column.Header is not string header || header != "MOVE") return;
+        if (cell is null) return;
+        var moveHandle = Equals(cell.Column.Header,"MOVE");
+        // Do not let WPF's native mouse-down selection continue against a
+        // collection that the roster loader may replace during this event.
+        e.Handled = true;
+        SelectRaceForRoster(row);
+        if (!moveHandle || row.IsLocked || row.IsCombinedHeader || row.IsCombinedChild) return;
         _raceDragOrigin = e.GetPosition(HeatGrid);
-        _raceDragPlan = RaceAt(e.OriginalSource);
+        _raceDragPlan = HeatGrid.SelectedItem as HeatPlan;
         _raceDragId = _raceDragPlan?.SourceSessionId;
     }
 
@@ -65,7 +70,7 @@ public partial class RoundMainBuilderDialog
     {
         if (e.LeftButton != MouseButtonState.Pressed)
         { _raceDragPlan=null; _raceDragId=null; return; }
-        if (_holdingCombine || _raceDragPlan is null) return;
+        if (_holdingCombine || _openingSavedLineup || _raceDragPlan is null) return;
         var point = e.GetPosition(HeatGrid);
         if (Math.Abs(point.X - _raceDragOrigin.X) < SystemParameters.MinimumHorizontalDragDistance &&
             Math.Abs(point.Y - _raceDragOrigin.Y) < SystemParameters.MinimumVerticalDragDistance)

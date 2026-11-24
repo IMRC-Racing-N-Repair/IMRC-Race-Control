@@ -26,7 +26,7 @@
                 </Grid>
             </DockPanel>
             <TextBlock Text="ROUNDS / MAINS LINEUPS" FontSize="23" FontWeight="Bold"/>
-            <TextBlock Text="Drag a race and follow the highlighted insertion line to place it above or below another race. Completed races remain locked."
+            <TextBlock Text="Click a race to see its drivers. Hold and drag its MOVE handle or use HEAT UP / HEAT DOWN to reorder. Completed races remain locked."
                        Foreground="{DynamicResource MutedBrush}" Margin="0,2,0,6"/>
         </StackPanel>
 
@@ -153,7 +153,7 @@
                                       AutoGenerateColumns="False"
                                       IsReadOnly="True"
                                       CanUserAddRows="False"
-                                      RowStyle="{StaticResource CombinedRunRowStyle}"
+                                      RowStyle="{StaticResource LineupSelectionRowStyle}" CellStyle="{StaticResource LineupSelectionCellStyle}"
                                       SelectionChanged="HeatGrid_SelectionChanged"
                                       ScrollViewer.HorizontalScrollBarVisibility="Disabled"
                                       Margin="0,5,0,0">

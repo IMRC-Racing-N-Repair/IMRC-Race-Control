@@ -384,6 +384,22 @@ public partial class RoundMainBuilderDialog : Window
 
     private void LoadSavedSession_Click(object sender, RoutedEventArgs e)
     {
+        if(_openingSavedLineup)return;
+        var visible=HeatGrid.Items.OfType<HeatPlan>().Where(h=>h.SourceSessionId.Length>0).ToList();
+        _selectionOrder=visible.Select((h,i)=>(h.SourceSessionId,i)).ToDictionary(x=>x.SourceSessionId,x=>x.i,StringComparer.OrdinalIgnoreCase);
+        _selectionRaceNumbers=visible.ToDictionary(h=>h.SourceSessionId,h=>h.RaceNumber,StringComparer.OrdinalIgnoreCase);
+        _openingSavedLineup=true;
+        try { LoadSavedRoster(); }
+        finally
+        {
+            _openingSavedLineup=false;
+            _selectionOrder=null;
+            _selectionRaceNumbers=null;
+        }
+    }
+
+    private void LoadSavedRoster()
+    {
         if (SavedSessionGrid.SelectedItem is not SavedSessionRow saved)
         {
             MessageBox.Show(this,
@@ -1533,7 +1549,7 @@ public partial class RoundMainBuilderDialog : Window
 
     private void HeatGrid_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
-        if (_refreshingOverview || _holdingCombine || _loadingSavedFilters || _loadingOptions) return;
+        if (_refreshingOverview || _holdingCombine || _loadingSavedFilters || _loadingOptions || _openingSavedLineup) return;
         var selected = HeatGrid.SelectedItem as HeatPlan;
         if (!_refreshingOverview && !_loadingSavedFilters && IsLoaded && selected is { SourceSessionId.Length: > 0 } && (_browsingSavedLineups || !HeatPlans.Contains(selected)))
         {
