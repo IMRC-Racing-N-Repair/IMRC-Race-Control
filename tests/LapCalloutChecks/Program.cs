@@ -534,13 +534,15 @@ Equal(assistantSnapshot,System.Text.Json.JsonSerializer.Serialize(assistantSched
 assistantSchedule[0].ProgressStatus=EventSessionStatus.Completed;
 foreach(var suggestion in RaceOrderAssistant.Find(assistantSchedule))
     Equal("A1",suggestion.Order[0].Id,"Completed race remains locked");
-var otherRound=Enumerable.Range(0,5).Select(i=>AssistRace("Q2-"+i,"Q2Class"+i,1,i<2?"same":"other"+i)).ToArray();
-foreach(var session in otherRound)session.Round=2;
-var twoRoundSchedule=assistantSchedule.Concat(otherRound).ToArray();
+var assistantSecondRoundFixtures=Enumerable.Range(0,5).Select(i=>AssistRace("Q2-"+i,"Q2Class"+i,1,i<2?"same":"other"+i)).ToArray();
+foreach(var session in assistantSecondRoundFixtures)session.Round=2;
+var twoRoundSchedule=assistantSchedule.Concat(assistantSecondRoundFixtures).ToArray();
 foreach(var round in new[]{1,2})
 {
     var choice=new DashboardRoundChoice(SessionType.Qualifying,round);
-    foreach(var suggestion in RaceOrderAssistant.Find(twoRoundSchedule,choice))
+    var singleRoundSuggestions=RaceOrderAssistant.Find(twoRoundSchedule,choice);
+    Equal(true,singleRoundSuggestions.Count>0,"Each qualifying round has independent improvement suggestions");
+    foreach(var suggestion in singleRoundSuggestions)
     {
         Equal(choice,suggestion.Round,"Suggestions identify exactly one qualifying round");
         Equal(true,twoRoundSchedule.Where(s=>s.Round!=round).Select(s=>s.Id).SequenceEqual(suggestion.Order.Where(s=>s.Round!=round).Select(s=>s.Id)),"Other qualifying rounds remain unchanged");
