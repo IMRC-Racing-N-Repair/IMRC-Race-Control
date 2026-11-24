@@ -17,7 +17,7 @@
             </Style.Triggers>
         </Style>
         <Style x:Key="ProjectionPositionTextStyle" TargetType="TextBlock" BasedOn="{StaticResource ProjectionCurrentTextStyle}">
-            <Setter Property="FontSize" Value="17"/>
+            <Setter Property="FontSize" Value="19"/>
             <Setter Property="FontWeight" Value="Bold"/>
             <Setter Property="Margin" Value="3,0"/>
         </Style>

@@ -48,18 +48,19 @@ public partial class MainWindow
             // A detached DataGridCell has no presentation resource scope and
             // does not reliably evaluate its style triggers. Test the actual
             // generated cells and text blocks in a hosted projection grid.
-            var racer = new RoundProjectionRow { Key = "live", DriverName = "Live driver",
+            var racer = new RoundProjectionRow { Key = "live", DriverName = "Hayden Johnson",
                 ProjectedPosition = 1, PaceFinish = "8/0:54.021", PaceGapDisplay = "—", IsCurrentHeat = true };
-            var historical = new RoundProjectionRow { Key = "past", DriverName = "Past driver",
+            var historical = new RoundProjectionRow { Key = "past", DriverName = "Aaron Patterson",
                 ProjectedPosition = 2, PaceFinish = "8/0:54.073", PaceGapDisplay = "+0.052" };
             ((Panel)grid.Parent).Children.Remove(grid);
             grid.DataContext = main;
             grid.ItemsSource = new[] { racer, historical };
             grid.EnableRowVirtualization = false;
             grid.EnableColumnVirtualization = false;
-            var host = new Window { Width = 560, Height = 260, Content = grid, ShowInTaskbar = false };
+            var host = new Window { Width = 405, Height = 260, Content = grid, ShowInTaskbar = false };
             try
             {
+                ThemeService.Apply(AppTheme.Thanksgiving);
                 host.Show();
                 void Layout()
                 {
@@ -74,6 +75,38 @@ public partial class MainWindow
                 Layout();
                 CheckRow(racer, "DashboardTextBrush");
                 CheckRow(historical, "WarnBrush");
+
+                // Exercise the original movement-number requirement in a narrow panel.
+                historical.MovementState = "UP";
+                historical.MovementDisplay = "UP 2";
+                Layout();
+                CheckMovement(historical, "+2", "DashboardPositionUpBrush");
+                historical.MovementState = "DOWN";
+                historical.MovementDisplay = "DOWN 2";
+                Layout();
+                CheckMovement(historical, "-2", "DashboardPositionDownBrush");
+                var shot = new RenderTargetBitmap((int)Math.Ceiling(host.ActualWidth), (int)Math.Ceiling(host.ActualHeight), 96, 96, PixelFormats.Pbgra32);
+                shot.Render(host);
+                var png = new PngBitmapEncoder();
+                png.Frames.Add(BitmapFrame.Create(shot));
+                using (var file = File.Create(Path.Combine(output, "Live-Round-Position.png"))) png.Save(file);
+
+                void CheckMovement(RoundProjectionRow item, string expectedBadge, string brush)
+                {
+                    var row = (DataGridRow)grid.ItemContainerGenerator.ContainerFromItem(item);
+                    var badge = Descendants(row).OfType<TextBlock>().Single(t => t.Name == "MovementBadgeText");
+                    var name = Descendants(row).OfType<TextBlock>().Single(t => t.Name == "MovementDriverText");
+                    var border = Descendants(row).OfType<Border>().Single(t => t.Name == "MovementNameHighlight");
+                    if (badge.Visibility != Visibility.Visible || badge.Text != expectedBadge ||
+                        badge.FontSize < 12 || badge.Margin.Top < 3 || badge.Margin.Right < 4 ||
+                        border.Background is not SolidColorBrush actual ||
+                        actual.Color != ((SolidColorBrush)host.FindResource(brush)).Color)
+                        throw new InvalidDataException("Movement badge must be readable, inset and preserve its highlight.");
+                    var nameEnd = name.TranslatePoint(new Point(name.ActualWidth, 0), border).X;
+                    var badgeStart = badge.TranslatePoint(new Point(0, 0), border).X;
+                    if (nameEnd > badgeStart + 1)
+                        throw new InvalidDataException("Movement badge overlaps the driver name.");
+                }
 
                 void CheckRow(RoundProjectionRow item, string resource)
                 {
@@ -90,6 +123,13 @@ public partial class MainWindow
                         if (text is null || text.Foreground is not SolidColorBrush actual ||
                             actual.Color != expected.Color || text.VerticalAlignment != VerticalAlignment.Center)
                             throw new InvalidDataException($"Projection {item.DriverName} / {cell.Column.Header}: expected {expected.Color} and centered text, got {text?.Foreground} / {text?.VerticalAlignment}.");
+                        var center = text.TranslatePoint(new Point(0, text.ActualHeight / 2), cell).Y;
+                        if (Math.Abs(center - cell.ActualHeight / 2) > 3)
+                            throw new InvalidDataException($"Projection {cell.Column.Header} text is not visually centered: {center} vs {cell.ActualHeight / 2}.");
+                        if (Equals(cell.Column.Header, "DRIVER") &&
+                            (text.Text != item.DriverName || text.TextTrimming != TextTrimming.None ||
+                             !Descendants(cell).OfType<Viewbox>().Any(v => v.StretchDirection == StretchDirection.DownOnly)))
+                            throw new InvalidDataException("Full driver names must fit without ellipsis.");
                     }
                 }
             }

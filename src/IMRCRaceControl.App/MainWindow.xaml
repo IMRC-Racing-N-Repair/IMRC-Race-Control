@@ -489,7 +489,7 @@
                                                       CanUserSortColumns="False"
                                                       HeadersVisibility="Column"
                                                       FontSize="13"
-                                                      RowHeight="38"
+                                                      RowHeight="40"
                                                       AlternationCount="2"
                                                       Margin="7,0,7,7"
                                                       ScrollViewer.VerticalScrollBarVisibility="Auto"
@@ -540,21 +540,27 @@
                                                             <DataTemplate>
                                                                 <Border x:Name="MovementNameHighlight"
                                                                         Background="Transparent"
-                                                                        CornerRadius="5" Padding="3,4" VerticalAlignment="Center" HorizontalAlignment="Stretch">
-                                                                    <Grid VerticalAlignment="Center">
+                                                                        CornerRadius="5" Padding="2,1" Margin="1,2" VerticalAlignment="Stretch" HorizontalAlignment="Stretch">
+                                                                    <Grid>
+                                                                        <Grid.ColumnDefinitions>
+                                                                            <ColumnDefinition Width="*"/>
+                                                                            <ColumnDefinition Width="Auto"/>
+                                                                        </Grid.ColumnDefinitions>
                                                                         <Border Style="{StaticResource ClassDriverAccent}"
                                                                                 HorizontalAlignment="Stretch" VerticalAlignment="Center">
-                                                                            <TextBlock x:Name="MovementDriverText" Style="{StaticResource ProjectionCurrentTextStyle}"
-                                                                                       Text="{Binding DriverName}" TextTrimming="CharacterEllipsis"
-                                                                                       ToolTip="{Binding DriverName}"
-                                                                                       HorizontalAlignment="Center" VerticalAlignment="Center" TextAlignment="Center"
-                                                                                       FontWeight="SemiBold" Margin="8,0"/>
+                                                                            <Viewbox x:Name="ProjectionNameFit" Stretch="Uniform" StretchDirection="DownOnly"
+                                                                                     HorizontalAlignment="Center" VerticalAlignment="Center">
+                                                                                <TextBlock x:Name="MovementDriverText" Style="{StaticResource ProjectionCurrentTextStyle}"
+                                                                                           Text="{Binding DriverName}" ToolTip="{Binding DriverName}"
+                                                                                           HorizontalAlignment="Center" VerticalAlignment="Center" TextAlignment="Center"
+                                                                                           FontWeight="SemiBold" Margin="1,0"/>
+                                                                            </Viewbox>
                                                                         </Border>
-                                                                        <TextBlock x:Name="MovementBadgeText"
+                                                                        <TextBlock x:Name="MovementBadgeText" Grid.Column="1"
                                                                                    Text="{Binding MovementBadge, Mode=OneWay}"
-                                                                                   FontSize="9" FontWeight="Bold"
+                                                                                   FontSize="12" FontWeight="Bold"
                                                                                    HorizontalAlignment="Right" VerticalAlignment="Top"
-                                                                                   Margin="0,-3,2,0"
+                                                                                   Margin="3,3,4,0"
                                                                                    Visibility="Collapsed"/>
                                                                     </Grid>
                                                                 </Border>
@@ -591,9 +597,9 @@
                                                     </DataGridTemplateColumn>
 
                                                     <DataGridTextColumn Header="PACE / FINISH" Binding="{Binding PaceFinish, Mode=OneWay}"
-                                                                        ElementStyle="{StaticResource ProjectionCurrentTextStyle}" Width="118"/>
+                                                                        ElementStyle="{StaticResource ProjectionCurrentTextStyle}" Width="106"/>
                                                     <DataGridTextColumn Header="PACE GAP" Binding="{Binding PaceGapDisplay, Mode=OneWay}"
-                                                                        ElementStyle="{StaticResource ProjectionCurrentTextStyle}" Width="86"/>
+                                                                        ElementStyle="{StaticResource ProjectionCurrentTextStyle}" Width="80"/>
                                                 </DataGrid.Columns>
                                             </DataGrid>
                                         </Grid>

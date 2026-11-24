@@ -3,6 +3,7 @@
 Keep all release history in this file. Add each new version at the top; do not create version-specific changelog files.
 
 ## 0.17.16
+- Refine the narrow Live Round Position panel: fit complete driver names without ellipses, center names geometrically, enlarge POS and movement numbers, give movement badges their own inset space, retain yellow live-racer text and red/green movement highlights; add narrow-panel visual regression coverage.
 - Improve Live Round Position readability: vertically center driver names, enlarge and pad POS numbers, inset movement badges, and use theme-aware yellow text for current-heat racers (even when an earlier qualifying result remains their best); preserve readable green/red movement indicators.
 - Make the NEXT UP banner responsive on the race dashboard and spectator display: size the heading to its content, scroll from just after the heading to the right edge, and repeat short lineups across wide screens without large blank areas.
 - Fix the qualifying dashboard XAML resource scope: share the centered cell style between standings and projection grids, and require a dedicated real-dashboard startup regression before installer packaging.
