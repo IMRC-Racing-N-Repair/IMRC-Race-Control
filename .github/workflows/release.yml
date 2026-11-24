@@ -9,10 +9,12 @@ permissions:
   contents: write
 concurrency:
   group: windows-release
-  cancel-in-progress: false
+  # A superseding draft build cancels stale builds, including ones stuck in UI preview.
+  cancel-in-progress: true
 jobs:
   release:
     runs-on: windows-latest
+    timeout-minutes: 25
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-dotnet@v4
