@@ -3,8 +3,8 @@
 Keep all release history in this file. Add each new version at the top; do not create version-specific changelog files.
 
 ## 0.17.17
-- Show a floating race or driver preview that follows the mouse in Rounds / Mains Lineups. Valid race destinations show a green insertion line above or below the target row; valid driver destinations highlight the entire receiving heat. Invalid targets and cancelled drags do not change the lineup. Keep completed races locked and edits pending until Save Changes.
-- Add regression checks for drag overlay positioning, before/after race insertion and destination highlighting.
+- Show a floating race or driver preview that follows the mouse in Rounds / Mains Lineups. Valid race destinations show a theme-colored insertion line above or below the target row; valid driver destinations highlight the entire receiving heat. Invalid targets and cancelled drags do not change the lineup. Keep completed races locked and edits pending until Save Changes.
+- Match floating drag previews and drop indicators to the active theme (panel, accent, border and text colors); add regression checks for theme resource updates, overlay positioning, before/after race insertion and destination highlighting.
 
 ## 0.17.16
 - Refine the narrow Live Round Position panel: fit complete driver names without ellipses, center names geometrically, enlarge POS and movement numbers, give movement badges their own inset space, retain yellow live-racer text and red/green movement highlights; add narrow-panel visual regression coverage.

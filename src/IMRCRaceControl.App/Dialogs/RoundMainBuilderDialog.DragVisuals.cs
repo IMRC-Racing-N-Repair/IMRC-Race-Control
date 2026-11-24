@@ -90,6 +90,12 @@ public partial class RoundMainBuilderDialog
         public bool After => _after;
         public bool DriverTarget => _driver;
 
+        // Resolve the same resources used by the lineup dialog, including
+        // seasonal palettes and any locally overridden theme resources.
+        internal Brush ThemeBrush(string key) =>
+            ((FrameworkElement)AdornedElement).FindResource(key) as Brush
+                ?? throw new InvalidOperationException($"Missing drag preview theme brush: {key}");
+
         protected override HitTestResult? HitTestCore(PointHitTestParameters hitTestParameters) => null;
         public void MoveTo(Point point) { _cursor = point; InvalidateVisual(); }
         public void SetTarget(Rect target, bool driver, bool after)
@@ -100,13 +106,15 @@ public partial class RoundMainBuilderDialog
         {
             var size = AdornedElement.RenderSize;
             if (size.Width <= 0 || size.Height <= 0) return;
-            var accent = new SolidColorBrush(Color.FromRgb(79, 211, 142));
+            var accent = ThemeBrush("AccentBrush");
             var edge = new Pen(accent, 3);
             if (Allowed && !_target.IsEmpty)
             {
                 if (_driver)
                 {
-                    dc.DrawRoundedRectangle(new SolidColorBrush(Color.FromArgb(38,79,211,142)), edge,
+                    var tint = accent.CloneCurrentValue();
+                    tint.Opacity *= 0.15;
+                    dc.DrawRoundedRectangle(tint, edge,
                         new Rect(_target.X+2,_target.Y+2,Math.Max(0,_target.Width-4),Math.Max(0,_target.Height-4)), 4, 4);
                 }
                 else
@@ -124,8 +132,8 @@ public partial class RoundMainBuilderDialog
             var yCard = _cursor.Y+18+height <= size.Height ? _cursor.Y+18 : _cursor.Y-height-12;
             yCard = Math.Clamp(yCard,0,Math.Max(0,size.Height-height));
             var box = new Rect(x,yCard,width,height);
-            var fill = new SolidColorBrush(Color.FromArgb(244,25,29,34));
-            var outline = new Pen(Allowed ? accent : new SolidColorBrush(Color.FromRgb(150,158,170)),1.5);
+            var fill = ThemeBrush("PanelAltBrush");
+            var outline = new Pen(Allowed ? accent : ThemeBrush("BorderStrongBrush"),1.5);
             dc.DrawRoundedRectangle(fill,outline,box,6,6);
             void DrawText(string value, double font, double top, bool bold, Brush color)
             {
@@ -135,8 +143,8 @@ public partial class RoundMainBuilderDialog
                 { MaxTextWidth = Math.Max(1,width-20), MaxLineCount = 1, Trimming = TextTrimming.CharacterEllipsis };
                 dc.DrawText(text,new Point(x+10,yCard+top));
             }
-            DrawText(title,15,6,true,Brushes.White);
-            DrawText(subtitle,12,29,false,Brushes.LightGray);
+            DrawText(title,15,6,true,ThemeBrush("TextBrush"));
+            DrawText(subtitle,12,29,false,ThemeBrush("MutedBrush"));
         }
     }
 
@@ -149,6 +157,27 @@ public partial class RoundMainBuilderDialog
         layer.Add(visual);
         try
         {
+            foreach (var key in new[] { "AccentBrush", "PanelAltBrush", "BorderStrongBrush", "TextBrush", "MutedBrush" })
+            {
+                if (!ReferenceEquals(visual.ThemeBrush(key), LineupDragRoot.FindResource(key)))
+                    throw new InvalidOperationException("Drag overlay does not use the current theme: " + key);
+            }
+            // Verify that changing a palette resource is reflected without recreating the overlay.
+            var resources = LineupDragRoot.Resources;
+            var hadAccent = resources.Contains("AccentBrush");
+            var priorAccent = hadAccent ? resources["AccentBrush"] : null;
+            try
+            {
+                var changed = new SolidColorBrush(Colors.CornflowerBlue);
+                resources["AccentBrush"] = changed;
+                if (!ReferenceEquals(visual.ThemeBrush("AccentBrush"), changed))
+                    throw new InvalidOperationException("Drag overlay retained a stale theme accent.");
+            }
+            finally
+            {
+                if (hadAccent) resources["AccentBrush"] = priorAccent;
+                else resources.Remove("AccentBrush");
+            }
             visual.MoveTo(new Point(20,30));
             visual.SetTarget(new Rect(20,80,200,35),false,true);
             if (visual.Cursor != new Point(20,30) || !visual.After || visual.DriverTarget ||

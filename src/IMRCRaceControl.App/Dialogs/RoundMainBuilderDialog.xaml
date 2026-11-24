@@ -26,7 +26,7 @@
                 </Grid>
             </DockPanel>
             <TextBlock Text="ROUNDS / MAINS LINEUPS" FontSize="23" FontWeight="Bold"/>
-            <TextBlock Text="Drag a race and follow the green insertion line to place it above or below another race. Completed races remain locked."
+            <TextBlock Text="Drag a race and follow the highlighted insertion line to place it above or below another race. Completed races remain locked."
                        Foreground="{DynamicResource MutedBrush}" Margin="0,2,0,6"/>
         </StackPanel>
 
