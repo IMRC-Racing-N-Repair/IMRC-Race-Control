@@ -35,13 +35,24 @@ public partial class RoundMainBuilderDialog
                 sort.ItemsSource = Enum.GetValues<MainSortOrder>().Select(v => new GeneratorSort(v,v.ToDisplay())).ToList();
             else
                 sort.ItemsSource = Enum.GetValues<QualificationOrder>().Select(v => new GeneratorSort(v,v == QualificationOrder.PreviousRound ? "Previous Round Results" : v.ToDisplay())).ToList();
-            sort.SelectedIndex = 0;
-            if (mode.SelectedValue is BuildMode.Mains) sort.SelectedValue = MainSortOrder.OverallRoundResults;
-            else sort.SelectedValue = QualificationOrder.Random;
-            round.Text = mode.SelectedValue is BuildMode.Mains ? "Mains" : NextRound().ToString();
+            UpdateRoundAndDefault();
+        }
+        void UpdateRoundAndDefault()
+        {
+            var next = NextRound();
+            if (mode.SelectedValue is BuildMode.Mains)
+            {
+                round.Text = "Mains";
+                sort.SelectedValue = MainSortOrder.OverallRoundResults;
+            }
+            else
+            {
+                round.Text = next.ToString();
+                sort.SelectedValue = QualificationOrderExtensions.DefaultForRound(next);
+            }
         }
         mode.SelectionChanged += (_, _) => UpdateMode();
-        cls.SelectionChanged += (_, _) => round.Text = mode.SelectedValue is BuildMode.Mains ? "Mains" : NextRound().ToString();
+        cls.SelectionChanged += (_, _) => UpdateRoundAndDefault();
         Field(0,"Build",mode); Field(1,"Class",cls); Field(2,"Round #",round); Field(3,"Sort",sort); panel.Children.Add(grid);
         var buttons = new StackPanel { Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Right, Margin = new Thickness(0,18,0,0) };
         var cancel = new Button { Content = "CANCEL", IsCancel = true };

@@ -488,6 +488,21 @@ Equal("seed-b", overallSeed[0], "Main seed selects fastest best completed qualif
 Equal("seed-a", overallSeed[1], "Last round does not replace driver's best earlier run");
 var missingSeed = OverallQualifyingSeed.BestRunOrder([QualifyingFixture(1, 75, 74)], "other-class");
 Equal(0, missingSeed.Count, "Main seed does not mix classes");
+Equal(QualificationOrder.Random, QualificationOrderExtensions.DefaultForRound(1), "Q1 defaults to random");
+foreach (var round in new[] { 2, 3, 99 })
+    Equal(QualificationOrder.OverallRoundResults, QualificationOrderExtensions.DefaultForRound(round), "Later qualifiers default to overall results");
+Equal(3, (int)QualificationOrder.Manual, "Saved manual sort enum value remains compatible");
+Equal(QualificationOrder.OverallRoundResults, QualificationOrderExtensions.FromDisplay("Overall Results"), "Overall results label round trips");
+var seedRounds = new[] { QualifyingFixture(1,75,74), QualifyingFixture(2,72,76), QualifyingFixture(3,99,1) };
+var seedRoster = seedRounds[0].Entrants.Append(new SessionEntrant { DriverId="new", DriverName="New racer" }).ToList();
+var q2Seed = OverallQualifyingSeed.SortEntrants(seedRounds,"seed-class",seedRoster,2);
+Equal("seed-a",q2Seed[0].DriverId,"Q2 excludes its own and later rounds");
+var q3Seed = OverallQualifyingSeed.SortEntrants(seedRounds,"seed-class",seedRoster,3);
+Equal("seed-b",q3Seed[0].DriverId,"Q3 uses best of Q1 and Q2");
+Equal("new",q3Seed[2].DriverId,"No-result drivers sort after ranked drivers");
+seedRounds[1].ProgressStatus = EventSessionStatus.Planned;
+Equal("seed-a",OverallQualifyingSeed.SortEntrants(seedRounds,"seed-class",seedRoster,3)[0].DriverId,"Uncompleted qualifying results excluded");
+Equal("seed-a",OverallQualifyingSeed.SortEntrants(seedRounds,"seed-class",seedRoster)[0].DriverId,"Mains use all completed qualifiers");
 
 // Back-to-back warning operates on physical races, not nested combined class rows.
 var combinedOne = new EventSessionDefinition

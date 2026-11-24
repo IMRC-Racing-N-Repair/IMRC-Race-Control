@@ -5,7 +5,8 @@ public enum QualificationOrder
     Random,
     Ranked,
     PreviousRound,
-    Manual
+    Manual,
+    OverallRoundResults
 }
 
 public static class QualificationOrderExtensions
@@ -14,13 +15,20 @@ public static class QualificationOrderExtensions
     {
         QualificationOrder.Random => "Random",
         QualificationOrder.Ranked => "Ranked",
+        QualificationOrder.OverallRoundResults => "Overall Results",
         QualificationOrder.PreviousRound => "Previous Round",
         QualificationOrder.Manual => "Manual / Driver List",
         _ => order.ToString()
     };
 
+    public static QualificationOrder DefaultForRound(int round) =>
+        round <= 1 ? QualificationOrder.Random : QualificationOrder.OverallRoundResults;
+
     public static QualificationOrder FromDisplay(string value)
     {
+        if (string.Equals(value, "Overall Results", StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(value, "Overall Round Results", StringComparison.OrdinalIgnoreCase))
+            return QualificationOrder.OverallRoundResults;
         if (string.Equals(value, "Previous Round", StringComparison.OrdinalIgnoreCase))
             return QualificationOrder.PreviousRound;
         if (string.Equals(value, "Manual / Driver List", StringComparison.OrdinalIgnoreCase) ||

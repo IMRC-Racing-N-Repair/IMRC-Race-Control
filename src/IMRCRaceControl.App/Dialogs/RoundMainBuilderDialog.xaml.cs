@@ -224,10 +224,10 @@ public partial class RoundMainBuilderDialog : Window
         ModeCombo.SelectedValue is BuildMode mode ? mode : BuildMode.QualifyingRound;
 
     private QualificationOrder CurrentQualSort =>
-        SortCombo.SelectedValue is QualificationOrder sort ? sort : QualificationOrder.Random;
+        SortCombo.SelectedValue is QualificationOrder sort ? sort : QualificationOrderExtensions.DefaultForRound(CurrentRound());
 
     private MainSortOrder CurrentMainSort =>
-        SortCombo.SelectedValue is MainSortOrder sort ? sort : MainSortOrder.QualifyingRank;
+        SortCombo.SelectedValue is MainSortOrder sort ? sort : MainSortOrder.OverallRoundResults;
 
     private void ConfigureSortOptions(BuildMode mode)
     {
@@ -255,7 +255,7 @@ public partial class RoundMainBuilderDialog : Window
             SortCombo.ItemsSource = sorts;
             SortCombo.DisplayMemberPath = nameof(Choice<QualificationOrder>.Label);
             SortCombo.SelectedValuePath = nameof(Choice<QualificationOrder>.Value);
-            SortCombo.SelectedValue = QualificationOrder.Random;
+            SortCombo.SelectedValue = QualificationOrderExtensions.DefaultForRound(CurrentRound());
         }
     }
 
@@ -654,6 +654,10 @@ public partial class RoundMainBuilderDialog : Window
             .Max();
 
         RoundText.Text = Math.Max(1, highestSavedRound + 1).ToString();
+        var wasLoading = _loadingOptions;
+        _loadingOptions = true;
+        try { SortCombo.SelectedValue = QualificationOrderExtensions.DefaultForRound(CurrentRound()); }
+        finally { _loadingOptions = wasLoading; }
         UpdateNextRoundGuidance();
     }
 
@@ -666,7 +670,7 @@ public partial class RoundMainBuilderDialog : Window
         if (round <= 1)
         {
             BuilderStatusText.Text =
-                "Q1 is the first saved round. After it is saved, the builder automatically advances to Q2.";
+                "Q1 defaults to Random. Later rounds default to Overall Results.";
             return;
         }
 
@@ -684,12 +688,12 @@ public partial class RoundMainBuilderDialog : Window
             previous.All(s => s.ProgressStatus == EventSessionStatus.Completed))
         {
             BuilderStatusText.Text =
-                $"Q{round} is next. Q{round - 1} is complete, so 'Previous Round Results' can seed this round from actual results.";
+                $"Q{round} defaults to Overall Results (best completed run across earlier rounds). Previous Round Results is also available.";
         }
         else
         {
             BuilderStatusText.Text =
-                $"Q{round} is next. Q{round - 1} remains saved. 'Previous Round Results' becomes available after all Q{round - 1} heats are complete.";
+                $"Q{round} defaults to Overall Results using completed earlier runs. Previous Round Results requires all Q{round - 1} heats to finish.";
         }
     }
 
@@ -957,7 +961,7 @@ public partial class RoundMainBuilderDialog : Window
                     entrants = SortQualifying(cls.Id, entrants, round, CurrentQualSort);
                     // For ranked/previous-round groups, put slower seeds in earlier heats.
                     // Random and manual modes retain their explicitly requested order.
-                    if (CurrentQualSort is QualificationOrder.Ranked or QualificationOrder.PreviousRound)
+                    if (CurrentQualSort is QualificationOrder.Ranked or QualificationOrder.PreviousRound or QualificationOrder.OverallRoundResults)
                         entrants.Reverse();
                 }
                 else
@@ -1265,6 +1269,7 @@ public partial class RoundMainBuilderDialog : Window
                 .OrderBy(e => e.DisplayName, StringComparer.OrdinalIgnoreCase)
                 .ToList(),
             QualificationOrder.PreviousRound => SortByPreviousRound(classId, entrants, round),
+            QualificationOrder.OverallRoundResults => OverallQualifyingSeed.SortEntrants(PreviewSessions, classId, entrants, round),
             _ => entrants
         };
     }
@@ -1327,16 +1332,7 @@ public partial class RoundMainBuilderDialog : Window
         }
 
         if (sortOrder == MainSortOrder.OverallRoundResults)
-        {
-            var overallOrder = GetOverallRoundBestRunOrder(classId)
-                .Select((driverId, index) => new { driverId, index })
-                .ToDictionary(x => x.driverId, x => x.index, StringComparer.OrdinalIgnoreCase);
-            return entrants
-                .OrderBy(e => overallOrder.TryGetValue(e.DriverId, out var index) ? index : int.MaxValue)
-                .ThenBy(e => e.SeedRank <= 0 ? int.MaxValue : e.SeedRank)
-                .ThenBy(e => e.DisplayName, StringComparer.OrdinalIgnoreCase)
-                .ToList();
-        }
+            return OverallQualifyingSeed.SortEntrants(PreviewSessions, classId, entrants);
 
         // Default / IFMAR-style main seeding: calculate directly from the
         // qualifying sessions that still exist in this event. This means a
@@ -1352,12 +1348,6 @@ public partial class RoundMainBuilderDialog : Window
             .ThenBy(e => e.DisplayName, StringComparer.OrdinalIgnoreCase)
             .ToList();
     }
-
-    // Use each racer's single best completed qualifier, not the last round
-    // or the best position within one heat. Compare laps descending and
-    // completion time ascending, preserving all previous rounds.
-    private List<string> GetOverallRoundBestRunOrder(string classId) =>
-        OverallQualifyingSeed.BestRunOrder(PreviewSessions, classId);
 
     private List<string> GetCurrentQualifyingRankOrder(string classId)
     {

@@ -8,12 +8,24 @@ namespace IMRCRaceControl.Core;
 /// </summary>
 public static class OverallQualifyingSeed
 {
-    public static List<string> BestRunOrder(IEnumerable<EventSessionDefinition> sessions, string classId)
+    public static List<SessionEntrant> SortEntrants(IEnumerable<EventSessionDefinition> sessions,
+        string classId, IEnumerable<SessionEntrant> entrants, int? beforeRound = null)
+    {
+        var order = BestRunOrder(sessions, classId, beforeRound)
+            .Select((id, index) => (id, index))
+            .ToDictionary(x => x.id, x => x.index, StringComparer.OrdinalIgnoreCase);
+        return entrants.OrderBy(e => order.TryGetValue(e.DriverId, out var rank) ? rank : int.MaxValue)
+            .ThenBy(e => e.SeedRank <= 0 ? int.MaxValue : e.SeedRank)
+            .ThenBy(e => e.DisplayName, StringComparer.OrdinalIgnoreCase).ToList();
+    }
+
+    public static List<string> BestRunOrder(IEnumerable<EventSessionDefinition> sessions, string classId, int? beforeRound = null)
     {
         return sessions
             .Where(s => s.SessionType == SessionType.Qualifying &&
                         string.Equals(s.ClassId, classId, StringComparison.OrdinalIgnoreCase) &&
-                        s.ProgressStatus == EventSessionStatus.Completed)
+                        s.ProgressStatus == EventSessionStatus.Completed &&
+                        (!beforeRound.HasValue || s.Round < beforeRound.Value))
             .SelectMany(session => session.Entrants
                 .Where(e => !string.IsNullOrWhiteSpace(e.DriverId))
                 .Select(entrant =>
