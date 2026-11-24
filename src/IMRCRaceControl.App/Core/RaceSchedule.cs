@@ -43,9 +43,11 @@ public static class RaceSchedule
     {
         // A class/heat slot has one number across qualifying rounds. Each class/main
         // letter similarly keeps its number across M1/M2/etc. Stages number separately.
-        // Reserve saved numbers before allocating new slots, so additions and queue
-        // reordering cannot shift existing numbers. Gaps are intentional after removals.
-        foreach (var stage in sessions.GroupBy(s => s.SessionType))
+        // Unedited rounds retain their historical class/heat numbering. A
+        // manually ordered round is independent and uses its actual running order.
+        var all = sessions.ToList();
+        var manualRounds = all.Where(s=>s.LineupOrder.HasValue).Select(DashboardRoundChoice.From).ToHashSet();
+        foreach (var stage in all.Where(s=>!manualRounds.Contains(DashboardRoundChoice.From(s))).GroupBy(s => s.SessionType))
         {
             var slots = stage.OrderBy(s => DashboardRoundChoice.From(s).Number)
                 .ThenBy(s => s.QueueOrder > 0 ? s.QueueOrder : int.MaxValue)
@@ -66,6 +68,35 @@ public static class RaceSchedule
             {
                 if (!numbers.TryGetValue(slot.Key, out var number)) number = next++;
                 foreach (var session in slot) session.RaceNumber = number;
+            }
+        }
+        RenumberManualRounds(all);
+    }
+
+    // Reuse the available numbers in physical race order, preserving positive
+    // race numbers on completed/running/skipped races. Combined classes share
+    // a single physical number. Other rounds are not touched.
+    public static void RenumberManualRounds(IEnumerable<EventSessionDefinition> sessions)
+    {
+        foreach(var round in sessions.GroupBy(DashboardRoundChoice.From).Where(g=>g.Any(s=>s.LineupOrder.HasValue)))
+        {
+            var races=round.OrderBy(s=>s.QueueOrder>0?s.QueueOrder:int.MaxValue)
+                .GroupBy(s=>string.IsNullOrEmpty(s.CombinedRaceId)?"session:"+s.Id:"combined:"+s.CombinedRaceId,
+                    StringComparer.OrdinalIgnoreCase).Select(g=>g.ToList()).ToList();
+            bool Locked(EventSessionDefinition s)=>s.ProgressStatus is EventSessionStatus.Completed or EventSessionStatus.Running or EventSessionStatus.Skipped;
+            var reserved=races.SelectMany(g=>g).Where(Locked).Select(s=>s.RaceNumber).Where(n=>n>0).ToHashSet();
+            var next=1;
+            foreach(var race in races)
+            {
+                var fixedNumber=race.Where(Locked).Select(s=>s.RaceNumber).FirstOrDefault(n=>n>0);
+                if(fixedNumber>0)
+                {
+                    foreach(var member in race.Where(s=>!Locked(s)))member.RaceNumber=fixedNumber;
+                    continue;
+                }
+                while(reserved.Contains(next))next++;
+                foreach(var member in race)member.RaceNumber=next;
+                reserved.Add(next++);
             }
         }
     }

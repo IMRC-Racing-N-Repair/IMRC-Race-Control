@@ -63,7 +63,10 @@ public partial class RoundMainBuilderDialog : Window
         public string StatusDisplay { get; init; } = "PLANNED";
         public string RoundGroup => SessionType == SessionType.Qualifying ? $"QUALIFYING ROUND {Round}" : "MAINS";
         public int Order { get; set; }
+        [System.Text.Json.Serialization.JsonIgnore]
         public int RaceNumber { get; set; }
+        [System.Text.Json.Serialization.JsonIgnore]
+        public bool ManualDraftOrder { get; set; }
         [System.Text.Json.Serialization.JsonIgnore]
         public string RaceNumberDisplay => IsCombinedChild ? "" : RaceNumber.ToString();
         internal IReadOnlyList<HeatPlan> CombinedChildren { get; init; } = [];
@@ -1572,7 +1575,11 @@ public partial class RoundMainBuilderDialog : Window
         RefreshSelectedMainSeriesEditor(selected);
         if (RosterEditActions is not null) RosterEditActions.IsEnabled = selected is { IsLocked: false } && !_browsingSavedLineups;
         var structureEnabled = selected is { IsLocked: false } && !HasLockedPlans;
-        HeatUpButton.IsEnabled = HeatDownButton.IsEnabled = AddHeatButton.IsEnabled = RemoveHeatButton.IsEnabled = structureEnabled;
+        // Reordering a single unrun race does not edit the class's completed
+        // lineups. Structural changes still require the entire scope unlocked.
+        var reorderEnabled=selected is {IsLocked:false,IsCombinedHeader:false,IsCombinedChild:false};
+        HeatUpButton.IsEnabled=HeatDownButton.IsEnabled=reorderEnabled;
+        AddHeatButton.IsEnabled=RemoveHeatButton.IsEnabled=structureEnabled;
         AutoSortMainsButton.IsEnabled = structureEnabled;
         MainSeriesSettingsPanel.IsEnabled = structureEnabled;
         SaveButton.IsEnabled = HasPendingEdits || !_browsingSavedLineups && (selected is {IsLocked:false} || HeatPlans.Count==0 && _editingExistingScope);
@@ -1822,8 +1829,7 @@ public partial class RoundMainBuilderDialog : Window
 
     private void MoveHeat(int offset)
     {
-        if (HasLockedPlans) { ShowLockedStructureMessage(); return; }
-        if (HeatGrid.SelectedItem is not HeatPlan selected)
+        if (HeatGrid.SelectedItem is not HeatPlan {IsLocked:false,IsCombinedHeader:false,IsCombinedChild:false} selected)
             return;
 
         if (selected.SourceSessionId.Length>0 && PreviewSessions.Any(s=>s.Id==selected.SourceSessionId))
@@ -1840,7 +1846,9 @@ public partial class RoundMainBuilderDialog : Window
         if (index < 0 || target < 0 || target >= HeatPlans.Count)
             return;
 
+        if(!CanReorderPreviewHeat(selected,HeatPlans[target]))return;
         HeatPlans.Move(index, target);
+        MarkManualDraftOrder();
         ReorderNumbers();
         HeatGrid.SelectedItem = selected;
         HeatGrid.Items.Refresh();
@@ -2079,7 +2087,7 @@ public partial class RoundMainBuilderDialog : Window
             {
                 Id = plan.SourceSessionId,
                 QueueOrder = original?.QueueOrder ?? 0,
-                LineupOrder = original?.LineupOrder,
+                LineupOrder = plan.ManualDraftOrder ? plan.Order : original?.LineupOrder,
                 CombinedRaceId = original?.CombinedRaceId ?? "", CombinedRaceOrder = original?.CombinedRaceOrder ?? 0,
                 RaceMinutesOverride = original?.RaceMinutesOverride,
                 MinimumLapSecondsOverride = original?.MinimumLapSecondsOverride,
@@ -2196,6 +2204,12 @@ public partial class RoundMainBuilderDialog : Window
         }
     }
 
+    private void MarkManualDraftOrder()
+    {
+        foreach(var plan in HeatPlans.Where(h=>!h.IsLocked && !h.IsCombinedHeader && !h.IsCombinedChild))
+            plan.ManualDraftOrder=true;
+    }
+
     private void ReorderNumbers()
     {
         for (var i = 0; i < HeatPlans.Count; i++)
@@ -2220,7 +2234,7 @@ public partial class RoundMainBuilderDialog : Window
         var previews = HeatPlans.Select(plan => new EventSessionDefinition {
             ClassId=plan.ClassId, ClassName=plan.ClassName, SessionType=plan.SessionType,
             Round=plan.Round, Heat=GetHeatIndex(plan), MainLeg=plan.MainLeg,
-            QueueOrder=nextQueue+plan.Order,
+            QueueOrder=nextQueue+plan.Order,LineupOrder=plan.ManualDraftOrder?plan.Order:null,
             RaceNumber=PreviewSessions.FirstOrDefault(s=>s.Id==plan.SourceSessionId)?.RaceNumber ?? 0 }).ToList();
         RaceSchedule.AssignRaceNumbers(existing.Concat(previews));
         for (var i=0;i<HeatPlans.Count;i++) HeatPlans[i].RaceNumber=previews[i].RaceNumber;

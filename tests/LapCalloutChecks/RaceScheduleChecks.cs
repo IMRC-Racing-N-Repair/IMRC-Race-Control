@@ -63,6 +63,23 @@ public static class RaceScheduleChecks
         var rebuild=Qual("a",1,1,1);
         SavedRoundEditor.ReplaceScope(ev,[q1a1],[rebuild]);
         Eq(q1a1.RaceNumber,rebuild.RaceNumber,"Rebuilt saved heat retains number despite new ID");
+        // Explicit cross-class race moves preserve heat identity, update numbers
+        // in the selected round and leave completed/other-round numbers alone.
+        var interleave=new[]{Qual("a",1,1,1),Qual("a",1,2,2),Qual("b",1,1,3),Qual("b",1,2,4),Qual("a",2,1,5)};
+        RaceSchedule.AssignRaceNumbers(interleave);
+        interleave[0].ProgressStatus=EventSessionStatus.Completed;
+        var otherNumber=interleave[4].RaceNumber;
+        interleave[2].LineupOrder=1;interleave[1].LineupOrder=2;interleave[3].LineupOrder=3;
+        RaceLineupOrder.Apply(interleave);
+        Eq("a,b,a,b",string.Join(',',interleave.Where(s=>s.Round==1).OrderBy(s=>s.QueueOrder).Select(s=>s.ClassId)),"Classes can be interleaved");
+        Eq("1,2,3,4",string.Join(',',interleave.Where(s=>s.Round==1).OrderBy(s=>s.QueueOrder).Select(s=>s.RaceNumber)),"Explicitly moved races renumber sequentially");
+        Eq(2,interleave[1].Heat,"Race movement preserves heat identity");
+        Eq(otherNumber,interleave[4].RaceNumber,"Other round number is unchanged");
+        var interleaveNumbers=string.Join(',',interleave.Select(s=>s.RaceNumber));
+        RaceSchedule.AssignRaceNumbers(interleave);
+        Eq(interleaveNumbers,string.Join(',',interleave.Select(s=>s.RaceNumber)),"Refresh preserves custom numbering");
+        RaceLineupOrder.RebuildRemainingQueue(interleave,new[]{"a","b"});
+        Eq("a,b,a,b",string.Join(',',interleave.Where(s=>s.Round==1).OrderBy(s=>s.QueueOrder).Select(s=>s.ClassId)),"Queue rebuild preserves cross-class manual order");
         var legacy=JsonSerializer.Deserialize<RaceDayEventDefinition>("{\"Sessions\":[{\"ClassId\":\"a\",\"QueueOrder\":1},{\"ClassId\":\"a\",\"Round\":2,\"QueueOrder\":8}]}")!;
         RaceSchedule.AssignRaceNumbers(legacy.Sessions);
         Eq("1,1",string.Join(',',legacy.Sessions.Select(s=>s.RaceNumber)),"Legacy event without numbers migrates by round");

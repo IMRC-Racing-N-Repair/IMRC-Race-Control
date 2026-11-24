@@ -3,6 +3,7 @@
 Keep all release history in this file. Add each new version at the top; do not create version-specific changelog files.
 
 ## 0.17.18
+- Restore sequential race numbers after explicit lineup moves and allow cross-class heat interleaving. Preserve manual order when selecting rosters and rebuilding the saved queue; keep completed races locked and unaffected rounds unchanged.
 - Separate lineup mouse clicks from native grid selection and race movement. Preserve the visible order and race numbers during roster selection, use one theme-colored selected row without a second hover/focus highlight, and require a MOVE-handle drag or explicit reorder action.
 - Fix lineup selection to highlight only one race during normal clicking, preserve race order when opening rosters, and require dragging the MOVE handle or using explicit reorder buttons. Shift-click combining remains available.
 - Race Order Assistant now offers one qualifying or mains round at a time, with a round picker and independent previews; all other rounds remain fixed.

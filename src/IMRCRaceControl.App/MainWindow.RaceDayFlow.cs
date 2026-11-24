@@ -143,9 +143,9 @@ public partial class MainWindow
             return;
         }
 
+        // Number logical races first, then construct the physical combined runs.
+        RaceSchedule.AssignRaceNumbers(_activeEvent.Sessions);
         var sessions = GetQueueSessions();
-
-        RaceSchedule.AssignRaceNumbers(sessions);
 
         var remaining = sessions
             .Where(s => s.ProgressStatus is not EventSessionStatus.Completed and not EventSessionStatus.Skipped)

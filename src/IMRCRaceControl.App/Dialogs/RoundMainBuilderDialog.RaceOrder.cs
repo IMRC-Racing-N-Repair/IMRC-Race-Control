@@ -157,6 +157,7 @@ public partial class RoundMainBuilderDialog
         }
         if (from == to) return;
         HeatPlans.Move(from, to);
+        MarkManualDraftOrder();
         ReorderNumbers();
         HeatGrid.SelectedItem = source;
         SaveButton.IsEnabled = true;
@@ -169,16 +170,19 @@ public partial class RoundMainBuilderDialog
         var target=PreviewSessions.FirstOrDefault(s=>s.Id==targetId);
         if(source is null || target is null || !RaceLineupOrder.CanMove(source,target) ||
            GroupFor(source.Id).Length>0 || GroupFor(target.Id).Length>0)return;
-        var group=PreviewSessions.Where(s=>RaceLineupOrder.GroupKey(s)==RaceLineupOrder.GroupKey(source) && RaceLineupOrder.Movable(s))
-            .OrderBy(s=>_pendingRaceOrder.GetValueOrDefault(s.Id,s.LineupOrder??int.MaxValue)).ThenBy(s=>s.QueueOrder).ToList();
+        // Always take the complete round, never the currently edited class.
+        // Use the effective queue order, not class/heat grouping.
+        var group=ProposedRaceOrder().Where(s=>RaceLineupOrder.GroupKey(s)==RaceLineupOrder.GroupKey(source) && RaceLineupOrder.Movable(s))
+            .ToList();
         var moving=group.Where(s=>s.Id==sourceId).ToList();
-        if(moving.Contains(target))return;
+        if(moving.Count==0 || moving.Any(s=>s.Id==targetId))return;
         group.RemoveAll(moving.Contains);
         var to=group.FindIndex(s=>s.Id==targetId);
+        if(to<0)return;
         group.InsertRange(to+(after?1:0),moving);
         for(int i=0;i<group.Count;i++)_pendingRaceOrder[group[i].Id]=i+1;
         RefreshLineupOverview();SaveButton.IsEnabled=true;
-        BuilderStatusText.Text="Race moved independently. SAVE CHANGES to keep the new position; completed races stay locked.";
+        BuilderStatusText.Text="Race moved and renumbered. SAVE CHANGES to keep the new position; completed races stay locked.";
     }
     private List<HeatPlan> OrderOverview(List<HeatPlan> plans)
     {
@@ -186,12 +190,15 @@ public partial class RoundMainBuilderDialog
         // the edited roster. Selecting another class cannot reorder races.
         var sessions=PreviewSessions.Select(s=>new EventSessionDefinition
         {
-            Id=s.Id,SessionType=s.SessionType,Round=s.Round,MainLeg=s.MainLeg,
-            QueueOrder=s.QueueOrder,ProgressStatus=s.ProgressStatus,
+            Id=s.Id,ClassId=s.ClassId,ClassName=s.ClassName,Heat=s.Heat,SessionType=s.SessionType,Round=s.Round,MainLeg=s.MainLeg,
+            QueueOrder=s.QueueOrder,RaceNumber=s.RaceNumber,CombinedRaceId=GroupFor(s.Id),ProgressStatus=s.ProgressStatus,
             LineupOrder=_pendingRaceOrder.TryGetValue(s.Id,out var order)?order:s.LineupOrder
         }).ToList();
         RaceLineupOrder.Apply(sessions);
         var queue=sessions.ToDictionary(s=>s.Id,s=>s.QueueOrder,StringComparer.OrdinalIgnoreCase);
+        var numbers=sessions.ToDictionary(s=>s.Id,s=>s.RaceNumber,StringComparer.OrdinalIgnoreCase);
+        foreach(var plan in plans)
+            if(numbers.TryGetValue(plan.SourceSessionId,out var number))plan.RaceNumber=number;
         return plans.Select((p,i)=>(Plan:p,Index:i))
             .OrderBy(x=>x.Plan.SessionType==SessionType.Qualifying?0:x.Plan.SessionType==SessionType.Race?1:2)
             .ThenBy(x=>x.Plan.SessionType==SessionType.Race?0:x.Plan.Round)

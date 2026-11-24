@@ -45,7 +45,8 @@ public static class RaceLineupOrder
 
     public static void Apply(IEnumerable<EventSessionDefinition> sessions)
     {
-        foreach(var group in sessions.GroupBy(GroupKey))
+        var all=sessions.ToList();
+        foreach(var group in all.GroupBy(GroupKey))
         {
             var movable=group.Where(Movable).OrderBy(s=>s.QueueOrder).ToList();
             if(!movable.Any(s=>s.LineupOrder.HasValue))continue;
@@ -53,5 +54,6 @@ public static class RaceLineupOrder
             var ordered=movable.OrderBy(s=>s.LineupOrder??int.MaxValue).ThenBy(s=>s.QueueOrder).ToList();
             for(int i=0;i<ordered.Count;i++)ordered[i].QueueOrder=slots[i];
         }
+        RaceSchedule.RenumberManualRounds(all);
     }
 }

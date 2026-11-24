@@ -197,6 +197,15 @@ public partial class RoundMainBuilderDialog
         if(dialog.PendingRaceOrder[dragSource.Id]!=dialog.PendingRaceOrder[dragTarget.Id]+1)throw new InvalidOperationException("Saved race drop-after did not match insertion marker.");
         dialog.StageRaceMove(dragSource.Id,dragTarget.Id,false);
         if(dialog.PendingRaceOrder[dragSource.Id]+1!=dialog.PendingRaceOrder[dragTarget.Id])throw new InvalidOperationException("Saved race drop-before did not match insertion marker.");
+        var interleaved=dialog.HeatGrid.Items.Cast<HeatPlan>().Where(h=>h.Round==1).ToList();
+        if(interleaved[1].SourceSessionId!=dragSource.Id || interleaved[2].SourceSessionId!=dragTarget.Id ||
+           !interleaved.Select(h=>h.RaceNumber).SequenceEqual(new[]{1,2,3,4}))
+            throw new InvalidOperationException("Cross-class drop must visibly interleave heats and renumber races.");
+        var interleavedSnapshot=interleaved.Select(h=>(h.SourceSessionId,h.RaceNumber)).ToArray();
+        dialog.SelectRaceForRoster(interleaved[1]);
+        dialog.SelectRaceForRoster(dialog.HeatGrid.Items.Cast<HeatPlan>().Single(h=>h.SourceSessionId==dragTarget.Id));
+        if(!interleavedSnapshot.SequenceEqual(dialog.HeatGrid.Items.Cast<HeatPlan>().Where(h=>h.Round==1).Select(h=>(h.SourceSessionId,h.RaceNumber))))
+            throw new InvalidOperationException("Opening rosters changed the manually interleaved race order or numbering.");
         if(!dialog.SaveButton.IsEnabled || dialog.PendingRaceOrder.Count==0 || ev.Sessions.Any(s=>s.QueueOrder!=savedQueue[s.Id]))throw new InvalidOperationException("Drag did not stage race order without modifying saved races.");
         if(System.Text.Json.JsonSerializer.Serialize(ev.Sessions[0])!=originalCompleted)throw new InvalidOperationException("Drag changed completed race.");
         if(System.Windows.Data.CollectionViewSource.GetDefaultView(dialog.HeatGrid.ItemsSource).Groups?.Count!=2)throw new InvalidOperationException("Qualifying rounds are not grouped.");
@@ -374,6 +383,7 @@ public partial class RoundMainBuilderDialog
             throw new InvalidOperationException("Draft drag failed to reorder, renumber or mark changes for saving.");
         dialog.MovePreviewHeat(first, second, false);
         if (!ReferenceEquals(dialog.HeatPlans[0], first)) throw new InvalidOperationException("Draft drop-before did not match insertion marker.");
+        if(!dialog.HeatPlans.Select(h=>h.RaceNumber).SequenceEqual(new[]{1,2}))throw new InvalidOperationException("Draft race numbers must follow manual order.");
         var anotherRound = new HeatPlan { ClassId = cls.Id, ClassName = cls.Name,
             SessionType = SessionType.Qualifying, Round = 2 };
         var locked = new HeatPlan { ClassId = cls.Id, ClassName = cls.Name,

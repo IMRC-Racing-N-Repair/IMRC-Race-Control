@@ -149,7 +149,7 @@ public partial class RoundMainBuilderDialog
             var children=plans.Where(p=>GroupFor(p.SourceSessionId)==group).ToList();
             var lead=allMembers[0];
             result.Add(new HeatPlan {IsCombinedHeader=true,IsLocked=true,CombinationId=group,
-                RaceNumber=lead.RaceNumber,
+                RaceNumber=children.FirstOrDefault(p=>p.SourceSessionId==lead.Id)?.RaceNumber ?? plan.RaceNumber,
                 CombinedChildren=children,
                 HiddenCombinedRacerCount=allMembers.Where(s=>children.All(p=>p.SourceSessionId!=s.Id)).Sum(s=>s.RacerCount),
                 ClassName="Combined Classes",SessionDisplay=$"One race • {allMembers.Count} heats",
