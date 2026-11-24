@@ -47,7 +47,7 @@ public partial class RoundMainBuilderDialog
             var view=new System.Windows.Data.ListCollectionView(list);
             view.GroupDescriptions.Add(new System.Windows.Data.PropertyGroupDescription(nameof(HeatPlan.RoundGroup)));
             HeatGrid.ItemsSource=view;
-            HeatGrid.SelectedItems.Clear();
+            ClearHeatSelection();
             HeatGrid.SelectedItem=selected is null ? null : list.FirstOrDefault(h=>ReferenceEquals(h,selected)) ?? list.FirstOrDefault(h=>h.SourceSessionId==selected.SourceSessionId && selected.SourceSessionId.Length>0);
         }
         finally { _refreshingOverview=false; }
@@ -209,11 +209,26 @@ public partial class RoundMainBuilderDialog
         var members=combinedEvent.Sessions.Where(s=>s.Round==2).ToList();
         var beforeCombine=System.Text.Json.JsonSerializer.Serialize(combinedEvent);
         var selectionRows=combinedDialog.HeatGrid.Items.Cast<HeatPlan>().Where(h=>h.Round==2).ToList();
+        // Test selection-mode transitions starting with a selected normal row.
+        combinedDialog.HeatGrid.SelectedItem=selectionRows[0];
+        if(combinedDialog.HeatGrid.SelectionMode!=DataGridSelectionMode.Single ||
+           combinedDialog.HeatGrid.SelectedItems.Count!=1)
+            throw new InvalidOperationException("Normal race selection must select exactly one row.");
         combinedDialog.BeginCombineSelection();
+        if(combinedDialog.HeatGrid.SelectionMode!=DataGridSelectionMode.Extended ||
+           combinedDialog.HeatGrid.SelectedItems.Count!=0)
+            throw new InvalidOperationException("Shift must enter extended mode and clear the normal selection.");
         foreach(var row in selectionRows)combinedDialog.ToggleCombineRace(row);
         if(combinedDialog.HeatGrid.SelectedItems.Count!=2 || combinedDialog._combineSelection.Count!=2 || combinedDialog.HeatGrid.Cursor!=Cursors.Hand)throw new InvalidOperationException("Shift selection did not retain multiple races and hand cursor.");
         combinedDialog.CancelCombineSelection();
         if(combinedDialog.HeatGrid.SelectedItems.Count!=0 || combinedDialog._combineSelection.Count!=0 || combinedDialog.HeatGrid.Cursor is not null)throw new InvalidOperationException("Shift selection did not restore its cursor/selection.");
+        if(combinedDialog.HeatGrid.SelectionMode!=DataGridSelectionMode.Single)
+            throw new InvalidOperationException("Releasing Shift must restore single selection.");
+        combinedDialog.HeatGrid.SelectedItem=combinedDialog.HeatGrid.Items.Cast<HeatPlan>().First(h=>h.SourceSessionId==selectionRows[0].SourceSessionId);
+        if(combinedDialog.HeatGrid.SelectedItems.Count!=1)
+            throw new InvalidOperationException("Normal selection must work again after Shift.");
+        combinedDialog.BeginCombineSelection();
+        combinedDialog.CancelCombineSelection();
         combinedDialog.StageCombination(members);
         var combinedRows=combinedDialog.HeatGrid.Items.Cast<HeatPlan>().ToList();
         if(combinedRows.Count!=7 || combinedRows.Count(h=>h.IsCombinedHeader)!=1 || combinedRows.Count(h=>h.IsCombinedChild)!=2)throw new InvalidOperationException("Combined lineup does not contain one parent and two indented heats.");

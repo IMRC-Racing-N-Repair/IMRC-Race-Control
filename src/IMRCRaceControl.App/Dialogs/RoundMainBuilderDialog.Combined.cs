@@ -13,6 +13,14 @@ public partial class RoundMainBuilderDialog
     private bool HasPendingSchedule => _pendingRaceOrder.Count>0 || _pendingCombinedRaces.Count>0;
     private string GroupFor(string id) => _pendingCombinedRaces.TryGetValue(id,out var group) ? group : PreviewSessions.FirstOrDefault(s=>s.Id==id)?.CombinedRaceId ?? "";
 
+    private void ClearHeatSelection()
+    {
+        if (HeatGrid.SelectionMode == DataGridSelectionMode.Extended)
+            HeatGrid.SelectedItems.Clear();
+        else
+            HeatGrid.SelectedItem = null;
+    }
+
     private void CombineKeyDown(object sender,KeyEventArgs e)
     {
         if(e.Key is not (Key.LeftShift or Key.RightShift) || _holdingCombine) return;
@@ -22,13 +30,26 @@ public partial class RoundMainBuilderDialog
     private void BeginCombineSelection()
     {
         _holdingCombine=true; _combineSelection.Clear(); HeatGrid.Cursor=Cursors.Hand;
-        _refreshingOverview=true; try {HeatGrid.SelectedItems.Clear(); HeatGrid.SelectionMode=DataGridSelectionMode.Extended;} finally {_refreshingOverview=false;}
+        _refreshingOverview=true;
+        try
+        {
+            // SelectedItems is writable only in Extended selection mode.
+            HeatGrid.SelectionMode=DataGridSelectionMode.Extended;
+            ClearHeatSelection();
+        }
+        finally {_refreshingOverview=false;}
     }
     private void CancelCombineSelection()
     {
         if(!_holdingCombine)return;
         _holdingCombine=false; HeatGrid.Cursor=null; _combineSelection.Clear();
-        _refreshingOverview=true; try {HeatGrid.SelectedItems.Clear(); HeatGrid.SelectionMode=DataGridSelectionMode.Single;} finally {_refreshingOverview=false;}
+        _refreshingOverview=true;
+        try
+        {
+            ClearHeatSelection();
+            HeatGrid.SelectionMode=DataGridSelectionMode.Single;
+        }
+        finally {_refreshingOverview=false;}
     }
     private void CombineKeyUp(object sender,KeyEventArgs e)
     {
