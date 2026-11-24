@@ -504,6 +504,16 @@ seedRounds[1].ProgressStatus = EventSessionStatus.Planned;
 Equal("seed-a",OverallQualifyingSeed.SortEntrants(seedRounds,"seed-class",seedRoster,3)[0].DriverId,"Uncompleted qualifying results excluded");
 Equal("seed-a",OverallQualifyingSeed.SortEntrants(seedRounds,"seed-class",seedRoster)[0].DriverId,"Mains use all completed qualifiers");
 
+// Upgrade notes include every skipped version and never repeat an acknowledged version.
+var releaseFixture = "## 0.17.19\n- Future\n## 0.17.18\n- Newest\n- Duplicate\n## 0.17.17\n- Middle\n- Duplicate\n## 0.17.16\n- Old";
+var releaseNotes = ReleaseChangeLog.Select(releaseFixture,new Version(0,17,18),new Version(0,17,16));
+Equal(2,releaseNotes.Count,"Skipped versions included in update notes");
+Equal(new Version(0,17,18),releaseNotes[0].Version,"Newest release first, future excluded");
+Equal("Middle",releaseNotes[1].Changes.Single(),"Duplicate release note suppressed");
+Equal(0,ReleaseChangeLog.Select(releaseFixture,new Version(0,17,18),new Version(0,17,18)).Count,"Same version produces no update notes");
+Equal(0,ReleaseChangeLog.Select(releaseFixture,new Version(0,17,17),new Version(0,17,18)).Count,"Downgrade produces no update notes");
+Equal(3,ReleaseChangeLog.Select(releaseFixture,new Version(0,17,18),null).Count,"Legacy install shows recent known notes");
+
 // Back-to-back warning operates on physical races, not nested combined class rows.
 var combinedOne = new EventSessionDefinition
 {

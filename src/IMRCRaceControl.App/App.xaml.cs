@@ -58,6 +58,9 @@ public partial class App : Application
         try
         {
             splash?.SetStatus("Protecting saved race data…");
+            var existingData = File.Exists(ApplicationDataPaths.DatabasePath) ||
+                File.Exists(Path.Combine(ApplicationDataPaths.DataDirectory,"settings.json")) ||
+                Directory.Exists(ApplicationDataPaths.LegacyDirectory);
             await DataProtectionService.PrepareAsync();
             var settingsService = new SettingsService();
             var database = new RaceControlDatabaseService();
@@ -92,6 +95,18 @@ public partial class App : Application
             ShutdownMode = ShutdownMode.OnLastWindowClose;
             window.Show();
             splash?.Close();
+            try
+            {
+                var current = ReleaseNotesService.CurrentVersion;
+                var previous = ReleaseNotesService.ReadPreviousVersion();
+                if ((previous is not null && previous < current) || (previous is null && existingData))
+                {
+                    var changes = ReleaseNotesService.GetChanges(current,previous);
+                    Dialogs.UpdateAndLineupDialogs.CreateWhatsNew(window,current,previous,changes).ShowDialog();
+                }
+                ReleaseNotesService.RememberVersion(current);
+            }
+            catch (Exception ex) { AppCrashLogger.Log("What's new notification",ex); }
             _ = window.CheckApplicationUpdatesAsync(manual: false);
         }
         catch (Exception ex)

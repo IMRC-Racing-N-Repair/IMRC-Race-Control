@@ -15,6 +15,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <EmbeddedResource Include="../../CHANGELOG.md" LogicalName="IMRCRaceControl.Changelog" />
     <Resource Include="Assets/RC-Approved.png" />
     <Resource Include="Assets/RC.ico" />
     <ApplicationDefinition Remove="App.xaml" />

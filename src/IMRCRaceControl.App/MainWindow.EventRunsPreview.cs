@@ -135,6 +135,7 @@ public partial class MainWindow
             }
             finally { host.Close(); }
             main.CheckPracticeCardLayout(output);
+            CheckThemedReleaseDialogs(output);
             File.WriteAllText(Path.Combine(output, "Dashboard-Startup-Checks.txt"),
                 "PASS: real dashboard XAML initializes; centered and padded projection columns resolve; current-heat text follows the theme and resets for historical rows.");
         }

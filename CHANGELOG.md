@@ -3,6 +3,8 @@
 Keep all release history in this file. Add each new version at the top; do not create version-specific changelog files.
 
 ## 0.17.18
+- Show an offline What's New dialog after updating, with cumulative changes since the last recorded version and one-time acknowledgement. Existing installations without a recorded version see recent release notes on the first update.
+- Redesign the consecutive-race warning with theme-aware text and surfaces, affected-driver and conflict counts, a scrollable driver/first race/next race table, and clear Change Lineup and Continue Anyway actions.
 - Add Overall Results to qualifying seeding, using each driver's best completed run across earlier rounds. New Q1 defaults to Random; Q2 and later and new mains default to Overall Results. Keep other sorting choices, balanced heats, slower heats first, and saved lineups unchanged.
 - Live practice laps now appear newest-first, with compact timing and lap rows. The chosen 4/5/6 columns remain fixed; cards use full height when one row is needed, shorten automatically when more drivers join, and expand again when drivers time out. Shared dashboard and spectator card template; chronological scoring and saved history remain unchanged.
 - Add practice layout and newest-first regression checks.

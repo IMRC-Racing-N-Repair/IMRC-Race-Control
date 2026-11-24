@@ -1983,54 +1983,9 @@ public partial class RoundMainBuilderDialog : Window
                 (s.QueueOrder > 0 ? s.QueueOrder : knownMax + stagedOrder.GetValueOrDefault(s.Id) + 1))
             .ThenBy(s => s.QueueOrder)
             .ToList();
-        var conflicts = ConsecutiveRaceDetector.Find(sorted)
-            .Select(c => $"{c.DriverName}  •  {c.FirstRace}  →  {c.SecondRace}")
-            .ToList();
+        var conflicts = ConsecutiveRaceDetector.Find(sorted);
         if (conflicts.Count == 0) return true;
-
-        var popup = new Window
-        {
-            Owner = this,
-            Title = "Consecutive race warning",
-            WindowStartupLocation = WindowStartupLocation.CenterOwner,
-            Width = 650, Height = 460, MinWidth = 520, MinHeight = 310,
-            Background = System.Windows.Media.Brushes.White
-        };
-        var root = new DockPanel { Margin = new Thickness(16) };
-        popup.Content = root;
-        var actions = new StackPanel
-        {
-            Orientation = Orientation.Horizontal,
-            HorizontalAlignment = HorizontalAlignment.Right,
-            Margin = new Thickness(0, 12, 0, 0)
-        };
-        DockPanel.SetDock(actions, Dock.Bottom);
-        root.Children.Add(actions);
-        var change = new Button { Content = "CHANGE LINEUP", MinWidth = 150, Margin = new Thickness(0, 0, 10, 0) };
-        change.Click += (_, _) => popup.DialogResult = false;
-        actions.Children.Add(change);
-        var continueButton = new Button { Content = "CONTINUE ANYWAY", MinWidth = 150 };
-        continueButton.Click += (_, _) => popup.DialogResult = true;
-        actions.Children.Add(continueButton);
-        var intro = new TextBlock
-        {
-            Text = "These drivers are scheduled in back-to-back races. Choose CHANGE LINEUP to return to the builder. SAVE will check again until you choose CONTINUE ANYWAY.",
-            TextWrapping = TextWrapping.Wrap, FontSize = 15, FontWeight = FontWeights.SemiBold,
-            Foreground = System.Windows.Media.Brushes.Black, Margin = new Thickness(0, 0, 0, 12)
-        };
-        DockPanel.SetDock(intro, Dock.Top);
-        root.Children.Add(intro);
-        var details = new TextBox
-        {
-            Text = string.Join(Environment.NewLine, conflicts),
-            IsReadOnly = true, TextWrapping = TextWrapping.Wrap,
-            VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
-            Foreground = System.Windows.Media.Brushes.Black,
-            Background = System.Windows.Media.Brushes.White,
-            FontSize = 13
-        };
-        root.Children.Add(details);
-        return popup.ShowDialog() == true;
+        return UpdateAndLineupDialogs.CreateConsecutiveWarning(this,conflicts).ShowDialog() == true;
     }
 
     private List<EventSessionDefinition> BuildCurrentLineup()
