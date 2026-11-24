@@ -514,6 +514,26 @@ Equal(0,ReleaseChangeLog.Select(releaseFixture,new Version(0,17,18),new Version(
 Equal(0,ReleaseChangeLog.Select(releaseFixture,new Version(0,17,17),new Version(0,17,18)).Count,"Downgrade produces no update notes");
 Equal(3,ReleaseChangeLog.Select(releaseFixture,new Version(0,17,18),null).Count,"Legacy install shows recent known notes");
 
+// Race order suggestions must reduce conflicts, preserve class sequence and never mutate the input.
+EventSessionDefinition AssistRace(string id,string cls,int heat,params string[] racers)=>new()
+{
+    Id=id,Name=id,ClassId=cls,Heat=heat,Round=1,ProgressStatus=EventSessionStatus.Planned,
+    Entrants=racers.Select(d=>new SessionEntrant{DriverId=d,DriverName=d}).ToList()
+};
+var assistantSchedule=new[]{AssistRace("A1","A",1,"a"),AssistRace("B1","B",1,"a"),AssistRace("A2","A",2,"b"),AssistRace("C1","C",1,"b"),AssistRace("D1","D",1,"c")};
+var assistantSnapshot=System.Text.Json.JsonSerializer.Serialize(assistantSchedule);
+var assistantSuggestions=RaceOrderAssistant.Find(assistantSchedule);
+Equal(3,assistantSuggestions.Count,"Race order assistant offers three priorities");
+foreach(var suggestion in assistantSuggestions)
+{
+    Equal(true,suggestion.Score.Conflicts<ConsecutiveRaceDetector.Find(assistantSchedule).Count,"Suggestion reduces conflicts");
+    Equal(suggestion.Score.Conflicts,ConsecutiveRaceDetector.Find(suggestion.Order).Count,"Suggestion measures actual full schedule conflicts");
+    Equal(true,suggestion.Order.ToList().FindIndex(s=>s.Id=="A1")<suggestion.Order.ToList().FindIndex(s=>s.Id=="A2"),"Suggestion preserves class heat sequence");
+}
+Equal(assistantSnapshot,System.Text.Json.JsonSerializer.Serialize(assistantSchedule),"Suggestion search does not mutate the lineup");
+assistantSchedule[0].ProgressStatus=EventSessionStatus.Completed;
+foreach(var suggestion in RaceOrderAssistant.Find(assistantSchedule))
+    Equal("A1",suggestion.Order[0].Id,"Completed race remains locked");
 // Back-to-back warning operates on physical races, not nested combined class rows.
 var combinedOne = new EventSessionDefinition
 {

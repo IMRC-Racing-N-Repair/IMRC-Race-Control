@@ -2,6 +2,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
 using IMRCRaceControl.Core;
+using IMRCRaceControl.Models;
 
 namespace IMRCRaceControl.Dialogs;
 
@@ -41,7 +42,10 @@ internal static class UpdateAndLineupDialogs
         return button;
     }
 
-    internal static Window CreateConsecutiveWarning(Window owner,IReadOnlyList<ConsecutiveRaceDetector.Conflict> conflicts)
+    internal static Window CreateConsecutiveWarning(Window owner,IReadOnlyList<ConsecutiveRaceDetector.Conflict> conflicts,
+        IReadOnlyList<EventSessionDefinition>? currentOrder = null,
+        IReadOnlyList<RaceOrderAssistant.Suggestion>? suggestions = null,
+        Action<RaceOrderAssistant.Suggestion>? apply = null)
     {
         var window=CreateWindow(owner,"Consecutive race warning",860,490,out var root);
         var intro=new StackPanel { Margin=new Thickness(0,0,0,12) };
@@ -54,8 +58,24 @@ internal static class UpdateAndLineupDialogs
         var change=ActionButton("CHANGE LINEUP",true); change.IsDefault=true; change.IsCancel=true;
         change.Click+=(_,_)=>window.DialogResult=false;
         var proceed=ActionButton("CONTINUE ANYWAY"); proceed.Click+=(_,_)=>window.DialogResult=true;
+        if(currentOrder is not null && suggestions is not null && apply is not null)
+        {
+            var suggest=ActionButton("SUGGEST RACE ORDER");
+            suggest.IsEnabled=suggestions.Count>0;
+            suggest.ToolTip=suggestions.Count==0?"No better order found within locked races and race dependencies.":"Compare three alternative race orders.";
+            suggest.Click+=(_,_) =>
+            {
+                var choice=ChooseOrder(window,currentOrder,suggestions,conflicts.Count);
+                if(choice is null)return;
+                apply(choice);
+                window.DialogResult=false;
+            };
+            actions.Children.Add(suggest);
+        }
         actions.Children.Add(change); actions.Children.Add(proceed); AddBottom(root,actions);
-        var footer=Text("Save checks the lineup again after each edit. Completed races remain locked.",12,false,"MutedBrush");
+        var footer=Text(suggestions is {Count:0}
+            ?"No better order found within race constraints. You can still edit manually or continue."
+            :"Save checks the lineup again after each edit. Completed races remain locked.",12,false,"MutedBrush");
         footer.Margin=new Thickness(0,8,0,0); AddBottom(root,footer);
         var table=new DockPanel();
         AddTop(table,Row("DRIVER","FIRST RACE","NEXT RACE",true,0));
@@ -83,6 +103,54 @@ internal static class UpdateAndLineupDialogs
             border.SetResourceReference(Border.BorderBrushProperty,"BorderBrush");
             return border;
         }
+    }
+
+    private static RaceOrderAssistant.Suggestion? ChooseOrder(Window owner,IReadOnlyList<EventSessionDefinition> current,
+        IReadOnlyList<RaceOrderAssistant.Suggestion> suggestions,int originalConflicts)
+    {
+        var window=CreateWindow(owner,"Race Order Assistant",920,650,out var root);
+        var heading=new StackPanel{Margin=new Thickness(0,0,0,10)};
+        heading.Children.Add(Text("SUGGESTED RACE ORDER",21,true));
+        heading.Children.Add(Text("Choose an alternative to preview. Driver rosters, combined races and race dependencies are preserved.",13,false,"MutedBrush"));
+        AddTop(root,heading);
+        var selector=new ComboBox{ItemsSource=suggestions.Select(s=>s.Name).ToList(),SelectedIndex=1,Margin=new Thickness(0,0,0,8)};
+        AddTop(root,selector);
+        var summary=Text("",14,true);summary.Margin=new Thickness(0,0,0,8);AddTop(root,summary);
+        var actions=Actions();var cancel=ActionButton("CANCEL");cancel.IsCancel=true;
+        var apply=ActionButton("APPLY TO PREVIEW",true);apply.IsDefault=true;
+        RaceOrderAssistant.Suggestion? selected=null;
+        cancel.Click+=(_,_)=>window.DialogResult=false;
+        apply.Click+=(_,_)=>{selected=suggestions[selector.SelectedIndex];window.DialogResult=true;};
+        actions.Children.Add(cancel);actions.Children.Add(apply);AddBottom(root,actions);
+        var columns=new Grid();
+        columns.ColumnDefinitions.Add(new ColumnDefinition());columns.ColumnDefinitions.Add(new ColumnDefinition());
+        var left=new StackPanel{Margin=new Thickness(0,0,8,0)};
+        var right=new StackPanel{Margin=new Thickness(8,0,0,0)};
+        columns.Children.Add(left);Grid.SetColumn(right,1);columns.Children.Add(right);
+        root.Children.Add(PanelBorder(new ScrollViewer{Content=columns,VerticalScrollBarVisibility=ScrollBarVisibility.Auto,HorizontalScrollBarVisibility=ScrollBarVisibility.Disabled},"PanelBrush"));
+        void Fill(StackPanel panel,string title,IReadOnlyList<EventSessionDefinition> order)
+        {
+            panel.Children.Clear();panel.Children.Add(Text(title,15,true));
+            var groups=order.GroupBy(s=>string.IsNullOrEmpty(s.CombinedRaceId)?"session:"+s.Id:"combined:"+s.CombinedRaceId).ToList();
+            for(var i=0;i<groups.Count;i++)
+            {
+                var group=groups[i];var race=group.First();
+                var row=Text($"{i+1}. Race {race.RaceNumber} · {string.Join(" + ",group.Select(s=>s.Name))}",13);
+                row.Margin=new Thickness(4,5,4,5);
+                panel.Children.Add(PanelBorder(row,i%2==0?"PanelAltBrush":"PanelBrush"));
+            }
+        }
+        Fill(left,"CURRENT ORDER",current);
+        void Refresh()
+        {
+            if(selector.SelectedIndex<0)return;
+            var suggestion=suggestions[selector.SelectedIndex];
+            summary.Text=$"{originalConflicts} → {suggestion.Score.Conflicts} conflicts · {suggestion.Score.AffectedDrivers} affected drivers · {suggestion.Score.MovedRaces} races change position";
+            Fill(right,"SUGGESTED ORDER",suggestion.Order);
+        }
+        selector.SelectionChanged+=(_,_)=>Refresh();Refresh();
+        window.ShowDialog();
+        return selected;
     }
 
     internal static Window CreateWhatsNew(Window owner,Version current,Version? previous,IReadOnlyList<ReleaseChangeLog.Section> changes)

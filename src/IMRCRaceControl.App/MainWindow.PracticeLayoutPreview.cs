@@ -57,6 +57,8 @@ public partial class MainWindow
             Layout();
             var surface = Visuals(content).OfType<PracticeCardSurface>().Single();
             var scroll = Visuals(surface).OfType<ScrollViewer>().Single(v => v.Name == "PracticeLapScroll");
+            var last = Visuals(surface).OfType<TextBlock>().Single(t=>t.Name=="PracticeLastValue");
+            if(last.FontSize<36)throw new InvalidDataException("Practice LAST timing is not prominent.");
             var full = scroll.ViewportHeight;
             if (full < 260) throw new InvalidDataException($"Full practice card has insufficient lap history space: {full}.");
             host.Height = 330;

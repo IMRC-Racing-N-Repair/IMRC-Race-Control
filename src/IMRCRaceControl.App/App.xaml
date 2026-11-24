@@ -941,8 +941,8 @@
                                                         <Grid Width="360" Margin="0" TextElement.Foreground="{DynamicResource DashboardTextBrush}">
                                                             <Grid.RowDefinitions>
                                                                 <RowDefinition Height="40"/>
-                                                                <RowDefinition Height="44"/>
-                                                                <RowDefinition Height="34"/>
+                                                                <RowDefinition Height="72"/>
+                                                                <RowDefinition Height="0"/>
                                                                 <RowDefinition Height="*"/>
                                                                 <RowDefinition Height="16"/>
                                                             </Grid.RowDefinitions>
@@ -974,75 +974,45 @@
                                                                            Margin="8,0,2,0"/>
                                                             </Grid>
 
-                                                            <!-- Primary timing -->
-                                                            <UniformGrid Grid.Row="1" Columns="3" Margin="0,1,0,1">
-                                                                <StackPanel Margin="1" VerticalAlignment="Center">
-                                                                    <TextBlock Text="LAST"
-                                                                               TextAlignment="Center"
-                                                                               FontSize="11"
-                                                                               Foreground="{DynamicResource MutedBrush}"/>
-                                                                    <TextBlock Text="{Binding LastLapDisplay}"
-                                                                               TextAlignment="Center"
-                                                                               FontSize="23"
-                                                                               FontWeight="Bold"/>
+                                                            <!-- LAST is dominant; secondary stats share a compact block. -->
+                                                            <Grid Grid.Row="1">
+                                                                <Grid.ColumnDefinitions>
+                                                                    <ColumnDefinition Width="125"/>
+                                                                    <ColumnDefinition Width="*"/>
+                                                                </Grid.ColumnDefinitions>
+                                                                <StackPanel VerticalAlignment="Center">
+                                                                    <TextBlock Text="LAST" FontSize="11" TextAlignment="Center" Foreground="{DynamicResource MutedBrush}"/>
+                                                                    <Viewbox StretchDirection="DownOnly" Margin="2,0">
+                                                                        <TextBlock x:Name="PracticeLastValue" Text="{Binding LastLapDisplay}" FontSize="40" FontWeight="Bold" TextAlignment="Center"/>
+                                                                    </Viewbox>
                                                                 </StackPanel>
-
-                                                                <StackPanel Margin="1" VerticalAlignment="Center">
-                                                                    <TextBlock Text="BEST"
-                                                                               TextAlignment="Center"
-                                                                               FontSize="9"
-                                                                               Foreground="{DynamicResource MutedBrush}"/>
-                                                                    <TextBlock Text="{Binding BestLapDisplay}"
-                                                                               TextAlignment="Center"
-                                                                               FontSize="16"
-                                                                               FontWeight="Bold"/>
-                                                                </StackPanel>
-
-                                                                <StackPanel Margin="1" VerticalAlignment="Center">
-                                                                    <TextBlock Text="AVERAGE"
-                                                                               TextAlignment="Center"
-                                                                               FontSize="9"
-                                                                               Foreground="{DynamicResource MutedBrush}"/>
-                                                                    <TextBlock Text="{Binding AverageLapDisplay}"
-                                                                               TextAlignment="Center"
-                                                                               FontSize="16"
-                                                                               FontWeight="Bold"/>
-                                                                </StackPanel>
-                                                            </UniformGrid>
-
-                                                            <!-- Operator-selected live stats -->
-                                                            <ItemsControl Grid.Row="2"
-                                                                          ItemsSource="{Binding VisibleStats}"
-                                                                          Margin="0">
-                                                                <ItemsControl.ItemsPanel>
-                                                                    <ItemsPanelTemplate>
-                                                                        <UniformGrid Rows="1"/>
-                                                                    </ItemsPanelTemplate>
-                                                                </ItemsControl.ItemsPanel>
-                                                                <ItemsControl.ItemTemplate>
-                                                                    <DataTemplate>
-                                                                        <Border Margin="1"
-                                                                                Padding="1"
-                                                                                Background="Transparent"
-                                                                                BorderBrush="{DynamicResource BorderBrush}"
-                                                                                BorderThickness="0"
-                                                                                CornerRadius="0">
-                                                                            <Grid VerticalAlignment="Center">
-                                                                                <Grid.RowDefinitions><RowDefinition Height="13"/><RowDefinition Height="17"/></Grid.RowDefinitions>
-                                                                                <TextBlock Text="{Binding DisplayLabel}" TextWrapping="NoWrap" VerticalAlignment="Center"
-                                                                                           TextAlignment="Center"
-                                                                                           TextTrimming="CharacterEllipsis"
-                                                                                           FontSize="10"
-                                                                                           Foreground="{DynamicResource MutedBrush}"/>
-                                                                                <TextBlock Grid.Row="1" Text="{Binding Value}" VerticalAlignment="Center" TextWrapping="NoWrap" TextTrimming="CharacterEllipsis"
-                                                                                           TextAlignment="Center"
-                                                                                           FontWeight="Bold"
-                                                                                           FontSize="13"/>
-                                                                            </Grid>
-                                                                        </Border>
-                                                                    </DataTemplate>
-                                                                </ItemsControl.ItemTemplate>
-                                                            </ItemsControl>
+                                                                <Grid Grid.Column="1" Margin="2,0">
+                                                                    <Grid.RowDefinitions><RowDefinition Height="36"/><RowDefinition Height="36"/></Grid.RowDefinitions>
+                                                                    <UniformGrid Columns="2">
+                                                                        <StackPanel VerticalAlignment="Center">
+                                                                            <TextBlock Text="BEST" FontSize="10" TextAlignment="Center" Foreground="{DynamicResource MutedBrush}"/>
+                                                                            <TextBlock Text="{Binding BestLapDisplay}" FontSize="19" FontWeight="Bold" TextAlignment="Center"/>
+                                                                        </StackPanel>
+                                                                        <StackPanel VerticalAlignment="Center">
+                                                                            <TextBlock Text="AVERAGE" FontSize="10" TextAlignment="Center" Foreground="{DynamicResource MutedBrush}"/>
+                                                                            <TextBlock Text="{Binding AverageLapDisplay}" FontSize="19" FontWeight="Bold" TextAlignment="Center"/>
+                                                                        </StackPanel>
+                                                                    </UniformGrid>
+                                                                    <ItemsControl Grid.Row="1" ItemsSource="{Binding VisibleStats}">
+                                                                        <ItemsControl.ItemsPanel><ItemsPanelTemplate><UniformGrid Rows="1"/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+                                                                        <ItemsControl.ItemTemplate>
+                                                                            <DataTemplate>
+                                                                                <StackPanel VerticalAlignment="Center" Margin="1,0">
+                                                                                    <TextBlock Text="{Binding DisplayLabel}" FontSize="10" TextAlignment="Center" TextTrimming="CharacterEllipsis" Foreground="{DynamicResource MutedBrush}"/>
+                                                                                    <Viewbox StretchDirection="DownOnly">
+                                                                                        <TextBlock Text="{Binding Value}" FontSize="15" FontWeight="Bold" TextAlignment="Center"/>
+                                                                                    </Viewbox>
+                                                                                </StackPanel>
+                                                                            </DataTemplate>
+                                                                        </ItemsControl.ItemTemplate>
+                                                                    </ItemsControl>
+                                                                </Grid>
+                                                            </Grid>
 
                                                             <!-- Lap history -->
                                                             <Border Grid.Row="3"
@@ -1063,7 +1033,7 @@
 
                                                                         <ItemsControl.ItemTemplate>
                                                                             <DataTemplate>
-                                                                                <Border Padding="4,1"
+                                                                                <Border Padding="4,2"
                                                                                         BorderBrush="{DynamicResource BorderBrush}"
                                                                                         BorderThickness="0,0,0,1">
                                                                                     <Border.Style>
@@ -1089,17 +1059,17 @@
                                                                                         </Grid.ColumnDefinitions>
 
                                                                                         <TextBlock Text="{Binding LapNumber, StringFormat='Lap {0}'}"
-                                                                                                   FontSize="10"
+                                                                                                   FontSize="15"
                                                                                                    FontWeight="SemiBold"/>
 
                                                                                         <TextBlock Grid.Column="1"
                                                                                                    Text="{Binding LapTimeDisplay}"
                                                                                                    TextAlignment="Center"
-                                                                                                   FontSize="12"
+                                                                                                   FontSize="17"
                                                                                                    FontWeight="Bold"/>
 
                                                                                         <TextBlock Grid.Column="2" Text="{Binding LapDeltaDisplay}"
-                                                                                                   TextAlignment="Right" FontSize="13" FontWeight="Bold"
+                                                                                                   TextAlignment="Right" FontSize="17" FontWeight="Bold"
                                                                                                    ToolTip="Difference from previous lap (seconds)">
                                                                                             <TextBlock.Style>
                                                                                                 <Style TargetType="TextBlock">

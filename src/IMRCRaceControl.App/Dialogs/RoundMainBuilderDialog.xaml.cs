@@ -1966,26 +1966,53 @@ public partial class RoundMainBuilderDialog : Window
     {
         // StageCurrentLineup has already supplied a detached preview. Inspect the
         // proposed race order without mutating completed/saved event sessions.
-        var proposed = PreviewSessions
-            .Where(s => s.ProgressStatus != EventSessionStatus.Skipped)
-            .ToList();
-        var knownMax = proposed.Select(s => s.QueueOrder).Where(q => q > 0)
-            .DefaultIfEmpty(0).Max();
-        var stagedOrder = BuiltSessions.Select((s, i) => new { s.Id, Index = i })
-            .ToDictionary(x => x.Id, x => x.Index, StringComparer.OrdinalIgnoreCase);
-        var manualMains = proposed.Any(s => s.SessionType == SessionType.Race &&
-            (_pendingRaceOrder.ContainsKey(s.Id) || s.LineupOrder.HasValue));
-        var sorted = proposed
-            .OrderBy(s => s.ScheduleStageOrder)
-            .ThenBy(s => s.SessionType == SessionType.Race && manualMains ? 0 : s.ScheduleRoundOrder)
-            .ThenBy(s => _pendingRaceOrder.TryGetValue(s.Id, out var custom) ? custom :
-                s.LineupOrder ??
-                (s.QueueOrder > 0 ? s.QueueOrder : knownMax + stagedOrder.GetValueOrDefault(s.Id) + 1))
-            .ThenBy(s => s.QueueOrder)
-            .ToList();
+        var sorted = ProposedRaceOrder();
         var conflicts = ConsecutiveRaceDetector.Find(sorted);
         if (conflicts.Count == 0) return true;
-        return UpdateAndLineupDialogs.CreateConsecutiveWarning(this,conflicts).ShowDialog() == true;
+        var suggestions = RaceOrderAssistant.Find(sorted);
+        var popup = UpdateAndLineupDialogs.CreateConsecutiveWarning(this, conflicts, sorted, suggestions,
+            suggestion =>
+            {
+                StageSuggestedRaceOrder(sorted,suggestion.Order);
+                BuilderStatusText.Text = "Suggested order applied to preview. Review it and press SAVE CHANGES to confirm.";
+            });
+        return popup.ShowDialog() == true;
+    }
+
+    private List<EventSessionDefinition> ProposedRaceOrder()
+    {
+        var proposed = PreviewSessions.Where(s=>s.ProgressStatus!=EventSessionStatus.Skipped)
+            .Select(s=>new EventSessionDefinition
+            {
+                Id=s.Id,Name=s.Name,ClassId=s.ClassId,ClassName=s.ClassName,Round=s.Round,Heat=s.Heat,
+                SessionType=s.SessionType,MainLeg=s.MainLeg,QueueOrder=s.QueueOrder,RaceNumber=s.RaceNumber,
+                ProgressStatus=s.ProgressStatus,Entrants=s.Entrants,BumpTargetSessionId=s.BumpTargetSessionId,
+                CombinedRaceId=GroupFor(s.Id),
+                LineupOrder=_pendingRaceOrder.TryGetValue(s.Id,out var custom)?custom:s.LineupOrder
+            }).ToList();
+        var knownMax=proposed.Select(s=>s.QueueOrder).DefaultIfEmpty(0).Max();
+        foreach(var s in proposed.Where(s=>s.QueueOrder<=0))s.QueueOrder=++knownMax;
+        RaceLineupOrder.Apply(proposed);
+        var manualMains=proposed.Any(s=>s.SessionType==SessionType.Race && s.LineupOrder.HasValue);
+        return proposed.OrderBy(s=>s.ScheduleStageOrder)
+            .ThenBy(s=>s.SessionType==SessionType.Race && manualMains?0:s.ScheduleRoundOrder)
+            .ThenBy(s=>s.QueueOrder).ToList();
+    }
+
+    private void StageSuggestedRaceOrder(IReadOnlyList<EventSessionDefinition> before,IReadOnlyList<EventSessionDefinition> after)
+    {
+        // Store the order through the existing save path, not in the event database.
+        foreach(var group in after.GroupBy(RaceLineupOrder.GroupKey))
+        {
+            var prior=before.Where(s=>RaceLineupOrder.GroupKey(s)==group.Key).Select(s=>s.Id);
+            if(prior.SequenceEqual(group.Select(s=>s.Id)))continue;
+            var position=0;
+            foreach(var session in group.Where(RaceLineupOrder.Movable))
+                _pendingRaceOrder[session.Id]=++position;
+        }
+        // New lineups have already been staged by PrepareSaveBatch.
+        ShowSavedLineups();
+        SaveButton.IsEnabled=HasPendingEdits;
     }
 
     private List<EventSessionDefinition> BuildCurrentLineup()
