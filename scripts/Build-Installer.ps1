@@ -20,11 +20,26 @@ Checked @('tool','restore')
 # Clean generated payloads so a release never includes stale files.
 Remove-Item 'artifacts/publish','artifacts/releases' -Recurse -Force -ErrorAction SilentlyContinue
 Checked (@('publish',$project,'-c','Release','-r','win-x64','--self-contained','true','-o','artifacts/publish',"-p:UpdateRepository=$Repository",'-p:PublishSingleFile=false') + $liveTimeArgs)
+# Keep Windows UI smoke previews from leaving unattended modal dialogs
+# running indefinitely. A hang must fail explicitly with a useful step name.
+function Invoke-Preview([string]$Executable, [string[]]$Arguments, [string]$Label) {
+    $process = Start-Process -FilePath $Executable -ArgumentList $Arguments -PassThru
+    try {
+        if (-not $process.WaitForExit(180000)) {
+            Stop-Process -Id $process.Id -Force -ErrorAction SilentlyContinue
+            throw "$Label timed out after 180 seconds (possible unattended modal dialog)."
+        }
+        return $process.ExitCode
+    }
+    finally { $process.Dispose() }
+}
 # Render the native app brand to PNG/ICO on the Windows runner; no external image service is required.
 $branding = Join-Path (Get-Location) 'artifacts/branding'
-$renderer = Start-Process -FilePath (Join-Path (Get-Location) 'artifacts/publish/IMRCRaceControl.exe') -ArgumentList @('--export-brand',"`"$branding`"") -Wait -PassThru
-if ($renderer.ExitCode -ne 0) { throw "Brand asset rendering failed (exit $($renderer.ExitCode))" }
-$rentalPreview = Start-Process -FilePath (Join-Path (Get-Location) 'artifacts/publish/IMRCRaceControl.exe') -ArgumentList @('--export-rentals',"`"$branding`"") -Wait -PassThru
+$appExe = Join-Path (Get-Location) 'artifacts/publish/IMRCRaceControl.exe'
+$brandExit = Invoke-Preview $appExe @('--export-brand',"`"$branding`"") 'Brand and lineup UI checks'
+if ($brandExit -ne 0) { throw "Brand asset rendering failed (exit $brandExit)" }
+$rentalExit = Invoke-Preview $appExe @('--export-rentals',"`"$branding`"") 'Rental UI checks'
+$rentalPreview = [pscustomobject]@{ ExitCode = $rentalExit }
 if ($rentalPreview.ExitCode -ne 0) {
     $details = Join-Path $branding 'Transponder-UI-Error.txt'
     if (Test-Path $details) { Get-Content $details | Write-Host }
@@ -53,8 +68,8 @@ $payload = Join-Path $payloadDirectory 'RaceControl-Setup.exe'
 Move-Item $setup[0].FullName $payload -Force
 Checked @('publish','src/IMRCRaceControl.Installer/IMRCRaceControl.Installer.csproj','-c','Release','-r','win-x64','--self-contained','true','-o','artifacts/installer-shell',"-p:Version=$version","-p:InstallerPayload=$payload",'-p:PublishSingleFile=true','-p:IncludeNativeLibrariesForSelfExtract=true','-p:EnableCompressionInSingleFile=true')
 Copy-Item 'artifacts/installer-shell/RaceControl-Installer.exe' 'artifacts/releases/RaceControl-Installer.exe'
-$preview = Start-Process -FilePath (Join-Path (Get-Location) 'artifacts/releases/RaceControl-Installer.exe') -ArgumentList @('--export-ui',"`"$branding`"") -Wait -PassThru
-if ($preview.ExitCode -ne 0) { throw 'Installer confirmation UI validation failed' }
+$installerExit = Invoke-Preview (Join-Path (Get-Location) 'artifacts/releases/RaceControl-Installer.exe') @('--export-ui',"`"$branding`"") 'Installer UI check'
+if ($installerExit -ne 0) { throw 'Installer confirmation UI validation failed' }
 # Portable source bundles are not needed by users or by the updater.
 Get-ChildItem 'artifacts/releases/*Portable.zip' | Remove-Item
 # Internal vpk upload inventory still uses its generated names; gh uploads the final filenames.
