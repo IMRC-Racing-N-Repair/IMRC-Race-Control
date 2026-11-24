@@ -1,0 +1,32 @@
+name: Publish verified Race Control 0.17.18
+on:
+  push:
+    branches: [prepare-v0.17.15-race-flow-improvements]
+    paths: ['.github/workflows/publish-v0.17.18.yml']
+permissions:
+  contents: write
+  actions: read
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Publish only the verified complete installer draft
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          tag=v0.17.18
+          verified_sha=a4f723c2443e3b2d183438e0d7a4b27641e52d18
+          release_id=457163343
+          run_id=45472772398
+          [[ "$(gh run view "$run_id" --repo "$GH_REPO" --json conclusion --jq .conclusion)" == success ]]
+          [[ "$(gh run view "$run_id" --repo "$GH_REPO" --json headSha --jq .headSha)" == "$verified_sha" ]]
+          [[ "$(gh api "repos/$GH_REPO/releases/$release_id" --jq .tag_name)" == "$tag" ]]
+          [[ "$(gh api "repos/$GH_REPO/releases/$release_id" --jq .target_commitish)" == "$verified_sha" ]]
+          [[ "$(gh api "repos/$GH_REPO/releases/$release_id" --jq .draft)" == true ]]
+          for asset in RaceControl-Installer.exe IMRCRaceControl.App-0.17.18-full.nupkg releases.win.json RELEASES SHA256SUMS.txt; do
+            gh api "repos/$GH_REPO/releases/$release_id" --jq '.assets[] | select(.size > 0 and .state == "uploaded") | .name' | grep -Fxq "$asset"
+          done
+          gh api --method PATCH "repos/$GH_REPO/releases/$release_id" -F draft=false -F prerelease=false -f make_latest=true --jq '{draft,tag_name,html_url,published_at}'
