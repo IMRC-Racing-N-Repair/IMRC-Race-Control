@@ -3,6 +3,7 @@
 Keep all release history in this file. Add each new version at the top; do not create version-specific changelog files.
 
 ## 0.17.15
+- Persistently highlight the race-wide fastest valid BEST LAP cell for the entire active session using the configured fastest-lap color; transfer the highlight only when a faster valid lap replaces it, independent of personal-best notifications.
 - Restore drag-and-drop for newly generated heats before the first Save; add a visible MOVE grip and keep HEAT UP / HEAT DOWN available. Renumber the editable preview immediately without changing saved/completed races.
 - Display simultaneous breakout notices one per line beneath the race results, with a bounded scroll area for larger fields.
 - Show multiple simultaneous breakout notices as compact orange chips at the bottom of the race screen. Keep all consecutive breakouts (even from the same driver) visible until that driver records a valid lap; support undo and clear on new/restarted races.
