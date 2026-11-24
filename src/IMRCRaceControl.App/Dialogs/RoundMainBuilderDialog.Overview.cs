@@ -218,8 +218,20 @@ public partial class RoundMainBuilderDialog
         if(combinedDialog.HeatGrid.SelectionMode!=DataGridSelectionMode.Extended ||
            combinedDialog.HeatGrid.SelectedItems.Count!=0)
             throw new InvalidOperationException("Shift must enter extended mode and clear the normal selection.");
+        // The normal selection above recreates the view; deliberately pass
+        // the old references to verify stable identity resolution.
         foreach(var row in selectionRows)combinedDialog.ToggleCombineRace(row);
-        if(combinedDialog.HeatGrid.SelectedItems.Count!=2 || combinedDialog._combineSelection.Count!=2 || combinedDialog.HeatGrid.Cursor!=Cursors.Hand)throw new InvalidOperationException("Shift selection did not retain multiple races and hand cursor.");
+        var expectedIds=selectionRows.Select(h=>h.SourceSessionId).ToHashSet();
+        var actualIds=combinedDialog.HeatGrid.SelectedItems.OfType<HeatPlan>().Select(h=>h.SourceSessionId).ToHashSet();
+        if(combinedDialog.HeatGrid.SelectedItems.Count!=2 || !actualIds.SetEquals(expectedIds) ||
+           !combinedDialog._combineSelection.SetEquals(expectedIds) || combinedDialog.HeatGrid.Cursor!=Cursors.Hand)
+            throw new InvalidOperationException($"Shift selection did not retain both races: grid={combinedDialog.HeatGrid.SelectedItems.Count}, ids={combinedDialog._combineSelection.Count}, cursor={combinedDialog.HeatGrid.Cursor}, mode={combinedDialog.HeatGrid.SelectionMode}.");
+        combinedDialog.ToggleCombineRace(selectionRows[0]);
+        if(combinedDialog.HeatGrid.SelectedItems.Count!=1 || combinedDialog._combineSelection.Contains(selectionRows[0].SourceSessionId))
+            throw new InvalidOperationException("Shift-click must toggle off the selected race.");
+        combinedDialog.ToggleCombineRace(selectionRows[0]);
+        if(combinedDialog.HeatGrid.SelectedItems.Count!=2)
+            throw new InvalidOperationException("Shift-click must restore the toggled race.");
         combinedDialog.CancelCombineSelection();
         if(combinedDialog.HeatGrid.SelectedItems.Count!=0 || combinedDialog._combineSelection.Count!=0 || combinedDialog.HeatGrid.Cursor is not null)throw new InvalidOperationException("Shift selection did not restore its cursor/selection.");
         if(combinedDialog.HeatGrid.SelectionMode!=DataGridSelectionMode.Single)

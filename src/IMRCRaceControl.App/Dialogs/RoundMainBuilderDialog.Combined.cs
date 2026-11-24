@@ -69,14 +69,23 @@ public partial class RoundMainBuilderDialog
     }
     private void ToggleCombineRace(HeatPlan row)
     {
-        if(row.IsCombinedHeader)return;
+        if(!_holdingCombine || row.IsCombinedHeader)return;
+        // Opening a saved roster rebuilds the overview with new HeatPlan
+        // instances. Always resolve the current grid item by session identity.
+        var current=HeatGrid.Items.OfType<HeatPlan>().FirstOrDefault(h =>
+            !h.IsCombinedHeader && h.SourceSessionId==row.SourceSessionId);
+        if(current is null)return;
+        row=current;
         if(row.SourceSessionId.Length==0 || row.IsLocked)
         {BuilderStatusText.Text="Select saved, unrun races to combine. Save new lineups first; restart completed races before editing.";return;}
         _refreshingOverview=true;
         try
         {
-            if(_combineSelection.Add(row.SourceSessionId))HeatGrid.SelectedItems.Add(row);
-            else {_combineSelection.Remove(row.SourceSessionId);HeatGrid.SelectedItems.Remove(row);}
+            if(!_combineSelection.Add(row.SourceSessionId))_combineSelection.Remove(row.SourceSessionId);
+            // The IDs are the source of truth. Sync only items in the current view.
+            ClearHeatSelection();
+            foreach(var item in HeatGrid.Items.OfType<HeatPlan>().Where(h=>!h.IsCombinedHeader && _combineSelection.Contains(h.SourceSessionId)))
+                HeatGrid.SelectedItems.Add(item);
         }
         finally {_refreshingOverview=false;}
         BuilderStatusText.Text=$"{_combineSelection.Count} races selected. Release Shift to combine.";
