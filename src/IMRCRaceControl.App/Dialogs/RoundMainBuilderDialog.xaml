@@ -145,8 +145,8 @@
 
                             <TextBlock Text="ROUND / MAINS LINEUP" FontWeight="Bold" FontSize="15"/>
 
-                            <DataGrid x:Name="HeatGrid" SelectionMode="Extended" PreviewMouseRightButtonDown="HeatGrid_RightClick" ContextMenuOpening="HeatGrid_ContextMenuOpening" AllowDrop="True"
-                                      PreviewMouseLeftButtonDown="RaceDragStart" PreviewMouseMove="RaceDragMove"
+                            <DataGrid x:Name="HeatGrid" SelectionMode="Single" SelectionUnit="FullRow" IsSynchronizedWithCurrentItem="False" CanUserSortColumns="False" PreviewMouseRightButtonDown="HeatGrid_RightClick" ContextMenuOpening="HeatGrid_ContextMenuOpening" AllowDrop="True"
+                                      PreviewMouseLeftButtonDown="RaceDragStart" PreviewMouseLeftButtonUp="RaceDragEnd" PreviewMouseMove="RaceDragMove"
                                       DragOver="RaceDragOver" DragLeave="RaceDragLeave" Drop="RaceDrop"
                                       Grid.Row="1"
                                       ItemsSource="{Binding HeatPlans}"

@@ -3,6 +3,8 @@
 Keep all release history in this file. Add each new version at the top; do not create version-specific changelog files.
 
 ## 0.17.18
+- Fix lineup selection to highlight only one race during normal clicking, preserve race order when opening rosters, and require dragging the MOVE handle or using explicit reorder buttons. Shift-click combining remains available.
+- Race Order Assistant now offers one qualifying or mains round at a time, with a round picker and independent previews; all other rounds remain fixed.
 - Remember the Event screen registration/rounds divider position across restarts using a saved proportional height; retain resizing limits and restore it when browsing active events again.
 - Validate suggested race orders against the same queue-rebuild logic used when saving, so only reproducible improvements can be applied.
 - Enlarge practice LAST timing and live lap history text; compact the secondary statistics without changing automatic card sizing or lap order.

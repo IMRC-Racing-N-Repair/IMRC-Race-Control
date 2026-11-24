@@ -6,7 +6,7 @@ namespace IMRCRaceControl.Core;
 public static class RaceOrderAssistant
 {
     public sealed record Metrics(int Conflicts, int AffectedDrivers, int RestScore, int MovedRaces);
-    public sealed record Suggestion(string Name, IReadOnlyList<EventSessionDefinition> Order, Metrics Score);
+    public sealed record Suggestion(string Name, IReadOnlyList<EventSessionDefinition> Order, Metrics Score, DashboardRoundChoice Round);
     private sealed record Candidate(int[] Order, Metrics Score);
     private sealed record RaceUnit(EventSessionDefinition[] Sessions, HashSet<string> Drivers)
     {
@@ -19,8 +19,12 @@ public static class RaceOrderAssistant
         public string Group => $"{First.SessionType}:{First.ScheduleRoundOrder}";
     }
 
-    public static IReadOnlyList<Suggestion> Find(IReadOnlyList<EventSessionDefinition> schedule)
+    public static IReadOnlyList<Suggestion> Find(IReadOnlyList<EventSessionDefinition> schedule, DashboardRoundChoice? round = null)
     {
+        // A suggestion can change exactly one round. Keep adjacent rounds in scoring context only.
+        round ??= schedule.Where(s=>s.SessionType is SessionType.Qualifying or SessionType.Race)
+            .Select(DashboardRoundChoice.From).FirstOrDefault();
+        if(round is null)return [];
         var races = schedule.Where(s => s.ProgressStatus != EventSessionStatus.Skipped)
             .GroupBy(s => string.IsNullOrEmpty(s.CombinedRaceId) ? "session:" + s.Id : "combined:" + s.CombinedRaceId,
                 StringComparer.OrdinalIgnoreCase)
@@ -33,7 +37,7 @@ public static class RaceOrderAssistant
         var blocks = new List<(int Start,int End)>();
         for(var i=0;i<races.Length;)
         {
-            if(!races[i].Movable){i++;continue;}
+            if(!races[i].Movable || !round.Matches(races[i].First)){i++;continue;}
             var start=i++;
             while(i<races.Length && races[i].Movable && races[i].Group==races[start].Group)i++;
             if(i-start>1)blocks.Add((start,i));
@@ -124,6 +128,6 @@ public static class RaceOrderAssistant
         var fewest=pool.OrderBy(c=>c.Score.Conflicts).ThenBy(c=>c.Score.AffectedDrivers).ThenBy(c=>c.Score.MovedRaces).ThenByDescending(c=>c.Score.RestScore).First();
         var restBest=pool.OrderByDescending(c=>c.Score.RestScore).ThenBy(c=>c.Score.Conflicts).ThenBy(c=>c.Score.MovedRaces).First();
         return new[]{Make("Least Changes",least),Make("Fewest Conflicts",fewest),Make("Maximum Rest",restBest)};
-        Suggestion Make(string name,Candidate c)=>new(name,c.Order.SelectMany(i=>races[i].Sessions).ToList(),c.Score);
+        Suggestion Make(string name,Candidate c)=>new(name,c.Order.SelectMany(i=>races[i].Sessions).ToList(),c.Score,round);
     }
 }

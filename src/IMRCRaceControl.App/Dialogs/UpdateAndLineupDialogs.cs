@@ -111,16 +111,20 @@ internal static class UpdateAndLineupDialogs
         var window=CreateWindow(owner,"Race Order Assistant",920,650,out var root);
         var heading=new StackPanel{Margin=new Thickness(0,0,0,10)};
         heading.Children.Add(Text("SUGGESTED RACE ORDER",21,true));
-        heading.Children.Add(Text("Choose an alternative to preview. Driver rosters, combined races and race dependencies are preserved.",13,false,"MutedBrush"));
+        heading.Children.Add(Text("Choose one round, then an alternative to preview. Other rounds are unchanged.",13,false,"MutedBrush"));
         AddTop(root,heading);
-        var selector=new ComboBox{ItemsSource=suggestions.Select(s=>s.Name).ToList(),SelectedIndex=Math.Max(0,suggestions.ToList().FindIndex(s=>s.Name=="Fewest Conflicts")),Margin=new Thickness(0,0,0,8)};
+        var availableRounds=suggestions.Select(s=>s.Round).Distinct().ToList();
+        var roundPicker=new ComboBox{ItemsSource=availableRounds,DisplayMemberPath="Label",SelectedIndex=0,Margin=new Thickness(0,0,0,8)};
+        AddTop(root,roundPicker);
+        var selector=new ComboBox{Margin=new Thickness(0,0,0,8)};
         AddTop(root,selector);
+        List<RaceOrderAssistant.Suggestion> choices=[];
         var summary=Text("",14,true);summary.Margin=new Thickness(0,0,0,8);AddTop(root,summary);
         var actions=Actions();var cancel=ActionButton("CANCEL");cancel.IsCancel=true;
         var apply=ActionButton("APPLY TO PREVIEW",true);apply.IsDefault=true;
         RaceOrderAssistant.Suggestion? selected=null;
         cancel.Click+=(_,_)=>window.DialogResult=false;
-        apply.Click+=(_,_)=>{selected=suggestions[selector.SelectedIndex];window.DialogResult=true;};
+        apply.Click+=(_,_)=>{if(selector.SelectedIndex<0)return;selected=choices[selector.SelectedIndex];window.DialogResult=true;};
         actions.Children.Add(cancel);actions.Children.Add(apply);AddBottom(root,actions);
         var columns=new Grid();
         columns.ColumnDefinitions.Add(new ColumnDefinition());columns.ColumnDefinitions.Add(new ColumnDefinition());
@@ -140,15 +144,26 @@ internal static class UpdateAndLineupDialogs
                 panel.Children.Add(PanelBorder(row,i%2==0?"PanelAltBrush":"PanelBrush"));
             }
         }
-        Fill(left,"CURRENT ORDER",current);
         void Refresh()
         {
             if(selector.SelectedIndex<0)return;
-            var suggestion=suggestions[selector.SelectedIndex];
+            if(selector.SelectedIndex>=choices.Count)return;
+            var suggestion=choices[selector.SelectedIndex];
             summary.Text=$"{originalConflicts} → {suggestion.Score.Conflicts} conflicts · {suggestion.Score.AffectedDrivers} affected drivers · {suggestion.Score.MovedRaces} races change position";
-            Fill(right,"SUGGESTED ORDER",suggestion.Order);
+            Fill(left,$"CURRENT ORDER · {suggestion.Round.Label}",current.Where(suggestion.Round.Matches).ToList());
+            Fill(right,$"SUGGESTED ORDER · {suggestion.Round.Label}",suggestion.Order.Where(suggestion.Round.Matches).ToList());
         }
-        selector.SelectionChanged+=(_,_)=>Refresh();Refresh();
+        void SelectRound()
+        {
+            if(roundPicker.SelectedItem is not DashboardRoundChoice round)return;
+            choices=suggestions.Where(s=>s.Round==round).ToList();
+            selector.ItemsSource=choices.Select(s=>s.Name).ToList();
+            selector.SelectedIndex=Math.Max(0,choices.FindIndex(s=>s.Name=="Fewest Conflicts"));
+            Refresh();
+        }
+        selector.SelectionChanged+=(_,_)=>Refresh();
+        roundPicker.SelectionChanged+=(_,_)=>SelectRound();
+        SelectRound();
         window.ShowDialog();
         return selected;
     }

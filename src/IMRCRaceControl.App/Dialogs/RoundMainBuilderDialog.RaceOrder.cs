@@ -32,15 +32,40 @@ public partial class RoundMainBuilderDialog
             _raceDragId = null;
             return;
         }
+        _raceDragPlan = null;
+        _raceDragId = null;
+        // Ordinary row clicks select only. Dragging starts on the MOVE column.
+        if (e.OriginalSource is not DependencyObject node) return;
+        var cell = FindDragCell(node);
+        if (cell?.Column.Header is not string header || header != "MOVE") return;
         _raceDragOrigin = e.GetPosition(HeatGrid);
         _raceDragPlan = RaceAt(e.OriginalSource);
         _raceDragId = _raceDragPlan?.SourceSessionId;
     }
 
+    private static DataGridCell? FindDragCell(DependencyObject? node)
+    {
+        while (node is not null)
+        {
+            if (node is DataGridCell cell) return cell;
+            node = node is System.Windows.Media.Visual or System.Windows.Media.Media3D.Visual3D
+                ? System.Windows.Media.VisualTreeHelper.GetParent(node)
+                : LogicalTreeHelper.GetParent(node);
+        }
+        return null;
+    }
+
+    private void RaceDragEnd(object sender, MouseButtonEventArgs e)
+    {
+        _raceDragPlan = null;
+        _raceDragId = null;
+    }
+
     private void RaceDragMove(object sender, MouseEventArgs e)
     {
-        if (_holdingCombine || e.LeftButton != MouseButtonState.Pressed || _raceDragPlan is null)
-            return;
+        if (e.LeftButton != MouseButtonState.Pressed)
+        { _raceDragPlan=null; _raceDragId=null; return; }
+        if (_holdingCombine || _raceDragPlan is null) return;
         var point = e.GetPosition(HeatGrid);
         if (Math.Abs(point.X - _raceDragOrigin.X) < SystemParameters.MinimumHorizontalDragDistance &&
             Math.Abs(point.Y - _raceDragOrigin.Y) < SystemParameters.MinimumVerticalDragDistance)
@@ -54,14 +79,14 @@ public partial class RoundMainBuilderDialog
         // Newly generated heats have no SourceSessionId. They still must be
         // draggable before saving, and an edited saved heat should move its
         // current preview (not silently modify the persistent event).
-        if (!_browsingSavedLineups && HeatPlans.Contains(plan) && !plan.IsLocked &&
+        if (string.IsNullOrEmpty(id) && !_browsingSavedLineups && HeatPlans.Contains(plan) && !plan.IsLocked &&
             !plan.IsCombinedHeader && !plan.IsCombinedChild)
         {
             DragWithVisual(HeatGrid, new DataObject("IMRC.PreviewHeat", plan), $"{plan.ClassName} · {plan.SessionDisplay}", $"{plan.RacerCount} racers · Move race");
             return;
         }
         var source = PreviewSessions.FirstOrDefault(s => s.Id == id);
-        if (source is not null && RaceLineupOrder.Movable(source))
+        if (source is not null && RaceLineupOrder.Movable(source) && !plan.IsCombinedHeader && !plan.IsCombinedChild)
             DragWithVisual(HeatGrid, new DataObject("IMRC.LineupRace", id!), $"Race {plan.RaceNumberDisplay} · {plan.ClassName}", $"{plan.SessionDisplay} · {plan.RacerCount} racers");
     }
 
@@ -83,7 +108,7 @@ public partial class RoundMainBuilderDialog
         var targetId = target?.SourceSessionId;
         var sourceSession = PreviewSessions.FirstOrDefault(s => s.Id == sourceId);
         var targetSession = PreviewSessions.FirstOrDefault(s => s.Id == targetId);
-        return sourceSession is not null && targetSession is not null &&
+        return sourceSession is not null && targetSession is not null && target is {IsCombinedHeader:false,IsCombinedChild:false} &&
                RaceLineupOrder.CanMove(sourceSession, targetSession);
     }
 
@@ -135,8 +160,10 @@ public partial class RoundMainBuilderDialog
 
     private void StageRaceMove(string sourceId,string targetId,bool after = false)
     {
-        var source=PreviewSessions.Single(s=>s.Id==sourceId);var target=PreviewSessions.Single(s=>s.Id==targetId);
-        if(!RaceLineupOrder.CanMove(source,target))return;
+        var source=PreviewSessions.FirstOrDefault(s=>s.Id==sourceId);
+        var target=PreviewSessions.FirstOrDefault(s=>s.Id==targetId);
+        if(source is null || target is null || !RaceLineupOrder.CanMove(source,target) ||
+           GroupFor(source.Id).Length>0 || GroupFor(target.Id).Length>0)return;
         var group=PreviewSessions.Where(s=>RaceLineupOrder.GroupKey(s)==RaceLineupOrder.GroupKey(source) && RaceLineupOrder.Movable(s))
             .OrderBy(s=>_pendingRaceOrder.GetValueOrDefault(s.Id,s.LineupOrder??int.MaxValue)).ThenBy(s=>s.QueueOrder).ToList();
         var moving=group.Where(s=>s.Id==sourceId).ToList();
@@ -150,11 +177,20 @@ public partial class RoundMainBuilderDialog
     }
     private List<HeatPlan> OrderOverview(List<HeatPlan> plans)
     {
-        var rows=plans.Select((p,i)=>(Plan:p,Session:new EventSessionDefinition {Id=p.SourceSessionId,SessionType=p.SessionType,Round=p.Round,MainLeg=p.MainLeg,
-            QueueOrder=PreviewSessions.FirstOrDefault(s=>s.Id==p.SourceSessionId)?.QueueOrder??100000+i,
-            ProgressStatus=PreviewSessions.FirstOrDefault(s=>s.Id==p.SourceSessionId)?.ProgressStatus??EventSessionStatus.Planned,
-            LineupOrder=_pendingRaceOrder.TryGetValue(p.SourceSessionId,out var order)?order:PreviewSessions.FirstOrDefault(s=>s.Id==p.SourceSessionId)?.LineupOrder})).ToList();
-        RaceLineupOrder.Apply(rows.Select(r=>r.Session));
-        return rows.OrderBy(r=>r.Session.ScheduleStageOrder).ThenBy(r=>r.Session.SessionType==SessionType.Race ? 0 : r.Session.ScheduleRoundOrder).ThenBy(r=>r.Session.QueueOrder).Select(r=>r.Plan).ToList();
+        // Apply order to the entire saved queue before filtering or swapping
+        // the edited roster. Selecting another class cannot reorder races.
+        var sessions=PreviewSessions.Select(s=>new EventSessionDefinition
+        {
+            Id=s.Id,SessionType=s.SessionType,Round=s.Round,MainLeg=s.MainLeg,
+            QueueOrder=s.QueueOrder,ProgressStatus=s.ProgressStatus,
+            LineupOrder=_pendingRaceOrder.TryGetValue(s.Id,out var order)?order:s.LineupOrder
+        }).ToList();
+        RaceLineupOrder.Apply(sessions);
+        var queue=sessions.ToDictionary(s=>s.Id,s=>s.QueueOrder,StringComparer.OrdinalIgnoreCase);
+        return plans.Select((p,i)=>(Plan:p,Index:i))
+            .OrderBy(x=>x.Plan.SessionType==SessionType.Qualifying?0:x.Plan.SessionType==SessionType.Race?1:2)
+            .ThenBy(x=>x.Plan.SessionType==SessionType.Race?0:x.Plan.Round)
+            .ThenBy(x=>queue.TryGetValue(x.Plan.SourceSessionId,out var q)&&q>0?q:int.MaxValue)
+            .ThenBy(x=>x.Plan.Order).ThenBy(x=>x.Index).Select(x=>x.Plan).ToList();
     }
 }

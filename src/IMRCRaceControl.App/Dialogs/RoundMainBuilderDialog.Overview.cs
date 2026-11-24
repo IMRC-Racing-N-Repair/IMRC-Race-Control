@@ -47,6 +47,7 @@ public partial class RoundMainBuilderDialog
             var view=new System.Windows.Data.ListCollectionView(list);
             view.GroupDescriptions.Add(new System.Windows.Data.PropertyGroupDescription(nameof(HeatPlan.RoundGroup)));
             HeatGrid.ItemsSource=view;
+            HeatGrid.SelectedItems.Clear();
             HeatGrid.SelectedItem=selected is null ? null : list.FirstOrDefault(h=>ReferenceEquals(h,selected)) ?? list.FirstOrDefault(h=>h.SourceSessionId==selected.SourceSessionId && selected.SourceSessionId.Length>0);
         }
         finally { _refreshingOverview=false; }
@@ -107,6 +108,15 @@ public partial class RoundMainBuilderDialog
         Stage("SAVED-SHOWN");
         dialog.Dispatcher.Invoke(()=>{},System.Windows.Threading.DispatcherPriority.Loaded);
         if(dialog.HeatGrid.Items.Count!=6)throw new InvalidOperationException("Saved lineup overview did not show all six races.");
+        var initialOrder=dialog.HeatGrid.Items.Cast<HeatPlan>().Select(h=>h.SourceSessionId).ToArray();
+        foreach(var id in initialOrder)
+        {
+            dialog.HeatGrid.SelectedItem=dialog.HeatGrid.Items.Cast<HeatPlan>().Single(h=>h.SourceSessionId==id);
+            if(dialog.HeatGrid.SelectedItems.Count!=1 ||
+               !initialOrder.SequenceEqual(dialog.HeatGrid.Items.Cast<HeatPlan>().Select(h=>h.SourceSessionId)) ||
+               dialog._pendingRaceOrder.Count!=0 || dialog._stagedLineups.Count!=0)
+                throw new InvalidOperationException("Selecting a different race must not move races, stage edits or select two rows.");
+        }
         var first=dialog.HeatGrid.Items.Cast<HeatPlan>().First();var label=first.SessionDisplay;dialog.HeatGrid.SelectedItem=first;
         if(dialog.EntrantGrid.Items.Count!=1 || dialog.SelectedHeatTitle.Text=="SELECT A RACE")throw new InvalidOperationException("Completed race selection did not display its drivers immediately.");
         if(dialog.RosterEditActions.IsEnabled || dialog.RemoveHeatButton.IsEnabled || dialog.AddHeatButton.IsEnabled || dialog.HeatUpButton.IsEnabled)throw new InvalidOperationException("Completed race editing controls remain enabled.");

@@ -1533,7 +1533,7 @@ public partial class RoundMainBuilderDialog : Window
 
     private void HeatGrid_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
-        if (_refreshingOverview || _holdingCombine) return;
+        if (_refreshingOverview || _holdingCombine || _loadingSavedFilters || _loadingOptions) return;
         var selected = HeatGrid.SelectedItem as HeatPlan;
         if (!_refreshingOverview && !_loadingSavedFilters && IsLoaded && selected is { SourceSessionId.Length: > 0 } && (_browsingSavedLineups || !HeatPlans.Contains(selected)))
         {
@@ -1810,6 +1810,15 @@ public partial class RoundMainBuilderDialog : Window
         if (HeatGrid.SelectedItem is not HeatPlan selected)
             return;
 
+        if (selected.SourceSessionId.Length>0 && PreviewSessions.Any(s=>s.Id==selected.SourceSessionId))
+        {
+            var rows=HeatGrid.Items.Cast<HeatPlan>().Where(h=>!h.IsCombinedHeader && !h.IsCombinedChild).ToList();
+            var current=rows.IndexOf(selected);
+            var next=current+offset;
+            if(current>=0 && next>=0 && next<rows.Count)
+                StageRaceMove(selected.SourceSessionId,rows[next].SourceSessionId,offset>0);
+            return;
+        }
         var index = HeatPlans.IndexOf(selected);
         var target = index + offset;
         if (index < 0 || target < 0 || target >= HeatPlans.Count)
@@ -1971,7 +1980,14 @@ public partial class RoundMainBuilderDialog : Window
         var sorted = ProposedRaceOrder();
         var conflicts = ConsecutiveRaceDetector.Find(sorted);
         if (conflicts.Count == 0) return true;
-        var suggestions = RaceOrderAssistant.Find(sorted)
+        var selectedRound=SavedRoundFilter.SelectedItem as SavedRoundChoice;
+        var rounds=sorted.Where(s=>s.SessionType is SessionType.Qualifying or SessionType.Race)
+            .Select(DashboardRoundChoice.From).Distinct()
+            .Where(r=>selectedRound is null || selectedRound.Round<0 ||
+                (selectedRound.Round>0 && r.Type==SessionType.Qualifying && r.Number==selectedRound.Round) ||
+                (selectedRound.Round==0 && r.Type==SessionType.Race && (selectedRound.MainLeg is null || selectedRound.MainLeg==r.Number)))
+            .ToList();
+        var suggestions = rounds.SelectMany(round=>RaceOrderAssistant.Find(sorted,round))
             .Where(s => PhysicalIds(ProposedRaceOrder(SuggestedPositions(sorted,s.Order))).SequenceEqual(PhysicalIds(s.Order)))
             .ToList();
         var applied = false;

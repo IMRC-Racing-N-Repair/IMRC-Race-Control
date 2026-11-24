@@ -22,13 +22,13 @@ public partial class RoundMainBuilderDialog
     private void BeginCombineSelection()
     {
         _holdingCombine=true; _combineSelection.Clear(); HeatGrid.Cursor=Cursors.Hand;
-        _refreshingOverview=true; try {HeatGrid.SelectedItems.Clear();} finally {_refreshingOverview=false;}
+        _refreshingOverview=true; try {HeatGrid.SelectedItems.Clear(); HeatGrid.SelectionMode=DataGridSelectionMode.Extended;} finally {_refreshingOverview=false;}
     }
     private void CancelCombineSelection()
     {
         if(!_holdingCombine)return;
         _holdingCombine=false; HeatGrid.Cursor=null; _combineSelection.Clear();
-        _refreshingOverview=true; try {HeatGrid.SelectedItems.Clear();} finally {_refreshingOverview=false;}
+        _refreshingOverview=true; try {HeatGrid.SelectedItems.Clear(); HeatGrid.SelectionMode=DataGridSelectionMode.Single;} finally {_refreshingOverview=false;}
     }
     private void CombineKeyUp(object sender,KeyEventArgs e)
     {
