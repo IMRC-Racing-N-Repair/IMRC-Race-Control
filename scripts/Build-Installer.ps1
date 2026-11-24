@@ -38,7 +38,17 @@ $branding = Join-Path (Get-Location) 'artifacts/branding'
 $appExe = Join-Path (Get-Location) 'artifacts/publish/IMRCRaceControl.exe'
 $brandExit = Invoke-Preview $appExe @('--export-brand',"`"$branding`"") 'Brand and lineup UI checks'
 if ($brandExit -ne 0) { throw "Brand asset rendering failed (exit $brandExit)" }
-$rentalExit = Invoke-Preview $appExe @('--export-rentals',"`"$branding`"") 'Rental UI checks'
+try {
+    $rentalExit = Invoke-Preview $appExe @('--export-rentals',"`"$branding`"") 'Rental UI checks'
+}
+catch {
+    $checkpoint = Join-Path $branding 'RentalPreviewProgress.txt'
+    if (Test-Path $checkpoint) {
+        Write-Host 'Rental UI smoke-test progress before failure:'
+        Get-Content $checkpoint | Write-Host
+    }
+    throw
+}
 $rentalPreview = [pscustomobject]@{ ExitCode = $rentalExit }
 if ($rentalPreview.ExitCode -ne 0) {
     $details = Join-Path $branding 'Transponder-UI-Error.txt'
