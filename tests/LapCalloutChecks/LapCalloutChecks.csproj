@@ -5,6 +5,7 @@
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="../../src/IMRCRaceControl.App/Core/OverallPositionScope.cs" Link="OverallPositionScope.cs" />
+    <Compile Include="../../src/IMRCRaceControl.App/Core/QualifyingPaceGap.cs" Link="QualifyingPaceGap.cs" />
     <Compile Include="../../src/IMRCRaceControl.App/Core/CombinedRaces.cs" Link="CombinedRaces.cs" />
     <Compile Include="../../src/IMRCRaceControl.App/Core/RaceLineupOrder.cs" Link="RaceLineupOrder.cs" />
     <Compile Include="../../src/IMRCRaceControl.App/Core/ConsecutiveRaceDetector.cs" Link="ConsecutiveRaceDetector.cs" />
