@@ -388,6 +388,34 @@ Equal(true, finishEngine.RegisterPassing(2, "test", start.AddSeconds(16)).Lap!.F
 finishEngine.UndoLastPassing(start.AddSeconds(16));
 Equal(false, finishEngine.GetStandings(start.AddSeconds(16)).Single(r => r.CarNumber == 2).IsFinished, "Undo removes completed outline");
 
+// Persistent race-fastest display is tied to best valid lap, not just a
+// newly-set personal best or a transient crossing highlight.
+var fastestRace = new RaceEngine();
+var fastestStart = DateTimeOffset.Parse("2026-10-26T13:00:00Z");
+fastestRace.Start(
+    [new RacerEntry { CarNumber = 1, DriverName = "David", Enabled = true },
+     new RacerEntry { CarNumber = 2, DriverName = "Crash", Enabled = true }],
+    TimeSpan.FromMinutes(5), 50, RaceFormat.Timed, TimeSpan.Zero,
+    SessionType.Qualifying, StartStyle.Tone, fastestStart);
+fastestRace.RegisterPassing(1, "test", fastestStart);
+fastestRace.RegisterPassing(2, "test", fastestStart);
+fastestRace.RegisterPassing(1, "test", fastestStart.AddMilliseconds(3028));
+fastestRace.RegisterPassing(2, "test", fastestStart.AddMilliseconds(3367));
+Equal(true, fastestRace.GetStandings(fastestStart.AddSeconds(4))
+    .Single(r => r.CarNumber == 1).IsFastestLap, "Race-fastest flag set for best valid lap");
+Equal(false, fastestRace.GetStandings(fastestStart.AddSeconds(4))
+    .Single(r => r.CarNumber == 2).IsFastestLap, "Slower driver does not own fastest lap");
+fastestRace.RegisterPassing(1, "test", fastestStart.AddSeconds(8));
+fastestRace.RegisterPassing(2, "test", fastestStart.AddSeconds(9));
+Equal(true, fastestRace.GetStandings(fastestStart.AddSeconds(20))
+    .Single(r => r.CarNumber == 1).IsFastestLap,
+    "Race-fastest flag persists after slower subsequent laps and time passes");
+fastestRace.RegisterPassing(2, "test", fastestStart.AddMilliseconds(11900)); // 2.900, new session best
+Equal(true, fastestRace.GetStandings(fastestStart.AddSeconds(12))
+    .Single(r => r.CarNumber == 2).IsFastestLap, "Race-fastest ownership transfers only on faster valid lap");
+Equal(false, fastestRace.GetStandings(fastestStart.AddSeconds(12))
+    .Single(r => r.CarNumber == 1).IsFastestLap, "Previous holder releases fastest highlight");
+
 // The first physical passing after a tone must never count or become a breakout.
 var toneBaseline = new RaceEngine();
 toneBaseline.Start(racers, TimeSpan.FromMinutes(5), 50, RaceFormat.Timed,
