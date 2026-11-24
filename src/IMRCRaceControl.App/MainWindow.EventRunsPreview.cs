@@ -32,19 +32,36 @@ public partial class MainWindow
 
     internal static void ExportEventRunsPreview(string output, RaceDayEventDefinition raceEvent)
     {
-        var main=new MainWindow(SettingsService.CreateDefaults(),new SettingsService(),new RaceControlDatabaseService())
-            {_activeEvent=raceEvent};
+        void Stage(string name) => File.AppendAllText(Path.Combine(output, "RentalPreviewProgress.txt"),
+            $"{DateTimeOffset.UtcNow:O} | EVENT-RUNS-{name}{Environment.NewLine}");
+        Stage("CREATE-DASHBOARD");
+        var main = new MainWindow(SettingsService.CreateDefaults(),
+            new SettingsService(Path.Combine(output, "preview-settings.json")),
+            new RaceControlDatabaseService(Path.Combine(output, "preview.db")),
+            previewOnly: true, previewTrace: Stage) { _activeEvent = raceEvent };
+        Stage("REFRESH-SCHEDULE");
         main.RefreshPlannedSessions();
+        Stage("SCHEDULE-REFRESHED");
         var grid=main.PlannedSessionGrid;
         ((Panel)grid.Parent).Children.Remove(grid);
         grid.DataContext=main;
         var preview=new Window {Title="Event Rounds / Mains",Width=1024,Height=500,Content=grid,ShowInTaskbar=false};
         try
         {
+            Stage("SHOW-GRID");
             preview.Show();
-            preview.Dispatcher.Invoke(()=>{},System.Windows.Threading.DispatcherPriority.Loaded);
+            preview.UpdateLayout();
+            main.FitEventSessionColumns();
+            preview.UpdateLayout();
+            Stage("GRID-SHOWN");
+            var classWidth = main.EventSessionClassColumn.Width;
+            var nameWidth = main.EventSessionNameColumn.Width;
+            main.FitEventSessionColumns();
+            if (main.EventSessionClassColumn.Width != classWidth || main.EventSessionNameColumn.Width != nameWidth)
+                throw new InvalidDataException("Repeated event column fitting did not converge.");
             foreach(var property in new[]{nameof(EventRunRow.RaceNumber),nameof(EventRunRow.RacerCount),nameof(EventRunRow.ClassDisplay)})
             {
+                Stage("SORT-" + property);
                 main._eventSessionSortProperty=property;
                 main._eventSessionSortDirection=ListSortDirection.Descending;
                 main.ApplyEventSessionSort();
@@ -65,12 +82,14 @@ public partial class MainWindow
             preview.UpdateLayout();
             CheckCompactRunRow(grid,item=>item is EventRunRow {IsCombinedHeader:true},
                 item=>item is EventRunRow {IsCombinedHeader:false,IsCombinedChild:false});
+            Stage("RENDER");
             var shot=new RenderTargetBitmap((int)Math.Ceiling(preview.ActualWidth),(int)Math.Ceiling(preview.ActualHeight),96,96,PixelFormats.Pbgra32);
             shot.Render(preview);
             var png=new PngBitmapEncoder();png.Frames.Add(BitmapFrame.Create(shot));
             using var file=File.Create(Path.Combine(output,"Combined-Event-Rounds.png"));
             png.Save(file);
         }
-        finally {preview.Close();}
+        finally { preview.Close(); main.Close(); }
+        Stage("DONE");
     }
 }

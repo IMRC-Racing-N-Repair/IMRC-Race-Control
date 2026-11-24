@@ -3,6 +3,7 @@
 Keep all release history in this file. Add each new version at the top; do not create version-specific changelog files.
 
 ## 0.17.16
+- Stabilize event schedule column fitting against layout feedback and isolate dashboard-based schedule and spectator UI previews from operator database saves and startup; retain combined-race sorting and selection checks.
 - Isolate automated WPF preview startup from normal application startup and run each UI validation in a separate workflow step with live diagnostic checkpoints; preserve required checks and draft-only packaging.
 - Carry forward all 0.17.15 race-flow changes into this cumulative unpublished draft.
 - Fix the unattended Windows breakout-style regression by testing scoped WPF resources without waiting for dispatcher idle; verify persistent pending breakout and crossing highlight restoration.

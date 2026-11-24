@@ -15,7 +15,12 @@ public partial class SpectatorDashboardWindow
         var settings = SettingsService.CreateDefaults();
         settings.WebShowOverallPosition = true;
         settings.SpectatorVisibleColumns = ["LAPS", "LAST LAP", "BEST LAP", "CLOCK", "PACE"];
-        var race = new MainWindow(settings,new SettingsService(),new RaceControlDatabaseService());
+        void Stage(string name) => File.AppendAllText(Path.Combine(output, "RentalPreviewProgress.txt"),
+            $"{DateTimeOffset.UtcNow:O} | SPECTATOR-{name}{Environment.NewLine}");
+        var race = new MainWindow(settings,
+            new SettingsService(Path.Combine(output, "preview-settings.json")),
+            new RaceControlDatabaseService(Path.Combine(output, "preview.db")),
+            previewOnly: true, previewTrace: Stage);
         var drivers = new[]
         {
             (Name:"Riley Jones",Class:"Grom Off-Road",Color:"#FFD600",Position:1),
@@ -39,8 +44,10 @@ public partial class SpectatorDashboardWindow
         var screen=new SpectatorDashboardWindow(race) {Width=1300,Height=650,ShowInTaskbar=false};
         try
         {
+            Stage("SHOW");
             screen.Show();
             screen.Dispatcher.Invoke(()=>{},System.Windows.Threading.DispatcherPriority.Loaded);
+            Stage("SHOWN");
             screen.UpdateLayout();
             static IEnumerable<DependencyObject> Descendants(DependencyObject parent)
             {
@@ -65,6 +72,6 @@ public partial class SpectatorDashboardWindow
             using var file=File.Create(Path.Combine(output,"Combined-Class-Displays.png"));
             png.Save(file);
         }
-        finally {screen.Close();}
+        finally {screen.Close(); race.Close();}
     }
 }

@@ -24,6 +24,7 @@ public partial class MainWindow : Window
     private readonly SettingsService _settingsService;
     private readonly RaceControlDatabaseService _database;
     private readonly string? _startupWarning;
+    private readonly bool _previewOnly;
     private readonly RaceResultService _resultService = new();
     private readonly EventArchiveService _eventArchiveService = new();
     private readonly ConnectionController _connection = new();
@@ -83,8 +84,11 @@ public partial class MainWindow : Window
     public ObservableCollection<TrafficRow> Traffic { get; } = new();
 
     public MainWindow(AppSettings settings, SettingsService settingsService,
-        RaceControlDatabaseService database, string? startupWarning = null)
+        RaceControlDatabaseService database, string? startupWarning = null,
+        bool previewOnly = false, Action<string>? previewTrace = null)
     {
+        _previewOnly = previewOnly;
+        previewTrace?.Invoke("CONSTRUCTOR-BEGIN");
         _settings = settings;
         if (!_settings.Trackmate9600MigrationApplied)
         {
@@ -99,12 +103,15 @@ public partial class MainWindow : Window
         _database = database;
         _stateWriter = new BackgroundRaceStateWriter(database.SaveApplicationStateAsync, settingsService.SaveAsync, database.UpdateEventClassIdsAsync, database.UpdateEventRegistrationAsync);
         _startupWarning = startupWarning;
+        previewTrace?.Invoke("XAML-BEGIN");
         InitializeComponent();
+        previewTrace?.Invoke("XAML-DONE");
         BreakoutNoticesItems.ItemsSource = _activeBreakoutNotices;
         ConfigureDriverDirectorySearch();
         RaceClassSections.Attach(Standings);
         RaceClassSections.Attach(RoundProjectionRows);
         DataContext = this;
+        previewTrace?.Invoke("BINDINGS-DONE");
         InitializePracticeSeriesInfrastructure();
 
         _raceTimer = new DispatcherTimer(DispatcherPriority.Render)
@@ -117,9 +124,13 @@ public partial class MainWindow : Window
         _connection.StatusChanged += Connection_StatusChanged;
         _decoderIngress.PacketFormatted += DecoderIngress_PacketFormatted;
 
-        Loaded += MainWindow_Loaded;
-        Closing += MainWindow_Closing;
-        Closed += MainWindow_Closed;
+        if (!_previewOnly)
+        {
+            Loaded += MainWindow_Loaded;
+            Closing += MainWindow_Closing;
+            Closed += MainWindow_Closed;
+        }
+        previewTrace?.Invoke("CONSTRUCTOR-DONE");
     }
 
     private async void MainWindow_Loaded(object sender, RoutedEventArgs e)
@@ -267,6 +278,7 @@ public partial class MainWindow : Window
     private DispatcherTimer? _coalescedSaveTimer;
     private Task CaptureAndSaveSettingsAsync(bool reportFailureToCaller = false, bool backgroundWrite = true)
     {
+        if (_previewOnly) return Task.CompletedTask;
         if (reportFailureToCaller || _closing)
         {
             _coalescedSaveTimer?.Stop();

@@ -1170,15 +1170,15 @@
                                     </DataGrid.GroupStyle>
 
                                     <DataGrid.Columns>
-                                        <DataGridTextColumn Header="#" SortMemberPath="RaceNumber" Binding="{Binding RaceNumberDisplay}" Width="45"/>
-                                        <DataGridTextColumn Header="STATUS" Binding="{Binding StatusDisplay}" Width="85"/>
-                                        <DataGridTextColumn Header="TYPE" Binding="{Binding TypeDisplay}" Width="85"/>
-                                        <DataGridTextColumn x:Name="EventSessionClassColumn" Header="CLASS" Binding="{Binding ClassDisplay}" Width="1.2*"/>
-                                        <DataGridTextColumn Header="ROUND" Binding="{Binding RoundLabel}" Width="65"/>
-                                        <DataGridTextColumn Header="HEAT / MAIN" Binding="{Binding HeatMainDisplay}" Width="82"/>
-                                        <DataGridTextColumn Header="RUN" Binding="{Binding MainRunDisplay}" Width="58"/>
-                                        <DataGridTextColumn Header="RACERS" Binding="{Binding RacerCount}" Width="70"/>
-                                        <DataGridTextColumn x:Name="EventSessionNameColumn" Header="SESSION" Binding="{Binding Name}" Width="1.6*"/>
+                                        <DataGridTextColumn Header="#" SortMemberPath="RaceNumber" Binding="{Binding RaceNumberDisplay, Mode=OneWay}" Width="45"/>
+                                        <DataGridTextColumn Header="STATUS" Binding="{Binding StatusDisplay, Mode=OneWay}" Width="85"/>
+                                        <DataGridTextColumn Header="TYPE" Binding="{Binding TypeDisplay, Mode=OneWay}" Width="85"/>
+                                        <DataGridTextColumn x:Name="EventSessionClassColumn" Header="CLASS" Binding="{Binding ClassDisplay, Mode=OneWay}" Width="1.2*"/>
+                                        <DataGridTextColumn Header="ROUND" Binding="{Binding RoundLabel, Mode=OneWay}" Width="65"/>
+                                        <DataGridTextColumn Header="HEAT / MAIN" Binding="{Binding HeatMainDisplay, Mode=OneWay}" Width="82"/>
+                                        <DataGridTextColumn Header="RUN" Binding="{Binding MainRunDisplay, Mode=OneWay}" Width="58"/>
+                                        <DataGridTextColumn Header="RACERS" Binding="{Binding RacerCount, Mode=OneWay}" Width="70"/>
+                                        <DataGridTextColumn x:Name="EventSessionNameColumn" Header="SESSION" Binding="{Binding Name, Mode=OneWay}" Width="1.6*"/>
                                     </DataGrid.Columns>
                                 </DataGrid>
                             </Grid>
