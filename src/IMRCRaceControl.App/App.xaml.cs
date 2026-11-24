@@ -75,7 +75,7 @@ public partial class App : Application
             MainWindow = window;
             ShutdownMode = ShutdownMode.OnLastWindowClose;
             window.Show();
-            splash.Close();
+            splash?.Close();
             _ = window.CheckApplicationUpdatesAsync(manual: false);
         }
         catch (Exception ex)

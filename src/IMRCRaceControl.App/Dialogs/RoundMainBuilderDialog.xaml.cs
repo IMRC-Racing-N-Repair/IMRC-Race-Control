@@ -195,6 +195,7 @@ public partial class RoundMainBuilderDialog : Window
             UpdateModeSpecificControls();
             RefreshSavedSessions();
             InitializeSavedFilters();
+            if (SuppressAutomatedPreviewPrompts) return;
             if (!string.IsNullOrEmpty(editSessionId))
             {
                 var saved = SavedSessions.FirstOrDefault(s => s.SessionId == editSessionId);

@@ -24,7 +24,7 @@ public sealed class EventRegistrationView : UserControl
     private RaceDayEventDefinition? _event;
     private List<DriverProfile> _profiles=[]; private List<ClassDefinition> _definitions=[]; private List<DriverClassAssignment> _defaults=[];
     private Func<string,string,string,bool,string,Task>? _save;
-    private bool _refreshing, _saving;
+    private bool _refreshing;
     private sealed class DriverRow(string id, string label) : INotifyPropertyChanged
     {
         public string Id { get; } = id;
@@ -115,7 +115,6 @@ public sealed class EventRegistrationView : UserControl
     public void SelectDriver(string id) { _search.Clear();_drivers.SelectedItem=_drivers.Items.Cast<DriverRow>().FirstOrDefault(x=>x.Id==id); }
     private void RefreshDrivers()
     {
-        if(_saving)return;
         var selected=(_drivers.SelectedItem as DriverRow)?.Id;
         _refreshing=true;
         var query=_search.Text.Trim();
@@ -126,7 +125,6 @@ public sealed class EventRegistrationView : UserControl
     }
     private void RefreshClasses()
     {
-        if(_saving)return;
         _classes.Children.Clear();
         _classTiles.Clear();
         var driver=_drivers.SelectedItem as DriverRow;

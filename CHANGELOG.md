@@ -2,6 +2,37 @@
 
 Keep all release history in this file. Add each new version at the top; do not create version-specific changelog files.
 
+## 0.17.16
+- Carry forward all 0.17.15 race-flow changes into this cumulative unpublished draft.
+- Fix the unattended Windows breakout-style regression by testing scoped WPF resources without waiting for dispatcher idle; verify persistent pending breakout and crossing highlight restoration.
+- Remove the forced three-minute preview shutdown; keep required UI and installer validation, explicit exit-code failure reporting, and restore the unsaved heat drag regression check.
+- Preserve the 0.17.14 main branch; isolate draft build concurrency by branch.
+- Center the live qualifying POSITION, PACE / FINISH, and pace-gap figures; move the incremental +/− position change to a small colored superscript at the upper-right of each driver's name.
+- Replace the MOVE column with PACE GAP: time behind the current class leader for the same projected lap count, lap deficit where counts differ, and a negative time for the leader when faster than the established previous qualifying TQ (dash otherwise). Preserve the existing qualifying-rank and race scoring calculations.
+- Persistently highlight the race-wide fastest valid BEST LAP cell for the entire active session using the configured fastest-lap color; transfer the highlight only when a faster valid lap replaces it, independent of personal-best notifications.
+- Restore drag-and-drop for newly generated heats before the first Save; add a visible MOVE grip and keep HEAT UP / HEAT DOWN available. Renumber the editable preview immediately without changing saved/completed races.
+- Display simultaneous breakout notices one per line beneath the race results, with a bounded scroll area for larger fields.
+- Keep every pending breakout visible until that driver records a valid lap; support undo and clear on new/restarted races.
+- Make rounded practice cards follow the selected Light, Dark, or Blue theme while retaining a subtle gradient/radiant overlay, theme accent stripe, and soft shadow.
+- Mains seeding now offers **OVERALL ROUND RESULTS** (default for new mains): rank racers by their best single completed qualifying run across every round, rather than the final round only. The prior round-placement ranking remains available as a separate choice.
+- Tone-start races keep the master clock running from the start tone but ignore each racer's first crossing for scored laps and breakout detection. That crossing becomes the baseline for Lap 1; later complete laps use crossing-to-crossing time. Practice and alternative start styles retain their behavior.
+- Before saving a generated or edited lineup, detect drivers appearing in consecutive races and show the driver and both race names/numbers with CHANGE LINEUP or CONTINUE ANYWAY. CHANGE returns to editing; every subsequent save checks again. Combined class sessions in the same on-track race are excluded.
+- Add regression checks for ignored tone-start first crossings and protected master-clock timing.
+
+- Generate evenly balanced qualifying heats instead of filling the first heat before the next (12 racers with max 9 become 6/6).
+- Default ranked and previous-round qualifying heats to slower-seeded racers first; mains retain lower-main-first generation.
+- Renumber uncompleted qualifying heats in their displayed order without changing completed heats or their saved heat numbers.
+- Add configurable race START (S) and FALSE START (F) keyboard shortcuts under Settings > Keybinds; ignore typing in input fields and repeat keypresses.
+- Add small orange driver-name breakout counters, a bottom breakout lap notice, and persistent orange driver highlighting until a valid lap is accepted; honor the existing breakout highlight color.
+- Add a configurable Practice idle multiplier (default 20× average lap, range 2–60) to Settings > Practice.
+- Highlight the fastest valid lap across the whole live session in green while preserving the configurable Fastest Lap color.
+- Rename GAP BEHIND to GAP AHEAD and calculate the positive interval to the next car ahead; show a dash for the leader.
+- Show best-of-qualifiers projected overall position in the race POS display while preserving the official per-heat scoring position; the POS cell shows position only.
+- Announce lap times by truncating to tenths, never rounding (4.399 speaks as 4.3); update speech regression expectations.
+- Allow uncompleted A/B/C mains to be moved independently across main legs; preserve manual race order and protect completed race data.
+- Prompt operators to check/uncheck and confirm bump-up drivers after a lower-main series ends; no automatic additions without confirmation.
+- Requires Windows UI, race-director workflow, and timing-decoder regression testing prior to publication. This build is intended as an unpublished testing draft.
+
 ## 0.17.15
 - Center the live qualifying POSITION, PACE / FINISH, and pace-gap figures; move the incremental +/− position change to a small colored superscript at the upper-right of each driver's name.
 - Replace the MOVE column with PACE GAP: time behind the current class leader for the same projected lap count, lap deficit where counts differ, and a negative time for the leader when faster than the established previous qualifying TQ (dash otherwise). Preserve the existing qualifying-rank and race scoring calculations.

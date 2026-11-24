@@ -21,23 +21,41 @@ public partial class RentalTransponderView
         // Exercise the actual shared dashboard/pop-out style, not a copied precedence rule.
         var highlightRow=new StandingRow { DriverName="BREAKOUT PRIORITY",IsCheckedIn=false,IsLastPassing=true,IsMinimumLapViolationGlow=true };
         var highlightBorder=new System.Windows.Controls.Border { DataContext=highlightRow,Style=(Style)Application.Current.FindResource("RaceDriverBorderStyle"),Child=new System.Windows.Controls.TextBlock {Text=highlightRow.DriverName,FontSize=22,Foreground=Brushes.White} };
-        var highlightWindow=new Window {Width=500,Height=160,Background=Brushes.Black,Content=highlightBorder};
-        Stage("BREAKOUT-WINDOW-SHOW");
-        highlightWindow.Show();
-        Stage("BREAKOUT-WINDOW-SHOWN");
-        foreach(var color in new[]{Colors.Orange,Colors.Magenta})
+        // Exercise real WPF dynamic resources and style triggers in a scoped
+        // logical/visual tree without opening a modal window or waiting for
+        // ApplicationIdle (which can starve on unattended Windows runners).
+        var highlightHost = new System.Windows.Controls.Border
+        {
+            Width = 500, Height = 160, Background = Brushes.Black, Child = highlightBorder
+        };
+        void LayoutHighlight()
+        {
+            highlightHost.Measure(new Size(500, 160));
+            highlightHost.Arrange(new Rect(0, 0, 500, 160));
+            highlightHost.UpdateLayout();
+        }
+        highlightHost.Resources["DriverCrossingBrush"] = Brushes.Lime;
+        highlightHost.Resources["DriverCrossingThickness"] = new Thickness(0, 0, 0, 3);
+        foreach (var color in new[] { Colors.Orange, Colors.Magenta })
         {
             Stage($"BREAKOUT-COLOR-{color}");
-            highlightWindow.Resources["DashboardMinimumLapGlowBrush"]=new SolidColorBrush(color);
-            highlightWindow.Resources["DriverCrossingBrush"]=Brushes.Lime;
-            highlightWindow.Resources["DriverCrossingThickness"]=new Thickness(0,0,0,3);
-            highlightWindow.Dispatcher.Invoke(()=>{},System.Windows.Threading.DispatcherPriority.ApplicationIdle);highlightWindow.UpdateLayout();
-            if((highlightBorder.BorderBrush as SolidColorBrush)?.Color!=color || highlightBorder.BorderThickness!=new Thickness(2))throw new InvalidDataException($"Breakout did not override crossing highlight: expected {color}, actual {highlightBorder.BorderBrush}, thickness {highlightBorder.BorderThickness}.");
+            highlightHost.Resources["DashboardMinimumLapGlowBrush"] = new SolidColorBrush(color);
+            LayoutHighlight();
+            if ((highlightBorder.BorderBrush as SolidColorBrush)?.Color != color ||
+                highlightBorder.BorderThickness != new Thickness(2))
+                throw new InvalidDataException($"Breakout did not override crossing highlight: expected {color}, actual {highlightBorder.BorderBrush}, thickness {highlightBorder.BorderThickness}.");
         }
-        highlightRow.IsMinimumLapViolationGlow=false;
-        highlightWindow.Dispatcher.Invoke(()=>{},System.Windows.Threading.DispatcherPriority.ApplicationIdle);
-        if((highlightBorder.BorderBrush as SolidColorBrush)?.Color!=Colors.Lime || highlightBorder.BorderThickness!=new Thickness(0,0,0,3))throw new InvalidDataException("Crossing highlight did not resume after breakout.");
-        highlightWindow.Close();
+        highlightRow.IsBreakoutPending = true;
+        highlightRow.IsMinimumLapViolationGlow = false;
+        LayoutHighlight();
+        if ((highlightBorder.BorderBrush as SolidColorBrush)?.Color != Colors.Magenta ||
+            highlightBorder.BorderThickness != new Thickness(2))
+            throw new InvalidDataException("Pending breakout highlight was lost before the next valid lap.");
+        highlightRow.IsBreakoutPending = false;
+        LayoutHighlight();
+        if ((highlightBorder.BorderBrush as SolidColorBrush)?.Color != Colors.Lime ||
+            highlightBorder.BorderThickness != new Thickness(0, 0, 0, 3))
+            throw new InvalidDataException("Crossing highlight did not resume after breakout.");
         File.WriteAllText(Path.Combine(output,"Breakout-Highlight-Checks.txt"),"PASS: breakout overrides simultaneous crossing/check-in; configured colors update; underline crossing resumes after breakout expires.");
 
         Stage("BREAKOUT-HIGHLIGHT-DONE");
@@ -73,7 +91,7 @@ public partial class RentalTransponderView
             Stage($"RENTAL-{theme}-SHOW");
             window.Show(); window.UpdateLayout();
             Stage($"RENTAL-{theme}-SHOWN");
-            window.Dispatcher.Invoke(() => { }, System.Windows.Threading.DispatcherPriority.ApplicationIdle);
+            window.Dispatcher.Invoke(() => { }, System.Windows.Threading.DispatcherPriority.Loaded);
             // Exercise the same add/error handlers used by typing and decoder drops.
             Stage($"RENTAL-{theme}-ADD-REMOVE");
             view.NumberInput.Text = "001000001"; view.AddClicked(view, new RoutedEventArgs());
@@ -90,7 +108,7 @@ public partial class RentalTransponderView
             if (view.HistoryGrid.Items.Count != 3 || !view.SelectedLabel.Text.Contains("Red #1")) throw new InvalidDataException("Rental used-event history did not render.");
             view.StatusText.Text = "Sample data • Week 5: this rental still shows its uses in weeks 1, 2 and 3.";
             window.UpdateLayout();
-            window.Dispatcher.Invoke(() => { }, System.Windows.Threading.DispatcherPriority.ApplicationIdle);
+            window.Dispatcher.Invoke(() => { }, System.Windows.Threading.DispatcherPriority.Loaded);
             window.UpdateLayout();
             if (view.InventoryGrid.Columns[1].ActualWidth < 140 || view.HistoryGrid.Columns[1].ActualWidth < 90 || view.DecoderGrid.Columns[0].ActualWidth < 90)
                 throw new InvalidDataException("Transponder columns are too narrow to read.");
@@ -239,7 +257,7 @@ public partial class RentalTransponderView
         foreach (var dialog in new Window[] { new IMRCRaceControl.Dialogs.EventEditorDialog(), new IMRCRaceControl.Dialogs.ClassEditorDialog(), new RentalAppearanceDialog(printSettings), new IMRCRaceControl.Dialogs.CompletedRaceExportDialog([printEvent],printEvent,lapSession), new IMRCRaceControl.Dialogs.ReportPrintDialog(RaceReports.CompletedRace(printEvent,lapSession)) })
         {
             dialog.Owner = owner; dialog.Show();
-            dialog.Dispatcher.Invoke(() => { }, System.Windows.Threading.DispatcherPriority.ApplicationIdle); dialog.UpdateLayout();
+            dialog.Dispatcher.Invoke(() => { }, System.Windows.Threading.DispatcherPriority.Loaded); dialog.UpdateLayout();
             if (dialog.WindowStyle != WindowStyle.None) throw new InvalidDataException("Dialog title bar is not themed.");
             var shot = new RenderTargetBitmap((int)Math.Ceiling(dialog.ActualWidth), (int)Math.Ceiling(dialog.ActualHeight), 96, 96, PixelFormats.Pbgra32); shot.Render(dialog);
             var png = new PngBitmapEncoder(); png.Frames.Add(BitmapFrame.Create(shot));

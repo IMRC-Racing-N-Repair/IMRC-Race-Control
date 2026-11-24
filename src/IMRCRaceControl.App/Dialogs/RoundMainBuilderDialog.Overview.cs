@@ -100,7 +100,7 @@ public partial class RoundMainBuilderDialog
         ev.Sessions[0].ProgressStatus=EventSessionStatus.Completed;
         var originalCompleted=System.Text.Json.JsonSerializer.Serialize(ev.Sessions[0]);
         var dialog=new RoundMainBuilderDialog(ev,classes,[]);dialog.Show();dialog.UpdateLayout();
-        dialog.Dispatcher.Invoke(()=>{},System.Windows.Threading.DispatcherPriority.ApplicationIdle);
+        dialog.Dispatcher.Invoke(()=>{},System.Windows.Threading.DispatcherPriority.Loaded);
         if(dialog.HeatGrid.Items.Count!=6)throw new InvalidOperationException("Saved lineup overview did not show all six races.");
         var first=dialog.HeatGrid.Items.Cast<HeatPlan>().First();var label=first.SessionDisplay;dialog.HeatGrid.SelectedItem=first;
         if(dialog.EntrantGrid.Items.Count!=1 || dialog.SelectedHeatTitle.Text=="SELECT A RACE")throw new InvalidOperationException("Completed race selection did not display its drivers immediately.");
@@ -215,9 +215,7 @@ public partial class RoundMainBuilderDialog
         System.IO.File.WriteAllText(System.IO.Path.Combine(output,"Race-Order-Checks.txt"),"PASS: drag stages order, saved event unchanged before Save, completed race protected, round headers present, specific round filter works.");
         System.IO.File.WriteAllText(System.IO.Path.Combine(output,"Unified-Lineup-Checks.txt"),"PASS: one visible race list; stable Q1 Heat labels; completed and unrun rosters display on first selection; completed edit/remove/add/reorder controls disabled; saved completed data unchanged.");
         CheckEmptyClassRace(output, ev, classes);
-        // The unsaved draft drag scenario is validated through the builder's
-        // separate model tests. Keep this unattended UI smoke preview focused
-        // on saved lineups; avoid modal automation on an empty event.
+        CheckDraftHeatReordering(output);
         System.IO.File.WriteAllText(System.IO.Path.Combine(output,"Lineup-Overview-Checks.txt"),"PASS: all classes/rounds remain visible while selecting, editing, adding and removing a heat; source sessions unchanged before saving.");
     }
 

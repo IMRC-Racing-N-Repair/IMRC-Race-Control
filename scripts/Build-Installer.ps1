@@ -20,15 +20,14 @@ Checked @('tool','restore')
 # Clean generated payloads so a release never includes stale files.
 Remove-Item 'artifacts/publish','artifacts/releases','artifacts/branding' -Recurse -Force -ErrorAction SilentlyContinue
 Checked (@('publish',$project,'-c','Release','-r','win-x64','--self-contained','true','-o','artifacts/publish',"-p:UpdateRepository=$Repository",'-p:PublishSingleFile=false') + $liveTimeArgs)
-# Keep Windows UI smoke previews from leaving unattended modal dialogs
-# running indefinitely. A hang must fail explicitly with a useful step name.
+# Preview processes run to completion; failures must surface as nonzero
+# exit codes and preserve diagnostics instead of a three-minute forced kill.
 function Invoke-Preview([string]$Executable, [string[]]$Arguments, [string]$Label) {
+    Write-Host "Starting $Label"
     $process = Start-Process -FilePath $Executable -ArgumentList $Arguments -PassThru
     try {
-        if (-not $process.WaitForExit(180000)) {
-            Stop-Process -Id $process.Id -Force -ErrorAction SilentlyContinue
-            throw "$Label timed out after 180 seconds (possible unattended modal dialog)."
-        }
+        $process.WaitForExit()
+        Write-Host "$Label completed with exit code $($process.ExitCode)"
         return $process.ExitCode
     }
     finally { $process.Dispose() }
@@ -123,6 +122,7 @@ if (-not (Test-Path (Join-Path $branding "Lineup-Overview.png"))) { throw "Missi
 if ((Get-Content (Join-Path $branding "Lineup-Overview-Checks.txt") -Raw) -notmatch "^PASS:") { throw "Lineup overview validation did not pass" }
 if (-not (Test-Path (Join-Path $branding "Unified-Lineup-Checks.txt"))) { throw "Missing unified lineup and completed-race protection checks" }
 if (-not (Test-Path (Join-Path $branding "Race-Order-Checks.txt"))) { throw "Missing grouped lineup race ordering checks" }
+if (-not (Test-Path (Join-Path $branding "Draft-Heat-Drag-Checks.txt"))) { throw "Missing unsaved heat drag regression checks" }
 if (-not (Test-Path (Join-Path $branding "Driver-Drag-Checks.txt"))) { throw "Missing driver drag and button compatibility checks" }
 
 if (-not (Test-Path (Join-Path $branding "Seasonal-Theme-Checks.txt"))) { throw "Missing seasonal theme contrast and persistence checks" }
