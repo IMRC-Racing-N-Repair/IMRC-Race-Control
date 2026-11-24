@@ -13,7 +13,11 @@ public partial class RentalTransponderView
     internal static void ExportPreview(string output)
     {
         Directory.CreateDirectory(output);
+        var checkpoint = Path.Combine(output, "RentalPreviewProgress.txt");
+        void Stage(string name) => File.AppendAllText(checkpoint, $"{DateTimeOffset.UtcNow:O} | {name}{Environment.NewLine}");
+        Stage("BEGIN");
         SeasonalThemeChecks.Run(output);
+        Stage("SEASONAL-THEME-DONE");
         // Exercise the actual shared dashboard/pop-out style, not a copied precedence rule.
         var highlightRow=new StandingRow { DriverName="BREAKOUT PRIORITY",IsCheckedIn=false,IsLastPassing=true,IsMinimumLapViolationGlow=true };
         var highlightBorder=new System.Windows.Controls.Border { DataContext=highlightRow,Style=(Style)Application.Current.FindResource("RaceDriverBorderStyle"),Child=new System.Windows.Controls.TextBlock {Text=highlightRow.DriverName,FontSize=22,Foreground=Brushes.White} };
@@ -87,6 +91,7 @@ public partial class RentalTransponderView
             using (var file = File.Create(Path.Combine(output, $"Transponder-{theme}.png"))) encoder.Save(file);
             window.Close();
         }
+        Stage("RENTAL-VIEWS-DONE");
         var printSettings = new AppSettings();
         printSettings.RentalTransponders.NewNicknameStyle = "ColorNumber";
         printSettings.RentalTransponders.NewLabelColor = "Red";
@@ -218,6 +223,7 @@ public partial class RentalTransponderView
         File.WriteAllText(Path.Combine(output,"Balanced-Report-Checks.txt"),"PASS: 10 drivers = 5/5; 18 drivers = 6/6/6; each report repeats all race results with grouped laps, qualifying and page boundaries.");
         File.WriteAllText(Path.Combine(output,"Breakout-Report-8-Checks.txt"),"PASS: eight driver columns with B-Out: 2.950 labels, valid laps and pace, paginated without footer overlap.");
         File.WriteAllText(Path.Combine(output,"Race-Report-Checks.txt"),"PASS: results, prior qualifying, 8/3/1 driver lap grids and pagination without footer overlap.");
+        Stage("PRINT-REPORTS-DONE");
         var owner = new Window { Width = 1000, Height = 720 }; owner.Show();
         foreach (var dialog in new Window[] { new IMRCRaceControl.Dialogs.EventEditorDialog(), new IMRCRaceControl.Dialogs.ClassEditorDialog(), new RentalAppearanceDialog(printSettings), new IMRCRaceControl.Dialogs.CompletedRaceExportDialog([printEvent],printEvent,lapSession), new IMRCRaceControl.Dialogs.ReportPrintDialog(RaceReports.CompletedRace(printEvent,lapSession)) })
         {
@@ -230,10 +236,16 @@ public partial class RentalTransponderView
             dialog.Close();
         }
         owner.Close();
+        Stage("ROUND-AND-DRAG-PREVIEW-DONE");
         EventRegistrationView.ExportPreview(output);
+        Stage("EVENT-REGISTRATION-DONE");
         TrackRecordsView.ExportPreview(output);
+        Stage("TRACK-RECORDS-DONE");
+        Stage("ROUND-BUILDER-BEGIN");
         IMRCRaceControl.Dialogs.RoundMainBuilderDialog.ExportOverviewPreview(output);
+        Stage("ROUND-BUILDER-DONE");
         SpectatorDashboardWindow.ExportClassSectionsPreview(output);
+        Stage("SPECTATOR-DONE");
         File.WriteAllText(Path.Combine(output, "Transponder-UI-Checks.txt"), "PASS: themed page loads; duplicate input rejected visibly; manual addition; selected label; three actual-use events retained through week five.\n");
     }
 }
