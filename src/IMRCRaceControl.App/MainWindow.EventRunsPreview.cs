@@ -30,12 +30,30 @@ public partial class MainWindow
             grid ??= FindProjectionGrid(main);
             foreach (var name in new[] { "POS", "PACE / FINISH", "PACE GAP" })
             {
-                if (grid.Columns.SingleOrDefault(c => Equals(c.Header, name)) is not DataGridTextColumn column ||
-                    !ReferenceEquals(column.ElementStyle, sharedStyle))
-                    throw new InvalidDataException($"Projection column {name} does not use the shared centered style.");
+                if (grid.Columns.SingleOrDefault(c => Equals(c.Header, name)) is not DataGridTextColumn column)
+                    throw new InvalidDataException($"Projection column {name} is missing.");
+                var expected = name == "POS"
+                    ? Application.Current.TryFindResource("ProjectionPositionTextStyle") as Style
+                    : sharedStyle;
+                if (expected is null || !ReferenceEquals(column.ElementStyle, expected))
+                    throw new InvalidDataException($"Projection column {name} does not use its shared centered style.");
+                if (name == "POS" && (!ReferenceEquals(expected.BasedOn, sharedStyle) || column.Width.Value < 48 ||
+                    !expected.Setters.OfType<Setter>().Any(setter => setter.Property == TextBlock.FontSizeProperty && setter.Value is double size && size >= 16) ||
+                    !expected.Setters.OfType<Setter>().Any(setter => setter.Property == FrameworkElement.MarginProperty && setter.Value is Thickness margin && margin.Left >= 3 && margin.Right >= 3)))
+                    throw new InvalidDataException("Projection position must be larger, centered and padded.");
             }
+            var racer = new RoundProjectionRow { IsCurrentHeat = true };
+            var cell = new DataGridCell { Style = grid.CellStyle, DataContext = racer };
+            if (cell.VerticalContentAlignment != VerticalAlignment.Center ||
+                cell.Foreground is not SolidColorBrush live || Application.Current.TryFindResource("WarnBrush") is not SolidColorBrush yellow ||
+                live.Color != yellow.Color)
+                throw new InvalidDataException("Current heat cells must use the theme's yellow text and centered content.");
+            racer.IsCurrentHeat = false;
+            if (cell.Foreground is not SolidColorBrush inactive || Application.Current.TryFindResource("DashboardTextBrush") is not SolidColorBrush normal ||
+                inactive.Color != normal.Color)
+                throw new InvalidDataException("Historical rows must return to ordinary text when leaving the current heat.");
             File.WriteAllText(Path.Combine(output, "Dashboard-Startup-Checks.txt"),
-                "PASS: real dashboard XAML initializes; shared centered styles resolve on all three projection columns.");
+                "PASS: real dashboard XAML initializes; centered and padded projection columns resolve; current-heat text follows the theme and resets for historical rows.");
         }
         finally { main.Close(); }
         Controls.NextRaceStrip.CheckResponsiveLayout(output);

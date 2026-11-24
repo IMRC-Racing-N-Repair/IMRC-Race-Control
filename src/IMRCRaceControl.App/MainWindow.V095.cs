@@ -271,6 +271,11 @@ public partial class MainWindow
             }
         }
 
+        // Current-heat membership is independent of which qualifying run is the
+        // driver's best. A racer on track must stay marked even if Q1 is faster.
+        var currentHeatIdentities = candidates.Where(c => c.IsCurrentHeat)
+            .Select(c => $"{c.ClassId}|{c.DriverId}")
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
         var bestPerDriver = candidates
             .GroupBy(c => $"{c.ClassId}|{c.DriverId}", StringComparer.OrdinalIgnoreCase)
             .Select(group => group
@@ -364,7 +369,7 @@ public partial class MainWindow
                     ClassName = loaded.IsCombinedRace ? c.ClassName : string.Empty,
                     ClassColor = loaded.IsCombinedRace ? classColors[c.ClassId] : "#808080",
                     PaceFinish = c.PaceFinish,
-                    IsCurrentHeat = c.IsCurrentHeat,
+                    IsCurrentHeat = currentHeatIdentities.Contains($"{c.ClassId}|{c.DriverId}"),
                     MovementState = hasMovement ? movement.State : string.Empty,
                     MovementDisplay = hasMovement ? movement.Display : "—",
                     PaceGapDisplay = gap,

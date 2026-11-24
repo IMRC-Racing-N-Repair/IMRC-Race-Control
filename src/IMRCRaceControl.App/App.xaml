@@ -8,6 +8,11 @@
             <Setter Property="HorizontalAlignment" Value="Stretch"/>
             <Setter Property="VerticalAlignment" Value="Center"/>
         </Style>
+        <Style x:Key="ProjectionPositionTextStyle" TargetType="TextBlock" BasedOn="{StaticResource DashboardCenteredCellTextStyle}">
+            <Setter Property="FontSize" Value="17"/>
+            <Setter Property="FontWeight" Value="Bold"/>
+            <Setter Property="Margin" Value="3,0"/>
+        </Style>
         <!-- Core palette -->
         <SolidColorBrush x:Key="PageBrush" Color="#101214"/>
         <SolidColorBrush x:Key="PanelBrush" Color="#171A1D"/>
