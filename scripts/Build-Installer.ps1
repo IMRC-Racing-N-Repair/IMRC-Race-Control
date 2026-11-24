@@ -70,6 +70,7 @@ foreach ($part in @('Dashboard','Highlights','Rentals','Reports','Registration',
 }
 if ($Phase -notin @('All','Package')) { return }
 if (-not (Test-Path (Join-Path $branding 'Dashboard-Startup-Checks.txt'))) { throw 'Missing dashboard XAML startup validation' }
+if (-not (Test-Path (Join-Path $branding 'Next-Race-Layout-Checks.txt'))) { throw 'Missing responsive next race ticker validation' }
 foreach ($theme in @('Light','Dark','Blue')) {
     if (-not (Test-Path (Join-Path $branding "Transponder-$theme.png"))) { throw "Missing Transponder preview for $theme" }
 }

@@ -38,6 +38,7 @@ public partial class MainWindow
                 "PASS: real dashboard XAML initializes; shared centered styles resolve on all three projection columns.");
         }
         finally { main.Close(); }
+        Controls.NextRaceStrip.CheckResponsiveLayout(output);
 
         static DataGrid FindProjectionGrid(DependencyObject root)
         {
