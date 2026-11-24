@@ -293,6 +293,26 @@ public partial class MainWindow
 
         var projectedPositionByKey = Core.OverallPositionScope.Positions(ranked,c=>c.ClassId,c=>c.Key);
 
+        // Keep time deltas within the same class, and only show time when the
+        // competitors have the same projected lap count.
+        var leaderByClass = ranked
+            .GroupBy(c => c.ClassId, StringComparer.OrdinalIgnoreCase)
+            .ToDictionary(g => g.Key, g => g.First(), StringComparer.OrdinalIgnoreCase);
+        var previousQualifyingSessionIds = roundSessions
+            .Where(session => session.SessionType == SessionType.Qualifying &&
+                              session.Round < loaded.Round &&
+                              session.ProgressStatus == EventSessionStatus.Completed)
+            .Select(session => session.Id)
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var previousTqByClass = candidates
+            .Where(c => previousQualifyingSessionIds.Contains(c.SessionId) && c.HasPerformance)
+            .GroupBy(c => c.ClassId, StringComparer.OrdinalIgnoreCase)
+            .ToDictionary(g => g.Key,
+                g => g.OrderByDescending(c => c.ComparisonLaps)
+                      .ThenBy(c => c.ComparisonTime ?? TimeSpan.MaxValue)
+                      .First(),
+                StringComparer.OrdinalIgnoreCase);
+
         UpdateProjectionMovement(bestPerDriver, projectedPositionByKey);
 
         // Only the displayed POS changes. Official per-heat Position values and
@@ -321,6 +341,19 @@ public partial class MainWindow
                     _projectionMovement.TryGetValue(c.Key, out var movement) &&
                     c.IsCurrentHeat &&
                     c.HasPerformance;
+                leaderByClass.TryGetValue(c.ClassId, out var leader);
+                var isLeader = leader is not null && c.Key == leader.Key;
+                var gap = leader is null || !c.HasPerformance
+                    ? "—"
+                    : isLeader
+                        ? previousTqByClass.TryGetValue(c.ClassId, out var lastTq)
+                            ? Core.QualifyingPaceGap.LeaderVsPreviousTq(
+                                c.ComparisonLaps, c.ComparisonTime,
+                                lastTq.ComparisonLaps, lastTq.ComparisonTime)
+                            : "—"
+                        : Core.QualifyingPaceGap.BehindLeader(
+                            leader.ComparisonLaps, leader.ComparisonTime,
+                            c.ComparisonLaps, c.ComparisonTime);
 
                 return new RoundProjectionRow
                 {
@@ -334,6 +367,7 @@ public partial class MainWindow
                     IsCurrentHeat = c.IsCurrentHeat,
                     MovementState = hasMovement ? movement.State : string.Empty,
                     MovementDisplay = hasMovement ? movement.Display : "—",
+                    PaceGapDisplay = gap,
                     ProjectedPosition = projectedPositionByKey.TryGetValue(c.Key, out var position)
                         ? position
                         : null
