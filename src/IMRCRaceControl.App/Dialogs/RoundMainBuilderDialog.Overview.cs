@@ -224,7 +224,13 @@ public partial class RoundMainBuilderDialog
         var cls = new ClassDefinition { Name = "Draft Heat Order" };
         var ev = new RaceDayEventDefinition { Name = "Unsaved heat drag regression", ClassIds = [cls.Id] };
         var before = System.Text.Json.JsonSerializer.Serialize(ev);
-        var dialog = new RoundMainBuilderDialog(ev, [cls], []);
+        // Enter New Round mode directly: the normal empty-event constructor
+        // queues the compact generator as a modal dialog on the dispatcher.
+        // That modal must not be left unattended by this automation.
+        var dialog = new RoundMainBuilderDialog(ev, [cls], [], createNew: true)
+        {
+            SuppressAutomatedPreviewPrompts = true
+        };
         dialog.Show();
         dialog._browsingSavedLineups = false;
         dialog.HeatPlans.Clear();
