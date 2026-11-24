@@ -106,6 +106,7 @@ public partial class MainWindow : Window
         previewTrace?.Invoke("XAML-BEGIN");
         InitializeComponent();
         previewTrace?.Invoke("XAML-DONE");
+        RestoreEventRoundsDivider();
         BreakoutNoticesItems.ItemsSource = _activeBreakoutNotices;
         ConfigureDriverDirectorySearch();
         RaceClassSections.Attach(Standings);

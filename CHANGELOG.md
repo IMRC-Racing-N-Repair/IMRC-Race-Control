@@ -3,6 +3,8 @@
 Keep all release history in this file. Add each new version at the top; do not create version-specific changelog files.
 
 ## 0.17.18
+- Remember the Event screen registration/rounds divider position across restarts using a saved proportional height; retain resizing limits and restore it when browsing active events again.
+- Validate suggested race orders against the same queue-rebuild logic used when saving, so only reproducible improvements can be applied.
 - Enlarge practice LAST timing and live lap history text; compact the secondary statistics without changing automatic card sizing or lap order.
 - Add a Race Order Assistant with Least Changes, Fewest Conflicts and Maximum Rest suggestions, side-by-side order comparison, and explicit Apply to Preview. Suggestions are bounded, preserve locked/loaded and combined races, same-class sequence and bump-up dependencies, and never change driver rosters or save automatically.
 - Show an offline What's New dialog after updating, with cumulative changes since the last recorded version and one-time acknowledgement. Existing installations without a recorded version see recent release notes on the first update.

@@ -1936,9 +1936,10 @@ public partial class RoundMainBuilderDialog : Window
             MessageBox.Show(this,"A race roster is full. Split the field into another heat/main.","Rounds / mains");
             return;
         }
-        if (!ConfirmConsecutiveRaceDrivers())
+        if (!ConfirmConsecutiveRaceDrivers(out var suggestedOrderApplied))
         {
-            BuilderStatusText.Text = "Consecutive-race conflicts need review. Adjust the lineup, then SAVE again to recheck.";
+            BuilderStatusText.Text = suggestedOrderApplied ? "Suggested order applied to preview. Review it and press SAVE CHANGES to confirm." :
+                "Consecutive-race conflicts need review. Adjust the lineup, then SAVE again to recheck.";
             return;
         }
         if (SaveRequested is null) { DialogResult = true; return; }
@@ -1962,57 +1963,69 @@ public partial class RoundMainBuilderDialog : Window
         if (savedSuccessfully && CloseAfterSave) DialogResult = true;
     }
 
-    private bool ConfirmConsecutiveRaceDrivers()
+    private bool ConfirmConsecutiveRaceDrivers(out bool suggestedOrderApplied)
     {
+        suggestedOrderApplied = false;
         // StageCurrentLineup has already supplied a detached preview. Inspect the
         // proposed race order without mutating completed/saved event sessions.
         var sorted = ProposedRaceOrder();
         var conflicts = ConsecutiveRaceDetector.Find(sorted);
         if (conflicts.Count == 0) return true;
-        var suggestions = RaceOrderAssistant.Find(sorted);
+        var suggestions = RaceOrderAssistant.Find(sorted)
+            .Where(s => PhysicalIds(ProposedRaceOrder(SuggestedPositions(sorted,s.Order))).SequenceEqual(PhysicalIds(s.Order)))
+            .ToList();
+        var applied = false;
         var popup = UpdateAndLineupDialogs.CreateConsecutiveWarning(this, conflicts, sorted, suggestions,
             suggestion =>
             {
-                StageSuggestedRaceOrder(sorted,suggestion.Order);
-                BuilderStatusText.Text = "Suggested order applied to preview. Review it and press SAVE CHANGES to confirm.";
+                foreach(var pair in SuggestedPositions(sorted,suggestion.Order)) _pendingRaceOrder[pair.Key]=pair.Value;
+                ShowSavedLineups();
+                SaveButton.IsEnabled=HasPendingEdits;
+                applied = true;
             });
-        return popup.ShowDialog() == true;
+        var confirmed=popup.ShowDialog() == true;
+        suggestedOrderApplied=applied;
+        return confirmed;
     }
 
-    private List<EventSessionDefinition> ProposedRaceOrder()
+    private List<EventSessionDefinition> ProposedRaceOrder(IReadOnlyDictionary<string,int>? overrideOrder = null)
     {
-        var proposed = PreviewSessions.Where(s=>s.ProgressStatus!=EventSessionStatus.Skipped)
+        var proposed = PreviewSessions
             .Select(s=>new EventSessionDefinition
             {
                 Id=s.Id,Name=s.Name,ClassId=s.ClassId,ClassName=s.ClassName,Round=s.Round,Heat=s.Heat,
                 SessionType=s.SessionType,MainLeg=s.MainLeg,QueueOrder=s.QueueOrder,RaceNumber=s.RaceNumber,
                 ProgressStatus=s.ProgressStatus,Entrants=s.Entrants,BumpTargetSessionId=s.BumpTargetSessionId,
                 CombinedRaceId=GroupFor(s.Id),
-                LineupOrder=_pendingRaceOrder.TryGetValue(s.Id,out var custom)?custom:s.LineupOrder
+                LineupOrder=overrideOrder is not null && overrideOrder.TryGetValue(s.Id,out var replacement)?replacement:
+                    _pendingRaceOrder.TryGetValue(s.Id,out var custom)?custom:s.LineupOrder
             }).ToList();
-        var knownMax=proposed.Select(s=>s.QueueOrder).DefaultIfEmpty(0).Max();
-        foreach(var s in proposed.Where(s=>s.QueueOrder<=0))s.QueueOrder=++knownMax;
-        RaceLineupOrder.Apply(proposed);
-        var manualMains=proposed.Any(s=>s.SessionType==SessionType.Race && s.LineupOrder.HasValue);
-        return proposed.OrderBy(s=>s.ScheduleStageOrder)
-            .ThenBy(s=>s.SessionType==SessionType.Race && manualMains?0:s.ScheduleRoundOrder)
-            .ThenBy(s=>s.QueueOrder).ToList();
+        if (_stagedLineups.Count>0)
+        {
+            var classIds=_raceEvent.ClassIds.Concat(proposed.Select(p=>p.ClassId)).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
+            RaceLineupOrder.RebuildRemainingQueue(proposed,classIds);
+        }
+        else RaceLineupOrder.Apply(proposed);
+        return proposed.Where(s=>s.ProgressStatus!=EventSessionStatus.Skipped)
+            .OrderBy(s=>s.QueueOrder>0?s.QueueOrder:int.MaxValue).ToList();
     }
 
-    private void StageSuggestedRaceOrder(IReadOnlyList<EventSessionDefinition> before,IReadOnlyList<EventSessionDefinition> after)
+    private static IEnumerable<string> PhysicalIds(IEnumerable<EventSessionDefinition> order) =>
+        order.GroupBy(s=>string.IsNullOrEmpty(s.CombinedRaceId)?"session:"+s.Id:"combined:"+s.CombinedRaceId,
+            StringComparer.OrdinalIgnoreCase).Select(g=>g.Key);
+
+    private static Dictionary<string,int> SuggestedPositions(IReadOnlyList<EventSessionDefinition> before,IReadOnlyList<EventSessionDefinition> after)
     {
-        // Store the order through the existing save path, not in the event database.
+        var pending=new Dictionary<string,int>(StringComparer.OrdinalIgnoreCase);
         foreach(var group in after.GroupBy(RaceLineupOrder.GroupKey))
         {
             var prior=before.Where(s=>RaceLineupOrder.GroupKey(s)==group.Key).Select(s=>s.Id);
             if(prior.SequenceEqual(group.Select(s=>s.Id)))continue;
             var position=0;
             foreach(var session in group.Where(RaceLineupOrder.Movable))
-                _pendingRaceOrder[session.Id]=++position;
+                pending[session.Id]=++position;
         }
-        // New lineups have already been staged by PrepareSaveBatch.
-        ShowSavedLineups();
-        SaveButton.IsEnabled=HasPendingEdits;
+        return pending;
     }
 
     private List<EventSessionDefinition> BuildCurrentLineup()

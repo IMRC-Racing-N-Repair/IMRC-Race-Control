@@ -591,37 +591,8 @@ public partial class MainWindow
 
     private void RebuildRemainingQueueFromClassOrder()
     {
-        if (_activeEvent is null)
-            return;
-
-        var completed = _activeEvent.Sessions
-            .Where(s => s.ProgressStatus is EventSessionStatus.Completed or EventSessionStatus.Skipped)
-            .OrderBy(s => s.QueueOrder)
-            .ToList();
-        var remaining = _activeEvent.Sessions
-            .Where(s => s.ProgressStatus is not EventSessionStatus.Completed and not EventSessionStatus.Skipped)
-            .ToList();
-
-        var classOrder = _activeEvent.ClassIds
-            .Select((id, index) => new { id, index })
-            .ToDictionary(x => x.id, x => x.index, StringComparer.OrdinalIgnoreCase);
-
-        remaining = remaining
-            .OrderBy(s => s.SessionType == SessionType.Qualifying ? 0 : 1)
-            .ThenBy(s => s.SessionType == SessionType.Race ? -s.Heat : s.Round)
-            .ThenBy(s => classOrder.TryGetValue(s.ClassId, out var index) ? index : int.MaxValue)
-            .ThenBy(s => s.SessionType == SessionType.Race ? s.MainLeg : s.Heat)
-            .ToList();
-
-        // Completed/skipped race queue positions are immutable. Reuse only
-        // available unrun queue slots when rebuilding the event order.
-        var fixedSlots = completed.Select(s => s.QueueOrder).Where(q => q > 0).ToHashSet();
-        var availableSlots = _activeEvent.Sessions.Select(s => s.QueueOrder)
-            .Where(q => q > 0 && !fixedSlots.Contains(q)).Distinct().OrderBy(q => q).ToList();
-        var nextSlot = Math.Max(0, _activeEvent.Sessions.Select(s => s.QueueOrder).DefaultIfEmpty(0).Max()) + 1;
-        for (var i = 0; i < remaining.Count; i++)
-            remaining[i].QueueOrder = i < availableSlots.Count ? availableSlots[i] : nextSlot++;
-        RaceLineupOrder.Apply(_activeEvent.Sessions);
+        if (_activeEvent is not null)
+            RaceLineupOrder.RebuildRemainingQueue(_activeEvent.Sessions,_activeEvent.ClassIds);
     }
 
     private async void MoveSelectedHeatUp_Click(object sender, RoutedEventArgs e) => await MoveSelectedHeatQueueAsync(-1);

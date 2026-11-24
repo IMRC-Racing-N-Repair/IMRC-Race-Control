@@ -69,6 +69,10 @@ public partial class MainWindow
             Layout();
             if (Math.Abs(scroll.ViewportHeight - full) > 3) throw new InvalidDataException("Practice history did not restore its full height.");
             var items = Visuals(scroll).OfType<ItemsControl>().First();
+            var lapTexts=Visuals(items).OfType<TextBlock>().ToList();
+            if(!lapTexts.Any(t=>t.Text=="Lap 30" && t.FontSize>=15) ||
+               !lapTexts.Any(t=>t.Text=="5.000" && t.FontSize>=17))
+                throw new InvalidDataException("Practice lap history is not using larger readable text.");
             if (items.Items[0] is not PracticeLapEntry newest || newest.LapNumber != 30 ||
                 items.Items[29] is not PracticeLapEntry oldest || oldest.LapNumber != 1)
                 throw new InvalidDataException("Practice card must display newest laps first.");

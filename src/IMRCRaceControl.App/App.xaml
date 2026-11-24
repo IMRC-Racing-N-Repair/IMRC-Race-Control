@@ -1053,7 +1053,7 @@
 
                                                                                     <Grid>
                                                                                         <Grid.ColumnDefinitions>
-                                                                                            <ColumnDefinition Width="52"/>
+                                                                                            <ColumnDefinition Width="80"/>
                                                                                             <ColumnDefinition Width="*"/>
                                                                                             <ColumnDefinition Width="95"/>
                                                                                         </Grid.ColumnDefinitions>

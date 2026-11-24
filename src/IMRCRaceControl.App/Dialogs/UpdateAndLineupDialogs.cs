@@ -113,7 +113,7 @@ internal static class UpdateAndLineupDialogs
         heading.Children.Add(Text("SUGGESTED RACE ORDER",21,true));
         heading.Children.Add(Text("Choose an alternative to preview. Driver rosters, combined races and race dependencies are preserved.",13,false,"MutedBrush"));
         AddTop(root,heading);
-        var selector=new ComboBox{ItemsSource=suggestions.Select(s=>s.Name).ToList(),SelectedIndex=1,Margin=new Thickness(0,0,0,8)};
+        var selector=new ComboBox{ItemsSource=suggestions.Select(s=>s.Name).ToList(),SelectedIndex=Math.Max(0,suggestions.ToList().FindIndex(s=>s.Name=="Fewest Conflicts")),Margin=new Thickness(0,0,0,8)};
         AddTop(root,selector);
         var summary=Text("",14,true);summary.Margin=new Thickness(0,0,0,8);AddTop(root,summary);
         var actions=Actions();var cancel=ActionButton("CANCEL");cancel.IsCancel=true;

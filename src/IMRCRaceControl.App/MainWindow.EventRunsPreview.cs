@@ -134,6 +134,7 @@ public partial class MainWindow
                 }
             }
             finally { host.Close(); }
+            main.CheckEventRoundsDivider();
             main.CheckPracticeCardLayout(output);
             CheckThemedReleaseDialogs(output);
             File.WriteAllText(Path.Combine(output, "Dashboard-Startup-Checks.txt"),

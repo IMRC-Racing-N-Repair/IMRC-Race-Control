@@ -17,6 +17,7 @@ public sealed class AppSettings
     public bool MainZoomHeader { get; set; }
     public bool PopoutZoomHeader { get; set; }
     public double MainScreenZoom { get; set; } = 100;
+    public double EventRoundsHeightShare { get; set; } = 0.25;
     public double PopoutScreenZoom { get; set; } = 100;
     public double OverallPositionZoom { get; set; } = 100;
     public bool WebShowOverallPosition { get; set; } = true;

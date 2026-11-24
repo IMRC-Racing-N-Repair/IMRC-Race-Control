@@ -853,7 +853,7 @@
                     <Grid Margin="2">
                         <Grid.RowDefinitions>
                             <RowDefinition Height="Auto"/>
-                            <RowDefinition Height="3*" MinHeight="240"/>
+                            <RowDefinition x:Name="EventRegistrationRow" Height="3*" MinHeight="240"/>
                             <RowDefinition x:Name="EventRoundsSplitterRow" Height="10"/>
                             <RowDefinition x:Name="EventRoundsRow" Height="*" MinHeight="150"/>
                         </Grid.RowDefinitions>
@@ -1091,6 +1091,7 @@
                         <GridSplitter x:Name="EventRoundsSplitter" Grid.Row="2" Height="10" HorizontalAlignment="Stretch"
                                       VerticalAlignment="Stretch" ResizeDirection="Rows"
                                       ResizeBehavior="PreviousAndNext" ShowsPreview="False"
+                                      DragCompleted="EventRoundsSplitter_DragCompleted" KeyUp="EventRoundsSplitter_KeyUp"
                                       Background="{DynamicResource BorderBrush}" Cursor="SizeNS"
                                       ToolTip="Drag up or down to resize registration and rounds"
                                       AutomationProperties.Name="Resize registration and rounds">

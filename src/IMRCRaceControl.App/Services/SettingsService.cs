@@ -56,6 +56,8 @@ public sealed class SettingsService
 
     public static void Normalize(AppSettings settings)
     {
+        if (!double.IsFinite(settings.EventRoundsHeightShare) || settings.EventRoundsHeightShare <= 0 || settings.EventRoundsHeightShare >= 1)
+            settings.EventRoundsHeightShare = 0.25;
         settings.RentalTransponders ??= new();
         IMRCRaceControl.Core.RentalTransponderRegistry.ValidateState(settings.RentalTransponders);
         if (settings.DriverCrossingStyle is not ("Box" or "Underline")) settings.DriverCrossingStyle = "Box";
