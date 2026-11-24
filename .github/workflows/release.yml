@@ -38,7 +38,7 @@ jobs:
           "version=$version" >> $env:GITHUB_OUTPUT
       - name: Run regression checks
         run: dotnet run --project tests/LapCalloutChecks/LapCalloutChecks.csproj -c Release
-      - name: Build Windows installer and update packages
+      - name: Compile Windows application and verify import checks
         shell: pwsh
         env:
           UPDATE_REPOSITORY: https://github.com/${{ github.repository }}
@@ -54,7 +54,7 @@ jobs:
               $env:LIVETIME_IMPORT_PASSWORD | dotnet run --project scripts/LiveTimePasswordBundle/LiveTimePasswordBundle.csproj -c Release -- $bundle
               if ($LASTEXITCODE -ne 0 -or -not (Test-Path $bundle)) { throw 'Failed to create private LiveTime key resource.' }
               Remove-Item Env:LIVETIME_IMPORT_PASSWORD
-              ./scripts/Build-Installer.ps1 -Repository $env:UPDATE_REPOSITORY -LiveTimePasswordResource $bundle
+              ./scripts/Build-Installer.ps1 -Repository $env:UPDATE_REPOSITORY -LiveTimePasswordResource $bundle -Phase Prepare
             } else {
               throw 'Missing LIVETIME_IMPORT_PASSWORD Actions secret: refusing to create an installer without the required bundled LiveTime import key.'
             }
@@ -62,6 +62,43 @@ jobs:
           finally {
             Remove-Item -LiteralPath $bundle -Force -ErrorAction SilentlyContinue
           }
+      - name: Brand Windows UI checks
+        shell: pwsh
+        run: ./scripts/Build-Installer.ps1 -Repository "https://github.com/${{ github.repository }}" -Phase Brand
+      - name: Highlights Windows UI checks
+        shell: pwsh
+        run: ./scripts/Build-Installer.ps1 -Repository "https://github.com/${{ github.repository }}" -Phase Highlights
+      - name: Rentals Windows UI checks
+        shell: pwsh
+        run: ./scripts/Build-Installer.ps1 -Repository "https://github.com/${{ github.repository }}" -Phase Rentals
+      - name: Reports Windows UI checks
+        shell: pwsh
+        run: ./scripts/Build-Installer.ps1 -Repository "https://github.com/${{ github.repository }}" -Phase Reports
+      - name: Registration Windows UI checks
+        shell: pwsh
+        run: ./scripts/Build-Installer.ps1 -Repository "https://github.com/${{ github.repository }}" -Phase Registration
+      - name: Records Windows UI checks
+        shell: pwsh
+        run: ./scripts/Build-Installer.ps1 -Repository "https://github.com/${{ github.repository }}" -Phase Records
+      - name: Lineups Windows UI checks
+        shell: pwsh
+        run: ./scripts/Build-Installer.ps1 -Repository "https://github.com/${{ github.repository }}" -Phase Lineups
+      - name: Spectator Windows UI checks
+        shell: pwsh
+        run: ./scripts/Build-Installer.ps1 -Repository "https://github.com/${{ github.repository }}" -Phase Spectator
+      - name: Package Windows installer and verify release assets
+        shell: pwsh
+        run: ./scripts/Build-Installer.ps1 -Repository "https://github.com/${{ github.repository }}" -Phase Package
+      - name: Save UI diagnostics on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: Windows-UI-diagnostics
+          path: |
+            artifacts/branding/*Checks.txt
+            artifacts/branding/*Error.txt
+            artifacts/branding/*Progress.txt
+          if-no-files-found: ignore
       - name: Save build artifacts
         uses: actions/upload-artifact@v4
         with:

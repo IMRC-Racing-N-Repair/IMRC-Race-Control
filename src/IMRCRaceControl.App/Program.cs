@@ -3,41 +3,36 @@ namespace IMRCRaceControl;
 internal static class Program
 {
     [STAThread]
-    public static void Main(string[] args)
+    public static int Main(string[] args)
     {
+        // Explicit previews use an isolated WPF lifetime. Do not acquire the
+        // operator mutex, invoke updater hooks, or initialize the race database.
+        if (args.Length >= 2 && (args[0] == "--export-brand" || args[0] == "--export-rentals"))
+        {
+            var output = args[1];
+            System.IO.Directory.CreateDirectory(output);
+            var phase = args.Length == 3 ? args[2] : "all";
+            var preview = new App
+            {
+                ShutdownMode = System.Windows.ShutdownMode.OnExplicitShutdown,
+                PreviewErrorFile = System.IO.Path.Combine(output, args[0] == "--export-brand"
+                    ? "Brand-UI-Error.txt" : "Transponder-UI-Error.txt"),
+                PreviewAction = args[0] == "--export-brand"
+                    ? () => Services.BrandAssetExporter.Export(output)
+                    : () => Controls.RentalTransponderView.ExportPreview(output, phase)
+            };
+            preview.InitializeComponent();
+            return preview.Run();
+        }
         VelopackApp.Build().SetAutoApplyOnStartup(false).Run();
         using var instance = new Mutex(true,@"Local\IMRC.RaceControl."+Environment.UserName,out var firstInstance);
         if (!firstInstance)
         {
             System.Windows.MessageBox.Show("IMRC Race Control is already running. Close that copy before opening or repairing the app.","IMRC Race Control");
-            return;
+            return 0;
         }
         var app = new App();
-        if (args.Length == 2 && (args[0] == "--export-brand" || args[0] == "--export-rentals"))
-        {
-            System.IO.Directory.CreateDirectory(args[1]);
-            app.PreviewErrorFile = System.IO.Path.Combine(args[1], args[0] == "--export-rentals"
-                ? "Transponder-UI-Error.txt" : "Brand-UI-Error.txt");
-        }
         app.InitializeComponent();
-        if (args.Length == 2 && args[0] == "--export-brand")
-        {
-            Services.BrandAssetExporter.Export(args[1]);
-            return;
-        }
-        if (args.Length == 2 && args[0] == "--export-rentals")
-        {
-            // Closing a preview window must not shut down WPF before the next theme.
-            app.ShutdownMode = System.Windows.ShutdownMode.OnExplicitShutdown;
-            try { Controls.RentalTransponderView.ExportPreview(args[1]); }
-            catch (Exception ex)
-            {
-                System.IO.Directory.CreateDirectory(args[1]);
-                System.IO.File.WriteAllText(System.IO.Path.Combine(args[1], "Transponder-UI-Error.txt"), ex.ToString());
-                Environment.ExitCode = 1;
-            }
-            return;
-        }
-        app.Run();
+        return app.Run();
     }
 }

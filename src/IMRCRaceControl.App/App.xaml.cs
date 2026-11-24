@@ -8,6 +8,7 @@ public partial class App : Application
 {
     // Only set by explicit command-line smoke previews; normal operators retain the error dialog.
     internal string? PreviewErrorFile { get; set; }
+    internal Action? PreviewAction { get; set; }
 
     public App()
     {
@@ -30,6 +31,21 @@ public partial class App : Application
     protected override async void OnStartup(StartupEventArgs e)
     {
         base.OnStartup(e);
+        if (PreviewAction is { } preview)
+        {
+            // Let WPF finish startup before any smoke check pumps dispatcher
+            // events. Never enter the operator startup path in preview mode.
+            Dispatcher.BeginInvoke(DispatcherPriority.Normal, new Action(() =>
+            {
+                try { preview(); Shutdown(0); }
+                catch (Exception ex)
+                {
+                    try { File.WriteAllText(PreviewErrorFile!, ex.ToString()); }
+                    finally { Shutdown(1); }
+                }
+            }));
+            return;
+        }
         ShortcutIconService.RefreshExisting();
         // Keep the process alive while preferences load, without creating an
         // unthemed window. SQLite remains authoritative over the JSON backup.

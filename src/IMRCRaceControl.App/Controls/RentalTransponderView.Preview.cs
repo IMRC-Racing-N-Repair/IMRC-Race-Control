@@ -10,12 +10,16 @@ using IMRCRaceControl.Services;
 namespace IMRCRaceControl.Controls;
 public partial class RentalTransponderView
 {
-    internal static void ExportPreview(string output)
+    internal static void ExportPreview(string output, string phase = "all")
     {
         Directory.CreateDirectory(output);
         var checkpoint = Path.Combine(output, "RentalPreviewProgress.txt");
         void Stage(string name) => File.AppendAllText(checkpoint, $"{DateTimeOffset.UtcNow:O} | {name}{Environment.NewLine}");
-        Stage("BEGIN");
+        if (phase is not ("all" or "highlights" or "rentals" or "reports" or "registration" or "records" or "lineups" or "spectator"))
+            throw new ArgumentException("Unknown Windows preview phase: " + phase);
+        Stage("BEGIN-" + phase);
+        if (phase is "all" or "highlights")
+        {
         SeasonalThemeChecks.Run(output);
         Stage("SEASONAL-THEME-DONE");
         // Exercise the actual shared dashboard/pop-out style, not a copied precedence rule.
@@ -59,6 +63,9 @@ public partial class RentalTransponderView
         File.WriteAllText(Path.Combine(output,"Breakout-Highlight-Checks.txt"),"PASS: breakout overrides simultaneous crossing/check-in; configured colors update; underline crossing resumes after breakout expires.");
 
         Stage("BREAKOUT-HIGHLIGHT-DONE");
+        }
+        if (phase is "all" or "rentals")
+        {
         foreach (var theme in Enum.GetValues<AppTheme>())
         {
             Stage($"RENTAL-{theme}-BEGIN");
@@ -121,6 +128,10 @@ public partial class RentalTransponderView
             Stage($"RENTAL-{theme}-DONE");
         }
         Stage("RENTAL-VIEWS-DONE");
+        File.WriteAllText(Path.Combine(output, "Transponder-UI-Checks.txt"), "PASS: themed page loads; duplicate input rejected visibly; manual addition; selected label; three actual-use events retained through week five.\n");
+        }
+        if (phase is "all" or "reports")
+        {
         var printSettings = new AppSettings();
         printSettings.RentalTransponders.NewNicknameStyle = "ColorNumber";
         printSettings.RentalTransponders.NewLabelColor = "Red";
@@ -265,16 +276,29 @@ public partial class RentalTransponderView
             dialog.Close();
         }
         owner.Close();
-        Stage("ROUND-AND-DRAG-PREVIEW-DONE");
-        EventRegistrationView.ExportPreview(output);
-        Stage("EVENT-REGISTRATION-DONE");
-        TrackRecordsView.ExportPreview(output);
-        Stage("TRACK-RECORDS-DONE");
-        Stage("ROUND-BUILDER-BEGIN");
-        IMRCRaceControl.Dialogs.RoundMainBuilderDialog.ExportOverviewPreview(output);
-        Stage("ROUND-BUILDER-DONE");
-        SpectatorDashboardWindow.ExportClassSectionsPreview(output);
-        Stage("SPECTATOR-DONE");
-        File.WriteAllText(Path.Combine(output, "Transponder-UI-Checks.txt"), "PASS: themed page loads; duplicate input rejected visibly; manual addition; selected label; three actual-use events retained through week five.\n");
+        Stage("REPORT-DIALOGS-DONE");
+        }
+        if (phase is "all" or "registration")
+        {
+            EventRegistrationView.ExportPreview(output);
+            Stage("EVENT-REGISTRATION-DONE");
+        }
+        if (phase is "all" or "records")
+        {
+            TrackRecordsView.ExportPreview(output);
+            Stage("TRACK-RECORDS-DONE");
+        }
+        if (phase is "all" or "lineups")
+        {
+            Stage("ROUND-BUILDER-BEGIN");
+            IMRCRaceControl.Dialogs.RoundMainBuilderDialog.ExportOverviewPreview(output);
+            Stage("ROUND-BUILDER-DONE");
+        }
+        if (phase is "all" or "spectator")
+        {
+            SpectatorDashboardWindow.ExportClassSectionsPreview(output);
+            Stage("SPECTATOR-DONE");
+        }
+        Stage("PASS-" + phase);
     }
 }

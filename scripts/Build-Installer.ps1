@@ -1,4 +1,5 @@
-param([Parameter(Mandatory=$true)][string]$Repository, [string]$LiveTimePasswordResource)
+param([Parameter(Mandatory=$true)][string]$Repository, [string]$LiveTimePasswordResource,
+    [ValidateSet('All','Prepare','Brand','Highlights','Rentals','Reports','Registration','Records','Lineups','Spectator','Package')][string]$Phase = 'All')
 $ErrorActionPreference = 'Stop'
 $liveTimeArgs = @()
 if ($LiveTimePasswordResource) {
@@ -13,6 +14,7 @@ $project = 'src/IMRCRaceControl.App/IMRCRaceControl.App.csproj'
 $version = [string]$xml.Project.PropertyGroup.Version
 if ($version -notmatch '^\d+\.\d+\.\d+$') { throw 'Version must use major.minor.patch' }
 function Checked([string[]]$Arguments) { & dotnet @Arguments; if ($LASTEXITCODE -ne 0) { throw "dotnet command failed: $($Arguments[0])" } }
+if ($Phase -in @('All','Prepare')) {
 # Exercise upload limits, durable metering and results-only mode before packaging.
 Checked @('run','--project','tests/LapCalloutChecks/LapCalloutChecks.csproj','-c','Release','--','--online-data-only')
 Checked @('run','--project','tests/LapCalloutChecks/LapCalloutChecks.csproj','-c','Release','--','--livetime-import-only')
@@ -20,44 +22,53 @@ Checked @('tool','restore')
 # Clean generated payloads so a release never includes stale files.
 Remove-Item 'artifacts/publish','artifacts/releases','artifacts/branding' -Recurse -Force -ErrorAction SilentlyContinue
 Checked (@('publish',$project,'-c','Release','-r','win-x64','--self-contained','true','-o','artifacts/publish',"-p:UpdateRepository=$Repository",'-p:PublishSingleFile=false') + $liveTimeArgs)
-# Preview processes run to completion; failures must surface as nonzero
-# exit codes and preserve diagnostics instead of a three-minute forced kill.
+}
+# Each isolated preview has a CI-only watchdog and streams checkpoint lines.
+# This never runs in the normal race-control application.
+$branding = Join-Path (Get-Location) 'artifacts/branding'
+$appExe = Join-Path (Get-Location) 'artifacts/publish/IMRCRaceControl.exe'
 function Invoke-Preview([string]$Executable, [string[]]$Arguments, [string]$Label) {
     Write-Host "Starting $Label"
+    $checkpoint = Join-Path $branding 'RentalPreviewProgress.txt'
+    $seen = if (Test-Path $checkpoint) { @(Get-Content $checkpoint).Count } else { 0 }
     $process = Start-Process -FilePath $Executable -ArgumentList $Arguments -PassThru
+    $clock = [System.Diagnostics.Stopwatch]::StartNew()
     try {
-        $process.WaitForExit()
+        do {
+            $finished = $process.WaitForExit(1000)
+            if (Test-Path $checkpoint) {
+                $lines = @(Get-Content $checkpoint)
+                if ($lines.Count -gt $seen) {
+                    $lines | Select-Object -Skip $seen | Write-Host
+                    $seen = $lines.Count
+                }
+            }
+            if (-not $finished -and $clock.Elapsed.TotalMinutes -ge 5) {
+                Stop-Process -Id $process.Id -Force -ErrorAction SilentlyContinue
+                throw "$Label failed to exit within the CI preview watchdog; see the last checkpoint above."
+            }
+        } until ($finished)
         Write-Host "$Label completed with exit code $($process.ExitCode)"
+        if ($process.ExitCode -ne 0) {
+            foreach ($name in @('Brand-UI-Error.txt','Transponder-UI-Error.txt')) {
+                $details = Join-Path $branding $name
+                if (Test-Path $details) { Get-Content $details | Write-Host }
+            }
+            throw "$Label failed (exit $($process.ExitCode))"
+        }
         return $process.ExitCode
     }
     finally { $process.Dispose() }
 }
-# Render the native app brand to PNG/ICO on the Windows runner; no external image service is required.
-$branding = Join-Path (Get-Location) 'artifacts/branding'
-$appExe = Join-Path (Get-Location) 'artifacts/publish/IMRCRaceControl.exe'
-$brandExit = Invoke-Preview $appExe @('--export-brand',"`"$branding`"") 'Brand and lineup UI checks'
-if ($brandExit -ne 0) {
-    $details = Join-Path $branding "Brand-UI-Error.txt"
-    if (Test-Path $details) { Get-Content $details | Write-Host }
-    throw "Brand asset rendering failed (exit $brandExit)"
+if ($Phase -in @('All','Brand')) {
+    $null = Invoke-Preview $appExe @('--export-brand',"`"$branding`"") 'Brand UI checks'
 }
-try {
-    $rentalExit = Invoke-Preview $appExe @('--export-rentals',"`"$branding`"") 'Rental UI checks'
-}
-catch {
-    $checkpoint = Join-Path $branding 'RentalPreviewProgress.txt'
-    if (Test-Path $checkpoint) {
-        Write-Host 'Rental UI smoke-test progress before failure:'
-        Get-Content $checkpoint | Write-Host
+foreach ($part in @('Highlights','Rentals','Reports','Registration','Records','Lineups','Spectator')) {
+    if ($Phase -in @('All',$part)) {
+        $null = Invoke-Preview $appExe @('--export-rentals',"`"$branding`"",$part.ToLowerInvariant()) "$part UI checks"
     }
-    throw
 }
-$rentalPreview = [pscustomobject]@{ ExitCode = $rentalExit }
-if ($rentalPreview.ExitCode -ne 0) {
-    $details = Join-Path $branding 'Transponder-UI-Error.txt'
-    if (Test-Path $details) { Get-Content $details | Write-Host }
-    throw 'Transponder page UI checks failed'
-}
+if ($Phase -notin @('All','Package')) { return }
 foreach ($theme in @('Light','Dark','Blue')) {
     if (-not (Test-Path (Join-Path $branding "Transponder-$theme.png"))) { throw "Missing Transponder preview for $theme" }
 }
@@ -68,8 +79,8 @@ if (-not (Test-Path $splash)) { throw 'Branded installer animation was not rende
 if (-not (Test-Path $icon)) { throw 'Brand icon was not rendered' }
 # Verify the committed application icon matches the Windows-rendered installer icon.
 if ((Get-FileHash $icon).Hash -ne (Get-FileHash "src/IMRCRaceControl.App/Assets/RC.ico").Hash) { throw "Application and installer icons differ" }
-# Rebuild with the same icon used by RaceControl-Installer.exe and the updater.
-Checked (@('publish',$project,'-c','Release','-r','win-x64','--self-contained','true','-o','artifacts/publish',"-p:UpdateRepository=$Repository","-p:ApplicationIcon=$icon",'-p:PublishSingleFile=false') + $liveTimeArgs)
+# The already published application used the committed icon; the exact
+# hash comparison above proves the rendered installer icon is identical.
 Checked @('tool','run','vpk','--','pack','--packId','IMRCRaceControl.App','--packVersion',$version,'--packDir','artifacts/publish','--mainExe','IMRCRaceControl.exe','--packTitle','IMRC Race Control','--packAuthors','IMRC Racing N Repair','--icon',$icon,'--splashImage',$splash,'--splashProgressColor','None','--outputDir','artifacts/releases')
 $setup = @(Get-ChildItem 'artifacts/releases/*Setup.exe')
 if ($setup.Count -ne 1) { throw 'Expected exactly one installer' }
