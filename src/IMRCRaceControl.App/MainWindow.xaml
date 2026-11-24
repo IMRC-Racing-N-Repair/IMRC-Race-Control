@@ -285,6 +285,15 @@
                                                         <Setter TargetName="BestLapText" Property="Foreground"
                                                                 Value="{DynamicResource DashboardNewBestLapHighlightTextBrush}"/>
                                                     </DataTrigger>
+                                                    <!-- Persistent race-wide fastest valid lap. Placed after
+                                                         personal best so the session record takes priority. -->
+                                                    <DataTrigger Binding="{Binding IsFastestLap}" Value="True">
+                                                        <Setter TargetName="BestLapCell" Property="Background"
+                                                                Value="{DynamicResource DashboardFastestLapHighlightBrush}"/>
+                                                        <Setter TargetName="BestLapText" Property="Foreground"
+                                                                Value="{DynamicResource DashboardFastestLapHighlightTextBrush}"/>
+                                                        <Setter TargetName="BestLapText" Property="FontWeight" Value="Bold"/>
+                                                    </DataTrigger>
                                                 </DataTemplate.Triggers>
                                             </DataTemplate>
                                         </DataGridTemplateColumn.CellTemplate>
