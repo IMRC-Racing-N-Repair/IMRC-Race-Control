@@ -254,6 +254,12 @@ public partial class RoundMainBuilderDialog
             throw new InvalidOperationException("Draft drag incorrectly allowed a different round or completed heat.");
         if (System.Text.Json.JsonSerializer.Serialize(ev) != before)
             throw new InvalidOperationException("Dragging an unsaved heat changed the saved event before Save.");
+        // Close the automation window without a modal unsaved-changes prompt:
+        // the test intentionally staged a drag without saving it.
+        dialog.HeatPlans.Clear();
+        dialog._stagedLineups.Clear();
+        dialog._pendingRaceOrder.Clear();
+        dialog._browsingSavedLineups = true;
         dialog.Close();
         System.IO.File.WriteAllText(System.IO.Path.Combine(output, "Draft-Heat-Drag-Checks.txt"),
             "PASS: unsaved heat drag, live top-to-bottom numbering, Save enablement, locked/round restrictions and no saved-event mutation.");
