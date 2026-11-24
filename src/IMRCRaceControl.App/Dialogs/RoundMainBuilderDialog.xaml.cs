@@ -114,6 +114,7 @@ public partial class RoundMainBuilderDialog : Window
     private readonly IReadOnlyList<ClassDefinition> _classes;
     private readonly IReadOnlyList<DriverProfile> _drivers;
     private bool _loadingOptions;
+    internal bool SuppressAutomatedPreviewPrompts { get; set; }
     private bool _editingExistingScope;
     private readonly HashSet<string> _deletedSessionIds =
         new(StringComparer.OrdinalIgnoreCase);
@@ -184,6 +185,7 @@ public partial class RoundMainBuilderDialog : Window
 
         Closing += (_, e) =>
         {
+            if (SuppressAutomatedPreviewPrompts) return;
             if (!IsEnabled || (DialogResult != true && HasPendingEdits &&
                 MessageBox.Show(this,"Discard all unsaved lineup changes?","Unsaved lineup",MessageBoxButton.YesNo,MessageBoxImage.Question)!=MessageBoxResult.Yes)) e.Cancel = true;
         };
