@@ -36,7 +36,7 @@ internal static class UpdateAndLineupDialogs
     private static StackPanel Actions() => new() { Orientation=Orientation.Horizontal, HorizontalAlignment=HorizontalAlignment.Right, Margin=new Thickness(0,12,0,0) };
     private static Button ActionButton(string label,bool primary=false)
     {
-        var button=new Button { Content=label, MinWidth=150, Padding=new Thickness(14,8), FontSize=13 };
+        var button=new Button { Content=label, MinWidth=150, Padding=new Thickness(14,8,14,8), FontSize=13 };
         if(primary) button.SetResourceReference(Control.BackgroundProperty,"AccentDarkBrush");
         return button;
     }

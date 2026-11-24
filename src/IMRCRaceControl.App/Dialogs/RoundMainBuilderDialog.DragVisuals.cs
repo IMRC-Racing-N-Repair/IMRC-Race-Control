@@ -85,7 +85,7 @@ public partial class RoundMainBuilderDialog
         private bool _driver;
         private bool _after;
         public bool Allowed { get; set; }
-        public Point Cursor => _cursor;
+        public Point CursorPosition => _cursor;
         public Rect Target => _target;
         public bool After => _after;
         public bool DriverTarget => _driver;
@@ -180,12 +180,12 @@ public partial class RoundMainBuilderDialog
             }
             visual.MoveTo(new Point(20,30));
             visual.SetTarget(new Rect(20,80,200,35),false,true);
-            if (visual.Cursor != new Point(20,30) || !visual.After || visual.DriverTarget ||
+            if (visual.CursorPosition != new Point(20,30) || !visual.After || visual.DriverTarget ||
                 visual.Target.Bottom != 115 || IsAfter(4,35) || !IsAfter(30,35))
                 throw new InvalidOperationException("Race drag preview did not preserve insertion direction.");
             visual.MoveTo(new Point(70,90));
             visual.SetTarget(new Rect(30,100,200,35),true,false);
-            if (visual.Cursor != new Point(70,90) || !visual.DriverTarget || visual.Target.IsEmpty)
+            if (visual.CursorPosition != new Point(70,90) || !visual.DriverTarget || visual.Target.IsEmpty)
                 throw new InvalidOperationException("Driver drag preview did not follow cursor and destination.");
             visual.ClearTarget();
             if (!visual.Target.IsEmpty || visual.IsHitTestVisible)
