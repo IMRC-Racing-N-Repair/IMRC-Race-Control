@@ -388,6 +388,27 @@ Equal(true, finishEngine.RegisterPassing(2, "test", start.AddSeconds(16)).Lap!.F
 finishEngine.UndoLastPassing(start.AddSeconds(16));
 Equal(false, finishEngine.GetStandings(start.AddSeconds(16)).Single(r => r.CarNumber == 2).IsFinished, "Undo removes completed outline");
 
+// Qualifying projection gaps: time only compares equivalent projected laps.
+// Leader improvement is against established previous-round TQ, not last crossing.
+Equal("+0.097", QualifyingPaceGap.BehindLeader(
+    25, TimeSpan.FromSeconds(292.770), 25, TimeSpan.FromSeconds(292.867)),
+    "Same-lap second-place pace is shown relative to leader");
+Equal("+1 LAP", QualifyingPaceGap.BehindLeader(
+    26, TimeSpan.FromSeconds(300), 25, TimeSpan.FromSeconds(290)),
+    "Different-lap qualifier gap shows laps instead of misleading seconds");
+Equal("—", QualifyingPaceGap.LeaderVsPreviousTq(
+    25, TimeSpan.FromSeconds(293), 25, TimeSpan.FromSeconds(292.770)),
+    "Leader not faster than previous TQ shows dash");
+Equal("-0.250", QualifyingPaceGap.LeaderVsPreviousTq(
+    25, TimeSpan.FromSeconds(292.520), 25, TimeSpan.FromSeconds(292.770)),
+    "Leader faster than previous TQ shows negative time");
+Equal("—", QualifyingPaceGap.LeaderVsPreviousTq(
+    25, TimeSpan.FromSeconds(290), 26, TimeSpan.FromSeconds(300)),
+    "Leader behind prior TQ by laps shows dash");
+Equal("—", QualifyingPaceGap.LeaderVsPreviousTq(
+    25, TimeSpan.FromSeconds(290), 0, null),
+    "First qualifying round without TQ shows dash");
+
 // Persistent race-fastest display is tied to best valid lap, not just a
 // newly-set personal best or a transient crossing highlight.
 var fastestRace = new RaceEngine();
