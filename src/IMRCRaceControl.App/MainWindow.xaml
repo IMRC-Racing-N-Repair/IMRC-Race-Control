@@ -530,21 +530,31 @@
                                                 </DataGrid.RowStyle>
                                                 <DataGrid.GroupStyle><StaticResource ResourceKey="RaceClassGroupStyle"/></DataGrid.GroupStyle>
                                                 <DataGrid.Columns>
-                                                    <DataGridTextColumn Header="POS" Binding="{Binding ProjectedPositionDisplay}" Width="54"/>
+                                                    <DataGridTextColumn Header="POS" Binding="{Binding ProjectedPositionDisplay}"
+                                                                        ElementStyle="{StaticResource DashboardCenteredCellTextStyle}" Width="40"/>
 
                                                     <DataGridTemplateColumn Header="DRIVER" Width="*">
                                                         <DataGridTemplateColumn.CellTemplate>
                                                             <DataTemplate>
                                                                 <Border x:Name="MovementNameHighlight"
                                                                         Background="Transparent"
-                                                                        CornerRadius="5"
-                                                                        Padding="5,3">
-                                                                    <Border Style="{StaticResource ClassDriverAccent}">
-                                                                        <TextBlock x:Name="MovementDriverText"
-                                                                               Text="{Binding DriverName}" TextTrimming="CharacterEllipsis" ToolTip="{Binding DriverName}"
-                                                                               TextAlignment="Center"
-                                                                               FontWeight="SemiBold"/>
-                                                                    </Border>
+                                                                        CornerRadius="5" Padding="3,3">
+                                                                    <Grid>
+                                                                        <Border Style="{StaticResource ClassDriverAccent}"
+                                                                                HorizontalAlignment="Stretch">
+                                                                            <TextBlock x:Name="MovementDriverText"
+                                                                                       Text="{Binding DriverName}" TextTrimming="CharacterEllipsis"
+                                                                                       ToolTip="{Binding DriverName}"
+                                                                                       HorizontalAlignment="Center" TextAlignment="Center"
+                                                                                       FontWeight="SemiBold"/>
+                                                                        </Border>
+                                                                        <TextBlock x:Name="MovementBadgeText"
+                                                                                   Text="{Binding MovementBadge}"
+                                                                                   FontSize="9" FontWeight="Bold"
+                                                                                   HorizontalAlignment="Right" VerticalAlignment="Top"
+                                                                                   Margin="0,-5,-2,0"
+                                                                                   Visibility="Collapsed"/>
+                                                                    </Grid>
                                                                 </Border>
                                                                 <DataTemplate.Triggers>
                                                                     <MultiDataTrigger>
@@ -552,53 +562,36 @@
                                                                             <Condition Binding="{Binding IsCurrentHeat}" Value="True"/>
                                                                             <Condition Binding="{Binding MovementState}" Value="UP"/>
                                                                         </MultiDataTrigger.Conditions>
-                                                                        <Setter TargetName="MovementNameHighlight"
-                                                                                Property="Background"
+                                                                        <Setter TargetName="MovementNameHighlight" Property="Background"
                                                                                 Value="{DynamicResource DashboardPositionUpBrush}"/>
-                                                                        <Setter TargetName="MovementDriverText"
-                                                                                Property="Foreground"
+                                                                        <Setter TargetName="MovementDriverText" Property="Foreground"
                                                                                 Value="{DynamicResource DashboardPositionUpTextBrush}"/>
-                                                                        <Setter TargetName="MovementDriverText"
-                                                                                Property="FontWeight"
-                                                                                Value="Bold"/>
+                                                                        <Setter TargetName="MovementBadgeText" Property="Foreground"
+                                                                                Value="{DynamicResource DashboardPositionUpTextBrush}"/>
+                                                                        <Setter TargetName="MovementBadgeText" Property="Visibility" Value="Visible"/>
                                                                     </MultiDataTrigger>
                                                                     <MultiDataTrigger>
                                                                         <MultiDataTrigger.Conditions>
                                                                             <Condition Binding="{Binding IsCurrentHeat}" Value="True"/>
                                                                             <Condition Binding="{Binding MovementState}" Value="DOWN"/>
                                                                         </MultiDataTrigger.Conditions>
-                                                                        <Setter TargetName="MovementNameHighlight"
-                                                                                Property="Background"
+                                                                        <Setter TargetName="MovementNameHighlight" Property="Background"
                                                                                 Value="{DynamicResource DashboardPositionDownBrush}"/>
-                                                                        <Setter TargetName="MovementDriverText"
-                                                                                Property="Foreground"
+                                                                        <Setter TargetName="MovementDriverText" Property="Foreground"
                                                                                 Value="{DynamicResource DashboardPositionDownTextBrush}"/>
-                                                                        <Setter TargetName="MovementDriverText"
-                                                                                Property="FontWeight"
-                                                                                Value="Bold"/>
-                                                                    </MultiDataTrigger>
-                                                                    <MultiDataTrigger>
-                                                                        <MultiDataTrigger.Conditions>
-                                                                            <Condition Binding="{Binding IsCurrentHeat}" Value="True"/>
-                                                                            <Condition Binding="{Binding MovementState}" Value="SAME"/>
-                                                                        </MultiDataTrigger.Conditions>
-                                                                        <Setter TargetName="MovementNameHighlight"
-                                                                                Property="Background"
-                                                                                Value="{DynamicResource DashboardPositionSameBrush}"/>
-                                                                        <Setter TargetName="MovementDriverText"
-                                                                                Property="Foreground"
-                                                                                Value="{DynamicResource DashboardPositionSameTextBrush}"/>
-                                                                        <Setter TargetName="MovementDriverText"
-                                                                                Property="FontWeight"
-                                                                                Value="Bold"/>
+                                                                        <Setter TargetName="MovementBadgeText" Property="Foreground"
+                                                                                Value="{DynamicResource DashboardPositionDownTextBrush}"/>
+                                                                        <Setter TargetName="MovementBadgeText" Property="Visibility" Value="Visible"/>
                                                                     </MultiDataTrigger>
                                                                 </DataTemplate.Triggers>
                                                             </DataTemplate>
                                                         </DataGridTemplateColumn.CellTemplate>
                                                     </DataGridTemplateColumn>
 
-                                                    <DataGridTextColumn Header="PACE / FINISH" Binding="{Binding PaceFinish}" Width="118"/>
-                                                    <DataGridTextColumn Header="MOVE" Binding="{Binding MovementDisplay}" Width="78"/>
+                                                    <DataGridTextColumn Header="PACE / FINISH" Binding="{Binding PaceFinish}"
+                                                                        ElementStyle="{StaticResource DashboardCenteredCellTextStyle}" Width="118"/>
+                                                    <DataGridTextColumn Header="PACE GAP" Binding="{Binding PaceGapDisplay}"
+                                                                        ElementStyle="{StaticResource DashboardCenteredCellTextStyle}" Width="86"/>
                                                 </DataGrid.Columns>
                                             </DataGrid>
                                         </Grid>
