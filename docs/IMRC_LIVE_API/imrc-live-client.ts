@@ -7,6 +7,10 @@ export type EventSummary = {id:string;name:string;date:string;status:'upcoming'|
 export type Event = Omit<EventSummary,'raceCount'> & {races:Race[]};
 export type Practice = {id:"current";active:boolean;updatedAt:string;stale:boolean;drivers:{id:string;name:string;laps:number;lastLap:string;best:string;average:string;lastCrossingAt:string;lapTimes:number[];stats:{label:string;value:string}[]}[]};
 export type Live = {track:Track;mode:"race"|"practice";practice:Practice|null;event:Event|null;races:Race[];generatedAt:string|null;receivedAt:string|null;stale:boolean;pollAfterSeconds:number};
+/** Archive extension requires API 1.4 deployment. */
+export type PracticeArchiveSession={id:string;date:string;name:string;transponderId:string;startedAt:string;endedAt:string;laps:number;best:number|null;average:number|null;lapTimes:number[]};
+export type PracticeArchiveDay={id:string;date:string;title:string;entryCount:number;sessionCount:number};
+export type PracticeArchiveResults=Page<PracticeArchiveSession>&{day:PracticeArchiveDay};
 export type SeriesSummary = {id:string;name:string;className:string;classId?:string;bestOf:number;updatedAt:string};
 export type Series = SeriesSummary & {weeks:string[];eventIds?:string[];authoritative?:boolean;drivers:{name:string;position:number;total:number;points:(number|null)[];counted:number[];manualPoints?:number;notes?:string[]}[]};
 export class ImrcApiError extends Error {constructor(public status:number,message:string){super(message)}}
@@ -26,6 +30,8 @@ export class ImrcLiveClient {
   track(id:string,signal?:AbortSignal){return this.get<Track>(`/tracks/${encodeURIComponent(id)}`,signal)}
   live(id:string,signal?:AbortSignal){return this.get<Live>(`/tracks/${encodeURIComponent(id)}/live`,signal)}
   practice(id:string,signal?:AbortSignal){return this.get<{track:Track;practice:Practice|null;pollAfterSeconds:number}>(`/tracks/${encodeURIComponent(id)}/practice`,signal)}
+  practiceDays(track:string,offset=0,limit=50,signal?:AbortSignal){return this.get<Page<PracticeArchiveDay>>(`/tracks/${encodeURIComponent(track)}/practice/days?offset=${offset}&limit=${limit}`,signal)}
+  practiceDay(track:string,date:string,q='',offset=0,limit=50,signal?:AbortSignal){const params=new URLSearchParams({q,offset:String(offset),limit:String(limit)});return this.get<PracticeArchiveResults>(`/tracks/${encodeURIComponent(track)}/practice/days/${encodeURIComponent(date)}?${params}`,signal)}
   events(track:string,offset=0,limit=50,signal?:AbortSignal){return this.get<Page<EventSummary>>(`/tracks/${encodeURIComponent(track)}/events?offset=${offset}&limit=${limit}`,signal)}
   event(track:string,id:string,filters:{round?:string;classId?:string;status?:Race['status']}={},signal?:AbortSignal){const q=new URLSearchParams(filters);return this.get<Event>(`/tracks/${encodeURIComponent(track)}/events/${encodeURIComponent(id)}?${q}`,signal)}
   race(track:string,event:string,id:string,signal?:AbortSignal){return this.get<Race>(`/tracks/${encodeURIComponent(track)}/events/${encodeURIComponent(event)}/races/${encodeURIComponent(id)}`,signal)}

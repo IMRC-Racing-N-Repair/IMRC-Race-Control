@@ -63,7 +63,7 @@ public partial class MainWindow
             OnlineStatusText.Text = "Testing secure connection…";
             var name = await GetPublisher(candidate).TestAsync(candidate.BaseUrl, candidate.OnlineTrackId, key, _settings.Track.Id, _onlineCancel.Token);
             if (MessageBox.Show(this, $"Connect local track '{_settings.Track.Name}' to online track '{name}'?\n\n" +
-                "When publishing is enabled, associated events, lineups, racer display names, laps and Series points will be public. Driver UUIDs, ratings, transponders and contact details are not uploaded.",
+                "When publishing is enabled, associated events, lineups, racer display names, laps and Series points will be public. Driver UUIDs, ratings and contact details are not uploaded. Transponders are included only if you separately enable the public practice archive.",
                 "Confirm track connection", MessageBoxButton.YesNo, MessageBoxImage.Question) != MessageBoxResult.Yes) return;
             var previous = _settings.OnlinePublishing;
             _settings.OnlinePublishing = candidate;

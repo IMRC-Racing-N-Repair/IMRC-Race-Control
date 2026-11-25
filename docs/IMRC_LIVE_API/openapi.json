@@ -2,8 +2,8 @@
   "openapi": "3.1.0",
   "info": {
     "title": "IMRC Live API",
-    "version": "1.3.0",
-    "description": "Public RC racing data for IMRC Setup Manager. Read operations need no authentication. Authoritative publishing from IMRC Race Control uses per-track upload keys. Poll no faster than 1 second. Live responses include mode and practice; GET /tracks/{trackId}/practice exposes the current practice snapshot. Snapshot POST accepts optional practice {id:current,active,drivers}; each driver has id (stint only), name, laps, lastLap, best, average, lastCrossingAt, lapTimes (latest 1000), stats [{label,value}]. Maximum 100 drivers; same authorization and retention as other live data. SSE: GET /tracks/{trackId}/stream emits live events containing {apiVersion:1,data:Live}; fresh snapshots on changes and at most 15 seconds apart, connection renews after about 55 seconds. Retry after 1 second. Not guaranteed instant. Native apps may use SSE or poll /live once per second."
+    "version": "1.4.0",
+    "description": "Public RC racing data for IMRC Setup Manager. Read operations need no authentication. Authoritative publishing from IMRC Race Control uses per-track upload keys. Poll no faster than 1 second. Live responses include mode and practice; GET /tracks/{trackId}/practice exposes the current practice snapshot. Snapshot POST accepts optional practice {id:current,active,drivers}; each driver has id (stint only), name, laps, lastLap, best, average, lastCrossingAt, lapTimes (latest 1000), stats [{label,value}]. Maximum 100 drivers; same authorization and retention as other live data. SSE: GET /tracks/{trackId}/stream emits live events containing {apiVersion:1,data:Live}; fresh snapshots on changes and at most 15 seconds apart, connection renews after about 55 seconds. Retry after 1 second. Not guaranteed instant. Native apps may use SSE or poll /live once per second.\nProposed 1.4 archive extension: independently enabled, track-scoped completed practice stints. Archive routes require server deployment; existing live routes remain unchanged. The venue-local start date groups sessions into one daily event; entryCount counts distinct transponders (blank TX sessions count separately)."
   },
   "servers": [
     {
@@ -970,6 +970,285 @@
           }
         }
       }
+    },
+    "/tracks/{trackId}/practice/archive": {
+      "post": {
+        "summary": "Upsert completed practice sessions",
+        "description": "Authenticated independently of live snapshots. Maximum 50 sessions and 2 MB per request. Atomic upsert by (trackId,id); no deletion and no change to live heartbeat/current event. Return exactly all accepted IDs only after transaction commit; replay is idempotent. Validate localTrackId against registered track, dates against track time zone, ordered lap count and finite positive lap times. No driver UUIDs or contact details.",
+        "security": [
+          {
+            "TrackUploadKey": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "trackId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "schemaVersion",
+                  "localTrackId",
+                  "sessions"
+                ],
+                "properties": {
+                  "schemaVersion": {
+                    "const": 1
+                  },
+                  "localTrackId": {
+                    "type": "string"
+                  },
+                  "sessions": {
+                    "type": "array",
+                    "minItems": 1,
+                    "maxItems": 50,
+                    "items": {
+                      "$ref": "#/components/schemas/PracticeArchiveSession"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "All sessions committed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "apiVersion",
+                    "data"
+                  ],
+                  "properties": {
+                    "apiVersion": {
+                      "const": 1
+                    },
+                    "data": {
+                      "type": "object",
+                      "required": [
+                        "acceptedIds"
+                      ],
+                      "properties": {
+                        "acceptedIds": {
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid batch"
+          },
+          "401": {
+            "description": "Invalid key"
+          },
+          "403": {
+            "description": "Track mismatch"
+          },
+          "413": {
+            "description": "Payload too large"
+          }
+        }
+      }
+    },
+    "/tracks/{trackId}/practice/days": {
+      "get": {
+        "summary": "List archived practice days for a track, newest first",
+        "parameters": [
+          {
+            "name": "trackId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 50
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "One entry per local date",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "apiVersion",
+                    "data"
+                  ],
+                  "properties": {
+                    "apiVersion": {
+                      "const": 1
+                    },
+                    "data": {
+                      "type": "object",
+                      "required": [
+                        "items",
+                        "nextOffset"
+                      ],
+                      "properties": {
+                        "items": {
+                          "type": "array",
+                          "items": {
+                            "$ref": "#/components/schemas/PracticeArchiveDay"
+                          }
+                        },
+                        "nextOffset": {
+                          "type": [
+                            "integer",
+                            "null"
+                          ]
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Track not found"
+          }
+        }
+      }
+    },
+    "/tracks/{trackId}/practice/days/{date}": {
+      "get": {
+        "summary": "Search archived sessions for a single local date",
+        "description": "Case-insensitive substring driver name search or TX number match; preserve leading zeros. Return every matching session across pages, ordered newest first.",
+        "parameters": [
+          {
+            "name": "trackId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "date",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          },
+          {
+            "name": "q",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "maxLength": 160
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 50
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Sessions and daily summary",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "apiVersion",
+                    "data"
+                  ],
+                  "properties": {
+                    "apiVersion": {
+                      "const": 1
+                    },
+                    "data": {
+                      "type": "object",
+                      "required": [
+                        "day",
+                        "items",
+                        "nextOffset"
+                      ],
+                      "properties": {
+                        "day": {
+                          "$ref": "#/components/schemas/PracticeArchiveDay"
+                        },
+                        "items": {
+                          "type": "array",
+                          "items": {
+                            "$ref": "#/components/schemas/PracticeArchiveSession"
+                          }
+                        },
+                        "nextOffset": {
+                          "type": [
+                            "integer",
+                            "null"
+                          ]
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Track or day not found"
+          }
+        }
+      }
     }
   },
   "components": {
@@ -1581,6 +1860,106 @@
             ]
           }
         ]
+      },
+      "PracticeArchiveSession": {
+        "type": "object",
+        "required": [
+          "id",
+          "date",
+          "name",
+          "transponderId",
+          "startedAt",
+          "endedAt",
+          "laps",
+          "best",
+          "average",
+          "lapTimes"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 160
+          },
+          "date": {
+            "type": "string",
+            "format": "date"
+          },
+          "name": {
+            "type": "string",
+            "maxLength": 160
+          },
+          "transponderId": {
+            "type": "string",
+            "maxLength": 160,
+            "description": "Public TX identifier; preserve leading zeroes."
+          },
+          "startedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "endedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "laps": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "best": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "minimum": 0
+          },
+          "average": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "minimum": 0
+          },
+          "lapTimes": {
+            "type": "array",
+            "items": {
+              "type": "number",
+              "exclusiveMinimum": 0
+            }
+          }
+        }
+      },
+      "PracticeArchiveDay": {
+        "type": "object",
+        "required": [
+          "id",
+          "date",
+          "title",
+          "entryCount",
+          "sessionCount"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Stable venue-local YYYY-MM-DD within the track"
+          },
+          "date": {
+            "type": "string",
+            "format": "date"
+          },
+          "title": {
+            "type": "string",
+            "description": "MM/DD/YYYY - N Entries"
+          },
+          "entryCount": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "sessionCount": {
+            "type": "integer",
+            "minimum": 0
+          }
+        }
       }
     }
   }

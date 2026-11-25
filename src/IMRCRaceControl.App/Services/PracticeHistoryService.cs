@@ -5,7 +5,8 @@ namespace IMRCRaceControl.Services;
 
 public sealed class PracticeHistoryService
 {
-    public string DatabasePath { get; } = ApplicationDataPaths.DatabasePath;
+    public string DatabasePath { get; }
+    public PracticeHistoryService(string? databasePath=null) => DatabasePath=databasePath??ApplicationDataPaths.DatabasePath;
 
     private string ConnectionString => new SqliteConnectionStringBuilder
     {
