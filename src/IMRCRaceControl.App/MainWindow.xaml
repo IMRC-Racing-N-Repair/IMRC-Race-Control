@@ -1951,6 +1951,17 @@
                                 <TextBlock Text="0 = unlimited • Since last reset, saved across restarts. Counts upload payloads and retries; excludes network overhead and spectator downloads. Results-only mode sends saved results when they change, without live race or practice timing." FontSize="11" Foreground="{DynamicResource MutedBrush}" TextWrapping="Wrap" Margin="0,6,0,0"/>
                             </StackPanel>
                         </Border>
+                        <Border Background="{DynamicResource PanelAltBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" Padding="12" Margin="0,0,0,14">
+                            <StackPanel>
+                                <TextBlock Text="PRACTICE HISTORY" FontSize="15" FontWeight="Bold"/>
+                                <TextBlock Text="Upload saved practice sessions once, then publish future completed sessions automatically. Names and transponder numbers are public when enabled. Practice archive uploads count toward the data limit." TextWrapping="Wrap" Margin="0,6"/>
+                                <WrapPanel>
+                                    <Button Content="ENABLE &amp; BACKFILL" Click="EnablePracticeArchive_Click"/>
+                                    <Button Content="PAUSE PRACTICE ARCHIVE" Click="PausePracticeArchive_Click"/>
+                                </WrapPanel>
+                                <TextBlock x:Name="OnlinePracticeArchiveStatusText" TextWrapping="Wrap" Margin="0,6,0,0"/>
+                            </StackPanel>
+                        </Border>
                         <Button Content="REGISTER TRACK ONLINE" Click="RegisterOnlineTrack_Click" HorizontalAlignment="Left" Margin="0,0,0,12"/>
                         <TextBlock Text="Website address"/>
                         <TextBox x:Name="OnlineBaseUrlText" Margin="0,4,0,12"/>

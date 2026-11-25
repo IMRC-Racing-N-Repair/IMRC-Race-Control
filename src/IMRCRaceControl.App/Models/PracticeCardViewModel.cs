@@ -12,6 +12,8 @@ public sealed class PracticeCardViewModel : INotifyPropertyChanged
     public bool IsLastPassing { get => _isLastPassing; set { if (_isLastPassing == value) return; _isLastPassing = value; OnPropertyChanged(); } }
     private IReadOnlyList<string> _visibleStatIds = PracticeStatCatalog.Defaults;
 
+    public string TrackId { get; set; } = "";
+    public string PracticeDate { get; set; } = "";
     public string StintId { get; init; } = Guid.NewGuid().ToString("N");
     public string DriverId { get; set; } = string.Empty;
     public string DriverName { get; set; } = string.Empty;

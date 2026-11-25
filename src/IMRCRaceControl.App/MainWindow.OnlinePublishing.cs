@@ -14,6 +14,9 @@ public partial class MainWindow
     private readonly CancellationTokenSource _onlineCancel = new();
     private DateTimeOffset _nextOnlineAttempt;
     private int _onlineFailures;
+    private DateTimeOffset _nextPracticeArchiveAttempt;
+    private string PracticeArchiveScope(OnlinePublishingSettings s)=>s.BaseUrl.TrimEnd('/')+"|"+s.OnlineTrackId+"|"+_settings.Track.Id;
+    private bool PracticeArchiveEnabled(OnlinePublishingSettings s)=>s.PracticeArchiveScope==PracticeArchiveScope(s);
     private void InitializeOnlinePublishing()
     {
         OnlineBaseUrlText.Text = _settings.OnlinePublishing.BaseUrl;
@@ -22,6 +25,7 @@ public partial class MainWindow
         OnlineLimitText.Text = _settings.OnlinePublishing.UploadLimitMb.ToString();
         OnlineCompletedOnlyCheck.IsChecked = _settings.OnlinePublishing.CompletedRacesOnly;
         UpdateOnlineMeter();
+        UpdatePracticeArchiveStatus();
         OnlineStatusText.Text = _settings.OnlinePublishing.Enabled ? "Publishing enabled. First synchronization will start shortly." : "Publishing off. Local scoring is independent of the website.";
         _onlineTimer.Tick += async (_, _) => await PublishOnlineAsync();
         _onlineTimer.Start();
@@ -44,7 +48,8 @@ public partial class MainWindow
         var candidate = new OnlinePublishingSettings { BaseUrl = OnlineBaseUrlText.Text.Trim().TrimEnd('/'),
             OnlineTrackId = OnlineTrackIdText.Text.Trim(), Enabled = OnlineEnabledCheck.IsChecked == true,
             ProtectedUploadKey = _settings.OnlinePublishing.ProtectedUploadKey, RegistrationTrackUuid = _settings.Track.Id,
-            CompletedRacesOnly = _settings.OnlinePublishing.CompletedRacesOnly, UploadLimitMb = _settings.OnlinePublishing.UploadLimitMb };
+            CompletedRacesOnly = _settings.OnlinePublishing.CompletedRacesOnly, UploadLimitMb = _settings.OnlinePublishing.UploadLimitMb,
+            PracticeArchiveScope=_settings.OnlinePublishing.PracticeArchiveScope };
         try
         {
             ReadOnlineDataOptions(candidate);
@@ -69,7 +74,7 @@ public partial class MainWindow
         }
         catch (OperationCanceledException) { OnlineStatusText.Text = "Connection timed out or was cancelled. Try again."; }
         catch (Exception ex) { OnlineStatusText.Text = "Connection not saved: " + ex.Message; }
-        finally { _onlineBusy = false; UpdateOnlineMeter(); }
+        finally { _onlineBusy = false; UpdateOnlineMeter(); UpdatePracticeArchiveStatus(); }
         if (_settings.OnlinePublishing.Enabled) await PublishOnlineAsync(true);
     }
     private async void DisableOnlinePublishing_Click(object sender, RoutedEventArgs e)
@@ -96,6 +101,7 @@ public partial class MainWindow
                 BaseUrl = baseUrl, OnlineTrackId = sameTrack && previous.OnlineTrackId.Length > 0 ? previous.OnlineTrackId : _settings.Track.Id,
                 RegistrationTrackUuid = _settings.Track.Id, Enabled = false,
                 CompletedRacesOnly = previous.CompletedRacesOnly, UploadLimitMb = previous.UploadLimitMb,
+                PracticeArchiveScope=previous.PracticeArchiveScope,
                 ProtectedUploadKey = sameTrack && previous.ProtectedUploadKey.Length > 0 ? previous.ProtectedUploadKey :
                     OnlineSecret.Protect(Convert.ToHexString(System.Security.Cryptography.RandomNumberGenerator.GetBytes(32)))
             };
@@ -119,7 +125,7 @@ public partial class MainWindow
         }
         catch (OperationCanceledException) { OnlineStatusText.Text = "Registration timed out. Click REGISTER TRACK ONLINE again; the saved key makes retries safe."; }
         catch (Exception ex) { OnlineStatusText.Text = "Registration not completed: " + ex.Message; }
-        finally { _onlineBusy = false; UpdateOnlineMeter(); }
+        finally { _onlineBusy = false; UpdateOnlineMeter(); UpdatePracticeArchiveStatus(); }
         if (registered) await PublishOnlineAsync(true);
     }
     private void OpenOnlineTrack_Click(object sender, RoutedEventArgs e)
@@ -147,6 +153,9 @@ public partial class MainWindow
             _onlineFailures = 0; _nextOnlineAttempt = DateTimeOffset.MinValue;
             OnlineStatusText.Text = $"Published at {DateTime.Now:T}. {capture.Documents.Count} event/Series records checked. " +
                 $"{capture.ExcludedEvents} events excluded (not assigned to this track); {capture.ExcludedSeries} multi-track Series excluded.";
+            // Archive errors must never block or back off the existing live feed.
+            if(PracticeArchiveEnabled(settings) && DateTimeOffset.UtcNow>=_nextPracticeArchiveAttempt)
+                await PublishPracticeArchiveAsync(settings,publisher,key);
         }
         catch (OnlineUploadLimitException ex)
         {
@@ -161,6 +170,70 @@ public partial class MainWindow
         }
         finally { _onlineBusy = false; UpdateOnlineMeter(); }
     }
+    private void UpdatePracticeArchiveStatus()
+    {
+        if(OnlinePracticeArchiveStatusText is null)return;
+        OnlinePracticeArchiveStatusText.Text=PracticeArchiveEnabled(_settings.OnlinePublishing)
+            ? "Practice archive enabled for this connection. Saved sessions upload once, then new sessions upload automatically."
+            : "Practice archive off. Existing live practice publishing is unchanged.";
+    }
+    private async void EnablePracticeArchive_Click(object sender,RoutedEventArgs e)
+    {
+        if(_onlineBusy){OnlinePracticeArchiveStatusText.Text="An online operation is in progress. Try again.";return;}
+        var settings=_settings.OnlinePublishing;
+        if(!settings.Enabled || string.IsNullOrWhiteSpace(settings.OnlineTrackId) || string.IsNullOrWhiteSpace(settings.ProtectedUploadKey))
+        {OnlinePracticeArchiveStatusText.Text="Register/connect this track and enable publishing first.";return;}
+        if(PracticeArchiveEnabled(settings)){UpdatePracticeArchiveStatus();return;}
+        if(MessageBox.Show(this,$"Enable public practice history for '{_settings.Track.Name}'?\n\nDriver display names, transponder numbers, session times and lap results will be public. Existing practice records without a track ID will be assigned to this track. Confirm only if those older sessions belong to this venue and you are authorized to publish this information. Future completed sessions upload automatically.",
+            "Publish practice history",MessageBoxButton.YesNo,MessageBoxImage.Question)!=MessageBoxResult.Yes)return;
+        _onlineBusy=true;
+        var previous=settings.PracticeArchiveScope;
+        try
+        {
+            var assigned=await _practiceHistoryService.AssignLegacyTrackAsync(_settings.Track);
+            settings.PracticeArchiveScope=PracticeArchiveScope(settings);
+            await CaptureAndSaveSettingsAsync(reportFailureToCaller:true);
+            _nextPracticeArchiveAttempt=DateTimeOffset.MinValue;
+            OnlinePracticeArchiveStatusText.Text=$"Enabled. {assigned} older sessions assigned to this venue. Backfill will upload with new sessions.";
+        }
+        catch(Exception ex){settings.PracticeArchiveScope=previous;OnlinePracticeArchiveStatusText.Text="Practice archive not enabled: "+ex.Message;}
+        finally{_onlineBusy=false;}
+        if(PracticeArchiveEnabled(settings))await PublishOnlineAsync(true);
+    }
+    private async void PausePracticeArchive_Click(object sender,RoutedEventArgs e)
+    {
+        if(_onlineBusy){OnlinePracticeArchiveStatusText.Text="An online operation is in progress. Try again.";return;}
+        var settings=_settings.OnlinePublishing;
+        var previous=settings.PracticeArchiveScope;
+        settings.PracticeArchiveScope="";
+        try{await CaptureAndSaveSettingsAsync(reportFailureToCaller:true);UpdatePracticeArchiveStatus();}
+        catch(Exception ex){settings.PracticeArchiveScope=previous;OnlinePracticeArchiveStatusText.Text="Could not pause: "+ex.Message;}
+    }
+    private async Task PublishPracticeArchiveAsync(OnlinePublishingSettings settings,OnlinePublisher publisher,string key)
+    {
+        _nextPracticeArchiveAttempt=DateTimeOffset.UtcNow.AddSeconds(10);
+        try
+        {
+            var rows=await _practiceHistoryService.LoadArchiveCandidatesAsync(_settings.Track.Id,publisher.PracticeArchiveDelivered);
+            if(rows.Count==0){OnlinePracticeArchiveStatusText.Text=$"Practice history synchronized. {publisher.PracticeArchiveDelivered.Count} sessions acknowledged.";return;}
+            var sessions=new List<System.Text.Json.JsonElement>();
+            foreach(var row in rows)
+            {
+                var laps=await _practiceHistoryService.LoadLapsAsync(row.StintId);
+                if(laps.Count!=row.LapCount)throw new InvalidOperationException("A saved practice session has incomplete lap history. It remains local.");
+                sessions.Add(OnlineSnapshotBuilder.CapturePracticeArchive(row,laps));
+            }
+            if(!settings.Enabled || !PracticeArchiveEnabled(settings))return;
+            await publisher.UploadPracticeArchiveAsync(settings.BaseUrl,settings.OnlineTrackId,key,_settings.Track.Id,sessions,_onlineCancel.Token);
+            OnlinePracticeArchiveStatusText.Text=$"Practice history: {publisher.PracticeArchiveDelivered.Count} sessions acknowledged. Checking for more saved sessions.";
+        }
+        catch(Exception ex)
+        {
+            _nextPracticeArchiveAttempt=DateTimeOffset.UtcNow.AddSeconds(60);
+            OnlinePracticeArchiveStatusText.Text="Practice history pending. "+ex.Message+" Existing live publishing continues.";
+        }
+    }
+
     private void ReadOnlineDataOptions(OnlinePublishingSettings target)
     {
         if (!long.TryParse(OnlineLimitText.Text, out var limit) || limit < 0 || limit > 1_000_000_000)

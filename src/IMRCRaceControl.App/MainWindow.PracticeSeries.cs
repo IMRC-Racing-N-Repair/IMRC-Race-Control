@@ -224,6 +224,10 @@ public partial class MainWindow
         if (crossing.Created || crossing.LapAdded) card.IsLastPassing = true;
         if (crossing.Created)
         {
+            card.TrackId=_settings.Track.Id;
+            try { card.PracticeDate=OnlineSnapshotBuilder.PracticeDate(_settings.Track,card.StartedAt); }
+            catch (TimeZoneNotFoundException) { card.PracticeDate=card.StartedAt.ToString("yyyy-MM-dd",System.Globalization.CultureInfo.InvariantCulture); }
+            catch (InvalidTimeZoneException) { card.PracticeDate=card.StartedAt.ToString("yyyy-MM-dd",System.Globalization.CultureInfo.InvariantCulture); }
             card.SetVisibleStats(_settings.PracticeVisibleStats);
             RefreshVisiblePracticeCards();
         }

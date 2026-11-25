@@ -2,6 +2,9 @@
 
 Keep all release history in this file. Add each new version at the top; do not create version-specific changelog files.
 
+## 0.17.19
+- Add opt-in one-time practice history backfill and automatic future completed practice uploads, using track-local dates, public driver display names and TX numbers, stable stint IDs, and durable acknowledgement tracking. Existing live timing remains independent if the archive endpoint is unavailable.
+
 ## 0.17.18
 - Restore sequential race numbers after explicit lineup moves and allow cross-class heat interleaving. Preserve manual order when selecting rosters and rebuilding the saved queue; keep completed races locked and unaffected rounds unchanged.
 - Separate lineup mouse clicks from native grid selection and race movement. Preserve the visible order and race numbers during roster selection, use one theme-colored selected row without a second hover/focus highlight, and require a MOVE-handle drag or explicit reorder action.

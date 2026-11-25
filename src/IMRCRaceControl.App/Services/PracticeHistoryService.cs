@@ -49,6 +49,14 @@ public sealed class PracticeHistoryService
                 FOREIGN KEY(StintId) REFERENCES PracticeStints(StintId) ON DELETE CASCADE
             );
 
+            CREATE TABLE IF NOT EXISTS PracticeStintTracks (
+                StintId TEXT PRIMARY KEY,
+                TrackId TEXT NOT NULL,
+                PracticeDate TEXT NOT NULL,
+                FOREIGN KEY(StintId) REFERENCES PracticeStints(StintId) ON DELETE CASCADE
+            );
+            CREATE INDEX IF NOT EXISTS IX_PracticeStintTracks_TrackDate
+                ON PracticeStintTracks(TrackId, PracticeDate, StintId);
             CREATE INDEX IF NOT EXISTS IX_PracticeStints_StartedAt
                 ON PracticeStints(StartedAt DESC);
 
@@ -88,6 +96,16 @@ public sealed class PracticeHistoryService
         stintCommand.Parameters.AddWithValue("$best", (object?)best ?? DBNull.Value);
         stintCommand.Parameters.AddWithValue("$average", (object?)average ?? DBNull.Value);
         await stintCommand.ExecuteNonQueryAsync();
+        if(!string.IsNullOrWhiteSpace(card.TrackId) && !string.IsNullOrWhiteSpace(card.PracticeDate))
+        {
+            await using var mapping=connection.CreateCommand();
+            mapping.Transaction=transaction;
+            mapping.CommandText="INSERT INTO PracticeStintTracks(StintId,TrackId,PracticeDate) VALUES($id,$track,$date) ON CONFLICT(StintId) DO UPDATE SET TrackId=excluded.TrackId, PracticeDate=excluded.PracticeDate";
+            mapping.Parameters.AddWithValue("$id",card.StintId);
+            mapping.Parameters.AddWithValue("$track",card.TrackId);
+            mapping.Parameters.AddWithValue("$date",card.PracticeDate);
+            await mapping.ExecuteNonQueryAsync();
+        }
 
         var deleteLaps = connection.CreateCommand();
         deleteLaps.Transaction = transaction;
@@ -153,6 +171,67 @@ public sealed class PracticeHistoryService
             });
         }
 
+        return rows;
+    }
+
+    // Only explicit operator confirmation assigns pre-upgrade sessions to a venue.
+    public async Task<int> AssignLegacyTrackAsync(TrackProfile track)
+    {
+        await InitializeAsync();
+        var zone=TimeZoneInfo.FindSystemTimeZoneById(track.TimeZoneId);
+        await using var connection=new SqliteConnection(ConnectionString);
+        await connection.OpenAsync();
+        using var transaction=connection.BeginTransaction();
+        var missing=new List<(string Id,string Date)>();
+        await using(var query=connection.CreateCommand())
+        {
+            query.Transaction=transaction;
+            query.CommandText="SELECT s.StintId,s.StartedAt FROM PracticeStints s LEFT JOIN PracticeStintTracks t ON t.StintId=s.StintId WHERE t.StintId IS NULL";
+            await using var reader=await query.ExecuteReaderAsync();
+            while(await reader.ReadAsync())
+                missing.Add((reader.GetString(0),TimeZoneInfo.ConvertTime(DateTimeOffset.Parse(reader.GetString(1)),zone).ToString("yyyy-MM-dd",System.Globalization.CultureInfo.InvariantCulture)));
+        }
+        foreach(var row in missing)
+        {
+            await using var cmd=connection.CreateCommand();
+            cmd.Transaction=transaction;
+            cmd.CommandText="INSERT OR IGNORE INTO PracticeStintTracks(StintId,TrackId,PracticeDate) VALUES($id,$track,$date)";
+            cmd.Parameters.AddWithValue("$id",row.Id);
+            cmd.Parameters.AddWithValue("$track",track.Id);
+            cmd.Parameters.AddWithValue("$date",row.Date);
+            await cmd.ExecuteNonQueryAsync();
+        }
+        transaction.Commit();
+        return missing.Count;
+    }
+
+    public async Task<IReadOnlyList<PracticeHistoryRow>> LoadArchiveCandidatesAsync(string trackId,IReadOnlySet<string> delivered,int limit=20)
+    {
+        await InitializeAsync();
+        var rows=new List<PracticeHistoryRow>();
+        await using var connection=new SqliteConnection(ConnectionString);
+        await connection.OpenAsync();
+        await using var command=connection.CreateCommand();
+        command.CommandText="""
+            SELECT s.StintId,s.DriverName,s.TransponderId,s.StartedAt,s.EndedAt,s.LapCount,
+                   s.BestLapSeconds,s.AverageLapSeconds,t.PracticeDate
+            FROM PracticeStintTracks t JOIN PracticeStints s ON s.StintId=t.StintId
+            WHERE t.TrackId=$track AND s.LapCount>0
+            ORDER BY t.PracticeDate,s.StartedAt,s.StintId
+            """;
+        command.Parameters.AddWithValue("$track",trackId);
+        await using var reader=await command.ExecuteReaderAsync();
+        while(rows.Count<Math.Clamp(limit,1,50) && await reader.ReadAsync())
+        {
+            var id=reader.GetString(0);
+            if(delivered.Contains(id))continue;
+            rows.Add(new PracticeHistoryRow {
+                StintId=id,DriverName=reader.GetString(1),TransponderId=reader.GetString(2),
+                StartedAt=DateTimeOffset.Parse(reader.GetString(3)),EndedAt=DateTimeOffset.Parse(reader.GetString(4)),
+                LapCount=reader.GetInt32(5),BestLapSeconds=reader.IsDBNull(6)?null:reader.GetDouble(6),
+                AverageLapSeconds=reader.IsDBNull(7)?null:reader.GetDouble(7),PracticeDate=reader.GetString(8)
+            });
+        }
         return rows;
     }
 

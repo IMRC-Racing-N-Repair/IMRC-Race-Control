@@ -9,6 +9,22 @@ public sealed record OnlineCapture(string? CurrentEventId, List<OnlineDocument> 
 public static class OnlineSnapshotBuilder
 {
     public static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web);
+    public static string PracticeDate(TrackProfile track, DateTimeOffset start)
+    {
+        // Group by the venue's calendar, never by the server's UTC date.
+        var zone=TimeZoneInfo.FindSystemTimeZoneById(track.TimeZoneId);
+        return TimeZoneInfo.ConvertTime(start,zone).ToString("yyyy-MM-dd",System.Globalization.CultureInfo.InvariantCulture);
+    }
+    public static JsonElement CapturePracticeArchive(PracticeHistoryRow row, IReadOnlyList<PracticeHistoryLapRow> laps)
+    {
+        return JsonSerializer.SerializeToElement(new {
+            id=row.StintId, date=row.PracticeDate, name=row.DriverName,
+            transponderId=row.TransponderId, startedAt=row.StartedAt.ToUniversalTime().ToString("O"),
+            endedAt=row.EndedAt.ToUniversalTime().ToString("O"),
+            laps=row.LapCount, best=row.BestLapSeconds, average=row.AverageLapSeconds,
+            lapTimes=laps.OrderBy(l=>l.LapNumber).Select(l=>l.LapTimeSeconds).ToArray()
+        },Json);
+    }
     public static JsonElement CapturePractice(bool active, IEnumerable<PracticeCardViewModel> cards, DateTimeOffset now)
     {
         var rows = active ? cards.Where(c => !c.IsSaving && now-c.LastCrossingAt <= c.InactivityTimeout).Take(100).Select(c => new {

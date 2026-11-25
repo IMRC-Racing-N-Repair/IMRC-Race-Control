@@ -2,6 +2,7 @@ namespace IMRCRaceControl.Models;
 
 public sealed class PracticeHistoryRow
 {
+    public string PracticeDate { get; init; } = "";
     public string StintId { get; init; } = string.Empty;
     public string DriverId { get; init; } = string.Empty;
     public string DriverName { get; init; } = string.Empty;

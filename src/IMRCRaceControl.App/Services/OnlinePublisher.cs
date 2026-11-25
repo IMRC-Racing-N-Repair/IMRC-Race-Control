@@ -20,6 +20,7 @@ public sealed class OnlineOutboxState
     public bool CompletedOnly { get; set; }
     public string LastGeneratedAt { get; set; } = "";
     public Dictionary<string, string> Delivered { get; set; } = new();
+    public HashSet<string> PracticeArchiveDelivered { get; set; } = new(StringComparer.Ordinal);
     public Dictionary<string, PendingOnlineUpload> Pending { get; set; } = new();
 }
 public sealed class OnlineUploadLimitException() : Exception("Upload limit reached. Increase the limit or reset the meter to resume website uploads.");
@@ -54,6 +55,7 @@ public sealed class OnlinePublisher : IDisposable
         return await _http.SendAsync(request, cancel);
     }
     public int PendingCount => _state.Pending.Count;
+    public IReadOnlySet<string> PracticeArchiveDelivered => _state.PracticeArchiveDelivered;
     public static Uri ValidateBaseUrl(string address)
     {
         if (!Uri.TryCreate(address.Trim().TrimEnd('/'), UriKind.Absolute, out var uri) || uri.Scheme != "https" ||
@@ -150,6 +152,39 @@ public sealed class OnlinePublisher : IDisposable
             sent++;
         }
         return sent;
+    }
+    // SQLite is the durable archive outbox; acknowledgement is persisted only
+    // after the server confirms the exact stable stint IDs. A lost response
+    // safely retries the same IDs (server must upsert by track + stint).
+    public async Task<int> UploadPracticeArchiveAsync(string baseUrl,string trackId,string key,string localTrackId,
+        IReadOnlyList<JsonElement> sessions,CancellationToken cancel=default)
+    {
+        if(sessions.Count==0)return 0;
+        var batch=sessions.Take(50).ToList();
+        string body;
+        while(true)
+        {
+            body=JsonSerializer.Serialize(new {schemaVersion=1,localTrackId,sessions=batch},OnlineSnapshotBuilder.Json);
+            if(Encoding.UTF8.GetByteCount(body)<=2_000_000)break;
+            if(batch.Count==1)throw new InvalidOperationException("A practice session exceeds the server's 2 MB limit. It remains saved locally.");
+            batch.RemoveAt(batch.Count-1);
+        }
+        using var request=Request(baseUrl,trackId,"practice/archive",key,body);
+        using var response=await SendMeteredAsync(request,cancel);
+        var text=await response.Content.ReadAsStringAsync(cancel);
+        if(response.StatusCode is HttpStatusCode.NotFound or HttpStatusCode.MethodNotAllowed)
+            throw new HttpRequestException("Practice archive API is not available yet. Sessions remain saved locally.",null,response.StatusCode);
+        EnsureSuccess(response,text);
+        using var json=JsonDocument.Parse(text);
+        var accepted=json.RootElement.GetProperty("data").GetProperty("acceptedIds").EnumerateArray()
+            .Select(x=>x.GetString()).Where(x=>x is not null).ToHashSet();
+        var requested=batch.Select(x=>x.GetProperty("id").GetString()!).ToHashSet();
+        if(!requested.SetEquals(accepted))throw new HttpRequestException("Practice archive acknowledgement did not match the submitted sessions; retrying safely.");
+        var previous=_state.PracticeArchiveDelivered.ToHashSet();
+        _state.PracticeArchiveDelivered.UnionWith(requested);
+        try { await SaveAsync(); }
+        catch { _state.PracticeArchiveDelivered=previous; throw; }
+        return requested.Count;
     }
     private static HttpRequestMessage Request(string baseUrl, string trackId, string operation, string key, string body)
     {
