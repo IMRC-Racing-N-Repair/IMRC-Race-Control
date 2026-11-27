@@ -10,7 +10,7 @@ public partial class SettingsDialog
         [CustomAnnouncement1Text, CustomAnnouncement2Text, CustomAnnouncement3Text, CustomAnnouncement4Text, CustomAnnouncement5Text];
 
     public List<string> CustomAnnouncementMessages =>
-        CustomAnnouncementFields.Select(field => field.Text.Trim()).ToList();
+        CustomAnnouncementFields.Select(box => box.Text.Trim()).ToList();
 
     private void TestCustomAnnouncement_Click(object sender, RoutedEventArgs e)
     {
