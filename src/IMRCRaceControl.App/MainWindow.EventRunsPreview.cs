@@ -139,7 +139,7 @@ public partial class MainWindow
             main.CheckWebsiteConnectionPreview();
             CheckThemedReleaseDialogs(output);
             File.WriteAllText(Path.Combine(output, "Dashboard-Startup-Checks.txt"),
-                "PASS: real dashboard XAML initializes; centered and padded projection columns resolve; current-heat text follows the theme and resets for historical rows; Website Connection panel, upload modes and header indicator validated.");
+                "PASS: real dashboard XAML initializes; centered and padded projection columns resolve; current-heat text follows the theme and resets for historical rows; Website Connection panel, independent practice interval, header indicator and custom announcement keybinds validated.");
         }
         finally { main.Close(); }
         Controls.NextRaceStrip.CheckResponsiveLayout(output);
@@ -169,6 +169,44 @@ public partial class MainWindow
         }
     }
 
+    private static void CheckCustomAnnouncementsPreview(Dialogs.SettingsDialog dialog)
+    {
+        var saved = new AppSettings();
+        var keys = new[] { System.Windows.Input.Key.F1, System.Windows.Input.Key.F2,
+            System.Windows.Input.Key.F3, System.Windows.Input.Key.F4, System.Windows.Input.Key.F5 };
+        for (var i = 0; i < keys.Length; i++)
+        {
+            if (dialog.FindName($"CustomAnnouncement{i + 1}Text") is not TextBox field)
+                throw new InvalidDataException("Missing custom announcement field.");
+            field.Text = $"  Message {i + 1}  ";
+        }
+        saved.CustomAnnouncementMessages = dialog.CustomAnnouncementMessages;
+        for (var i = 0; i < keys.Length; i++)
+        {
+            var key = keys[i];
+            if (!TryGetCustomAnnouncement(saved, key, System.Windows.Input.ModifierKeys.None, false, false, out var text) ||
+                text != $"Message {i + 1}")
+                throw new InvalidDataException("Incorrect custom announcement key mapping.");
+            if (TryGetCustomAnnouncement(saved, key, System.Windows.Input.ModifierKeys.Control, false, false, out _) ||
+                TryGetCustomAnnouncement(saved, key, System.Windows.Input.ModifierKeys.None, true, false, out _) ||
+                TryGetCustomAnnouncement(saved, key, System.Windows.Input.ModifierKeys.None, false, true, out _))
+                throw new InvalidDataException("Custom announcement must ignore modifiers, auto-repeat and editing.");
+        }
+        saved.CustomAnnouncementMessages[0] = " ";
+        if (TryGetCustomAnnouncement(saved, keys[0], System.Windows.Input.ModifierKeys.None, false, false, out _) ||
+            TryGetCustomAnnouncement(saved, System.Windows.Input.Key.S, System.Windows.Input.ModifierKeys.None, false, false, out _) ||
+            TryGetCustomAnnouncement(saved, System.Windows.Input.Key.F6, System.Windows.Input.ModifierKeys.None, false, false, out _))
+            throw new InvalidDataException("Blank messages or unrelated keys must not trigger speech.");
+        // Opening Settings again restores all five persisted values.
+        var reopened = new Dialogs.SettingsDialog(saved);
+        try
+        {
+            if (!reopened.CustomAnnouncementMessages.SequenceEqual(saved.CustomAnnouncementMessages.Select(m => m.Trim())))
+                throw new InvalidDataException("Custom announcements did not reload into settings.");
+        }
+        finally { reopened.Close(); }
+    }
+
     // No real registrations, credentials, disk writes or HTTP calls in the UI check.
     private void CheckWebsiteConnectionPreview()
     {
@@ -187,7 +225,7 @@ public partial class MainWindow
             dialog.SelectWebsiteConnection();
             if (dialog.FindName("WebsiteConnectionTab") is not TabItem tab || !tab.IsSelected ||
                 !ReferenceEquals(dialog.WebsiteConnectionContent, panel) ||
-                panel.OnlineIntervalText.Text != "600" || panel.OnlineIntervalRadio.IsChecked != true)
+                panel.OnlineIntervalText.Text != "600" || panel.OnlineCompletedOnlyCheck.IsChecked == true || !panel.OnlineIntervalText.IsEnabled)
                 throw new InvalidDataException("Website Connection must open directly in Settings with the saved interval.");
             dialog.WebsiteConnectionContent = null;
             dialog.WebsiteConnectionContent = panel; // same panel may be opened repeatedly
@@ -202,10 +240,18 @@ public partial class MainWindow
             ReadOnlineDataOptions(settings);
             if (settings.UploadIntervalSeconds != 1 || settings.CompletedRacesOnly)
                 throw new InvalidDataException("One-second live upload choice was not applied.");
-            panel.OnlineCompletedOnlyRadio.IsChecked = true;
+            panel.OnlineCompletedOnlyCheck.IsChecked = true;
+            panel.OnlineIntervalText.Text = "30";
             ReadOnlineDataOptions(settings);
-            if (!settings.CompletedRacesOnly || panel.OnlineIntervalRadio.IsChecked == true)
-                throw new InvalidDataException("Results-only must be mutually exclusive with live uploading.");
+            if (!settings.CompletedRacesOnly || !panel.OnlineIntervalText.IsEnabled || settings.UploadIntervalSeconds != 30)
+                throw new InvalidDataException("Race results-only and a practice interval must work together.");
+            panel.OnlineIntervalText.Text = "601";
+            try { ReadOnlineDataOptions(settings); throw new InvalidDataException("Results-only mode accepted an invalid practice interval."); }
+            catch (ArgumentException) { }
+            ReadSavedOnlineSettingsIntoPanel();
+            if (panel.OnlineCompletedOnlyCheck.IsChecked != true || panel.OnlineIntervalText.Text != "30")
+                throw new InvalidDataException("Both upload options must reload independently.");
+            CheckCustomAnnouncementsPreview(dialog);
             void ColorIs(Color color, string state)
             {
                 if (HeaderWebsiteIcon.Foreground is not SolidColorBrush brush || brush.Color != color)

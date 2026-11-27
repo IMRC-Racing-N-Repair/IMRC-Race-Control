@@ -258,6 +258,35 @@
                     <TextBlock Text="False start" FontWeight="SemiBold"/>
                     <TextBox x:Name="RaceFalseStartShortcutText" MaxLength="1" Width="100" HorizontalAlignment="Left" Margin="0,4,0,14"/>
                     <TextBlock Text="Use different letters A–Z. Defaults: S to start, F for false start. Shortcuts operate only on the race screen when no text field is being edited." TextWrapping="Wrap" Foreground="{DynamicResource MutedBrush}"/>
+
+                    <Separator Margin="0,18,0,14"/>
+                    <TextBlock Text="CUSTOM VOICE ANNOUNCEMENTS" FontSize="18" FontWeight="Bold"/>
+                    <TextBlock Text="Type a message for each F-key. Press the assigned key in the main Race Control window (when not editing text) to speak it using your selected voice, announcement speed and volume. Leave blank to disable. TEST previews unsaved text; SAVE keeps your messages across restarts." TextWrapping="Wrap" Foreground="{DynamicResource MutedBrush}" Margin="0,6,0,12"/>
+                    <DockPanel Margin="0,0,0,8" LastChildFill="True">
+                        <TextBlock Text="F1" FontWeight="Bold" Width="36" VerticalAlignment="Center" DockPanel.Dock="Left"/>
+                        <Button Content="TEST" Tag="1" Click="TestCustomAnnouncement_Click" DockPanel.Dock="Right" VerticalAlignment="Center" Margin="8,0,0,0"/>
+                        <TextBox x:Name="CustomAnnouncement1Text" AutomationProperties.Name="F1 custom announcement" TextWrapping="Wrap" MinHeight="42" VerticalContentAlignment="Center"/>
+                    </DockPanel>
+                    <DockPanel Margin="0,0,0,8" LastChildFill="True">
+                        <TextBlock Text="F2" FontWeight="Bold" Width="36" VerticalAlignment="Center" DockPanel.Dock="Left"/>
+                        <Button Content="TEST" Tag="2" Click="TestCustomAnnouncement_Click" DockPanel.Dock="Right" VerticalAlignment="Center" Margin="8,0,0,0"/>
+                        <TextBox x:Name="CustomAnnouncement2Text" AutomationProperties.Name="F2 custom announcement" TextWrapping="Wrap" MinHeight="42" VerticalContentAlignment="Center"/>
+                    </DockPanel>
+                    <DockPanel Margin="0,0,0,8" LastChildFill="True">
+                        <TextBlock Text="F3" FontWeight="Bold" Width="36" VerticalAlignment="Center" DockPanel.Dock="Left"/>
+                        <Button Content="TEST" Tag="3" Click="TestCustomAnnouncement_Click" DockPanel.Dock="Right" VerticalAlignment="Center" Margin="8,0,0,0"/>
+                        <TextBox x:Name="CustomAnnouncement3Text" AutomationProperties.Name="F3 custom announcement" TextWrapping="Wrap" MinHeight="42" VerticalContentAlignment="Center"/>
+                    </DockPanel>
+                    <DockPanel Margin="0,0,0,8" LastChildFill="True">
+                        <TextBlock Text="F4" FontWeight="Bold" Width="36" VerticalAlignment="Center" DockPanel.Dock="Left"/>
+                        <Button Content="TEST" Tag="4" Click="TestCustomAnnouncement_Click" DockPanel.Dock="Right" VerticalAlignment="Center" Margin="8,0,0,0"/>
+                        <TextBox x:Name="CustomAnnouncement4Text" AutomationProperties.Name="F4 custom announcement" TextWrapping="Wrap" MinHeight="42" VerticalContentAlignment="Center"/>
+                    </DockPanel>
+                    <DockPanel Margin="0,0,0,8" LastChildFill="True">
+                        <TextBlock Text="F5" FontWeight="Bold" Width="36" VerticalAlignment="Center" DockPanel.Dock="Left"/>
+                        <Button Content="TEST" Tag="5" Click="TestCustomAnnouncement_Click" DockPanel.Dock="Right" VerticalAlignment="Center" Margin="8,0,0,0"/>
+                        <TextBox x:Name="CustomAnnouncement5Text" AutomationProperties.Name="F5 custom announcement" TextWrapping="Wrap" MinHeight="42" VerticalContentAlignment="Center"/>
+                    </DockPanel>
                 </StackPanel></ScrollViewer></TabItem>
 
             <TabItem Header="PRACTICE"><ScrollViewer VerticalScrollBarVisibility="Auto"><StackPanel Margin="16"><TextBlock Text="LIVE PRACTICE INFORMATION" FontWeight="Bold" FontSize="20"/><TextBlock Text="Choose the extra statistics shown on active practice cards. Laps, Best and Average remain visible." TextWrapping="Wrap" Margin="0,8,0,12"/><ItemsControl ItemsSource="{Binding PracticeStatOptions}"><ItemsControl.ItemsPanel><ItemsPanelTemplate><WrapPanel/></ItemsPanelTemplate></ItemsControl.ItemsPanel><ItemsControl.ItemTemplate><DataTemplate><CheckBox Content="{Binding Label}" IsChecked="{Binding IsVisible, Mode=TwoWay}" Width="180" Margin="0,4,12,4"/></DataTemplate></ItemsControl.ItemTemplate></ItemsControl><StackPanel Margin="0,20,0,0">

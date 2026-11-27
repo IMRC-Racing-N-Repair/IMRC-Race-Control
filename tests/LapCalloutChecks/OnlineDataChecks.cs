@@ -55,6 +55,37 @@ internal static class OnlineDataChecks
                 pub.UploadLimitBytes=0;await pub.FlushAsync("https://example.com","track","key");
                 Check(handler.Bodies.Any(b=>b.Contains("\"status\":\"live\"")),"switching back resumes live uploads");
             }
+            using(var pub=new OnlinePublisher(folder,"practice-and-results",handler=new Handler()))
+            {
+                await pub.CaptureAsync(completed,track.Id,completedOnly:true);
+                await pub.FlushAsync("https://example.com","track","key");
+                handler.Bodies.Clear();
+                var practiceNow = DateTimeOffset.UtcNow;
+                var card = new PracticeCardViewModel { DriverName="Practice driver", StartedAt=practiceNow.AddSeconds(-6), LastCrossingAt=practiceNow };
+                card.AddLap(new PracticeLapEntry { LapNumber=1, LapTime=TimeSpan.FromSeconds(6), Timestamp=practiceNow });
+                var practice = completed with { Practice = OnlineSnapshotBuilder.CapturePractice(true,[card],practiceNow) };
+                await pub.CaptureAsync(practice,track.Id,completedOnly:true);
+                await pub.FlushAsync("https://example.com","track","key");
+                Check(handler.Bodies.Count==1 && handler.Bodies[0].Contains("Practice driver") &&
+                      handler.Bodies[0].Contains("\"active\":true"),"practice timing uploads in completed-races mode even with unchanged results");
+                handler.Bodies.Clear();
+                await pub.CaptureAsync(practice,track.Id,completedOnly:true);
+                await pub.FlushAsync("https://example.com","track","key");
+                Check(handler.Bodies.Count==1,"active practice gets a heartbeat at each selected interval");
+                handler.Bodies.Clear();
+                await pub.CaptureAsync(completed,track.Id,completedOnly:true);
+                await pub.FlushAsync("https://example.com","track","key");
+                Check(handler.Bodies.Count==1 && handler.Bodies[0].Contains("\"active\":false"),"practice stop clears public active practice immediately");
+                await pub.CaptureAsync(completed,track.Id,completedOnly:true);
+                Check(pub.PendingCount==0,"idle results-only mode remains deduplicated after practice ends");
+                handler.Bodies.Clear();
+                ev.Sessions.Single(s=>s.Id=="live").ProgressStatus=EventSessionStatus.Completed;
+                await pub.CaptureAsync(Capture(true),track.Id,completedOnly:true);
+                await pub.FlushAsync("https://example.com","track","key");
+                Check(handler.Bodies.Any(b=>b.Contains("\"id\":\"live\"") && b.Contains("\"status\":\"completed\"")) &&
+                      handler.Bodies.All(b=>!b.Contains("\"status\":\"live\"")),"newly completed race uploads while live race timing stays suppressed");
+                ev.Sessions.Single(s=>s.Id=="live").ProgressStatus=EventSessionStatus.Running;
+            }
             using(var pub=new OnlinePublisher(folder,"failures",handler=new Handler { Status=HttpStatusCode.ServiceUnavailable }))
             {
                 await pub.CaptureAsync(completed,track.Id,completedOnly:true);
@@ -115,6 +146,23 @@ internal static class OnlineDataChecks
         schedule.RequestSnapshot();
         Check(schedule.SnapshotDue(settings,now),"race completion makes result available on next poll");
         Check(!schedule.WaitingForRetry(now),"successful connection clears backoff");
+        foreach (var seconds in new[] { 1, 30, 600 })
+        {
+            settings.UploadIntervalSeconds=seconds;
+            schedule.Started(settings,now);
+            Check(schedule.SnapshotDue(settings,now,practiceActive:true),"entering practice is immediately due");
+            schedule.Started(settings,now,practiceActive:true);
+            Check(!schedule.SnapshotDue(settings,now.AddMilliseconds(seconds*1000-1),practiceActive:true),"results-only setting does not shorten practice cadence");
+            Check(schedule.SnapshotDue(settings,now.AddSeconds(seconds),practiceActive:true),"practice honors selected interval in results-only mode");
+            Check(schedule.SnapshotDue(settings,now,practiceActive:false),"stopping practice is immediately due");
+            schedule.Started(settings,now,practiceActive:false);
+            Check(schedule.SnapshotDue(settings,now.AddSeconds(1)),"race completion checks resume without waiting for practice interval");
+        }
+        schedule.Started(settings,now);
+        schedule.Failed(now);
+        Check(!schedule.SnapshotDue(settings,now.AddSeconds(1),practiceActive:true),"practice transitions respect retry backoff");
+        Check(schedule.SnapshotDue(settings,now.AddSeconds(10),practiceActive:true),"practice resumes after backoff");
+        schedule.Reset();
 
         Check(WebsiteConnectionIndicator.Resolve(false,false,false,false,false)==WebsiteConnectionState.Disconnected,"unconfigured red");
         Check(WebsiteConnectionIndicator.Resolve(true,true,false,false,false)==WebsiteConnectionState.Disconnected,"unverified/disconnected red");

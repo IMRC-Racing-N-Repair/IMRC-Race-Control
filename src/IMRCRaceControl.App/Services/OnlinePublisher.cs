@@ -85,7 +85,7 @@ public sealed class OnlinePublisher : IDisposable
         if (_state.CompletedOnly != completedOnly)
         {
             _state.CompletedOnly = completedOnly;
-            // Never replay queued live/practice content after opting into results-only publishing.
+            // Never replay queued live race content after opting into results-only publishing.
             _state.Pending.Clear(); _state.Delivered.Clear();
         }
         var now = DateTimeOffset.UtcNow;
@@ -94,11 +94,16 @@ public sealed class OnlinePublisher : IDisposable
         _state.LastGeneratedAt = generatedAt;
         var docs = capture.Documents.Select(d => (Key: d.Kind + ":" + d.Id, Doc: (OnlineDocument?)d)).ToList();
         docs.Add(("heartbeat", null));
+        var practiceActive = capture.Practice is { ValueKind: JsonValueKind.Object } practice &&
+            practice.TryGetProperty("active", out var active) && active.ValueKind == JsonValueKind.True;
         foreach (var (id, doc) in docs)
         {
-            var fingerprint = (doc?.Value.GetRawText() ?? "") + "|" + capture.CurrentEventId;
+            // Practice is carried by the heartbeat even if no event has changed.
+            // Fingerprint the inactive state too so stopping practice clears the public display.
+            var fingerprint = (doc?.Value.GetRawText() ?? capture.Practice?.GetRawText() ?? "") + "|" + capture.CurrentEventId;
             var hash = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(fingerprint)));
-            if (!force && (completedOnly || doc is not null && !doc.Heartbeat) && _state.Delivered.GetValueOrDefault(id) == hash && !_state.Pending.ContainsKey(id)) continue;
+            var periodic = doc is null ? !completedOnly || practiceActive : !completedOnly && doc.Heartbeat;
+            if (!force && !periodic && _state.Delivered.GetValueOrDefault(id) == hash && !_state.Pending.ContainsKey(id)) continue;
             var body = JsonSerializer.Serialize(new { schemaVersion = 1, localTrackId, generatedAt, currentEventId = capture.CurrentEventId,
                 practice = capture.Practice,
                 events = doc?.Kind == "event" ? new[] { doc.Value } : Array.Empty<JsonElement>(),

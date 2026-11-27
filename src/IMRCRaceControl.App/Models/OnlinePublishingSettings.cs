@@ -2,6 +2,7 @@ namespace IMRCRaceControl.Models;
 public sealed class OnlinePublishingSettings
 {
     public string RegistrationTrackUuid { get; set; } = "";
+    // Applies only to races; live practice always uses UploadIntervalSeconds.
     public bool CompletedRacesOnly { get; set; }
     public const int MinimumUploadIntervalSeconds = 1;
     public const int MaximumUploadIntervalSeconds = 600;

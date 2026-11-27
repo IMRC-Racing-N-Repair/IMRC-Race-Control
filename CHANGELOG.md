@@ -4,7 +4,8 @@ Keep all release history in this file. Add each new version at the top; do not c
 
 ## 0.17.20
 - Move IMRC Live Website Connection into Settings and add a clickable globe in the upper-right toolbar: green when connected and enabled, pulsing green during transfers, orange when paused or at the data limit, red when disconnected.
-- Choose live uploading every 1–600 seconds (one second remains the default) or upload results after each race. Preserve existing credentials, mode, upload limit and practice archive opt-in; saved practice-history uploads run independently of the live interval.
+- Set an upload interval from 1–600 seconds (one second remains the default) and independently check Upload results after each race. With that box checked, live practice still uploads at the selected interval, while races upload upon completion. Preserve existing credentials, data limit and practice archive opt-in.
+- Add five customizable F1–F5 spoken announcements in Settings → Keybinds, with individual Test buttons. Messages use the selected Windows voice, announcement speed and volume, persist across restarts, and work in the focused main window during practice or racing; blank messages are disabled.
 
 ## 0.17.19
 - Publish effective timed/lap race settings and per-driver projected Pace to IMRC Live for live and completed races, using the desktop calculation (including one scored lap), session overrides and combined-race car mapping. Existing API clients and registrations remain compatible.

@@ -6,6 +6,22 @@ namespace IMRCRaceControl.Dialogs;
 
 public partial class SettingsDialog
 {
+    private System.Windows.Controls.TextBox[] CustomAnnouncementFields =>
+        [CustomAnnouncement1Text, CustomAnnouncement2Text, CustomAnnouncement3Text, CustomAnnouncement4Text, CustomAnnouncement5Text];
+
+    public List<string> CustomAnnouncementMessages =>
+        CustomAnnouncementFields.Select(field => field.Text.Trim()).ToList();
+
+    private void TestCustomAnnouncement_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is System.Windows.Controls.Button button &&
+            int.TryParse(button.Tag?.ToString(), out var number) && number is >= 1 and <= 5)
+        {
+            var text = CustomAnnouncementFields[number - 1].Text.Trim();
+            if (text.Length > 0) PreviewRaceTime(text);
+        }
+    }
+
     private void InitializeRaceAudio(AppSettings s)
     {
         RaceLeaderCountCombo.ItemsSource = new[] { 1, 2, 3, 4, 5 };

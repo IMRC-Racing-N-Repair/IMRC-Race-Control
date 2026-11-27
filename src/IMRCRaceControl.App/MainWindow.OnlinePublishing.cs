@@ -53,8 +53,7 @@ public partial class MainWindow
         _onlinePanel.OnlineEnabledCheck.IsChecked = saved.Enabled;
         _onlinePanel.OnlineLimitText.Text = saved.UploadLimitMb.ToString();
         _onlinePanel.OnlineIntervalText.Text = saved.UploadIntervalSeconds.ToString();
-        _onlinePanel.OnlineCompletedOnlyRadio.IsChecked = saved.CompletedRacesOnly;
-        _onlinePanel.OnlineIntervalRadio.IsChecked = !saved.CompletedRacesOnly;
+        _onlinePanel.OnlineCompletedOnlyCheck.IsChecked = saved.CompletedRacesOnly;
         _onlinePanel.OnlineUploadKeyBox.Clear();
     }
     private bool WebsiteLimitBlocked()
@@ -72,7 +71,7 @@ public partial class MainWindow
         var status = state switch
         {
             WebsiteConnectionState.Uploading => _onlineConnecting ? "Connecting to IMRC Live…" : "Uploading to IMRC Live…",
-            WebsiteConnectionState.Ready => settings.CompletedRacesOnly ? "Connected • uploading results after each race" : $"Connected • uploading every {settings.UploadIntervalSeconds} {(settings.UploadIntervalSeconds == 1 ? "second" : "seconds")}",
+            WebsiteConnectionState.Ready => "Connected • " + UploadModeDescription(settings),
             WebsiteConnectionState.Paused => limited ? "Publishing paused • data limit reached" : "Publishing paused",
             _ => configured ? "Not connected • waiting for a successful connection" : "Not connected • open Website Connection"
         };
@@ -230,7 +229,8 @@ public partial class MainWindow
         if (_onlinePanel is null || _onlineBusy || _closing || !_settings.OnlinePublishing.Enabled) return;
         var settings = _settings.OnlinePublishing;
         var now = DateTimeOffset.UtcNow;
-        var snapshotDue = _onlineSchedule.SnapshotDue(settings, now, force);
+        var practiceActive = _practiceActive;
+        var snapshotDue = _onlineSchedule.SnapshotDue(settings, now, force, practiceActive);
         var archiveDue = PracticeArchiveEnabled(settings) &&
             (force || now >= _nextPracticeArchiveAttempt && !_onlineSchedule.WaitingForRetry(now));
         if ((!snapshotDue && !archiveDue) || !force && WebsiteLimitBlocked()) return;
@@ -241,11 +241,11 @@ public partial class MainWindow
             var key = OnlineSecret.Unprotect(settings.ProtectedUploadKey);
             if (snapshotDue)
             {
-                _onlineSchedule.Started(settings, now);
+                _onlineSchedule.Started(settings, now, practiceActive);
                 var capture = OnlineSnapshotBuilder.Capture(_settings.Track, Events, SeriesDefinitions, Drivers, Classes,
                     _activeEvent?.Id, _loadedSession?.Id, _raceEngine.State, _raceEngine.GetStandings(DateTimeOffset.Now),
                     _raceEngine.Laps, !_recallMode && !_practiceActive && !_raceEngine.PracticeMode, settings.CompletedRacesOnly, _raceEngine.TimingSettings);
-                capture = capture with { Practice = OnlineSnapshotBuilder.CapturePractice(_practiceActive && !settings.CompletedRacesOnly, PracticeCards, now) };
+                capture = capture with { Practice = OnlineSnapshotBuilder.CapturePractice(practiceActive, PracticeCards, now) };
                 await publisher.CaptureAsync(capture, _settings.Track.Id, force, settings.CompletedRacesOnly);
                 if (!settings.Enabled) return;
                 if (publisher.PendingCount > 0)
@@ -265,7 +265,7 @@ public partial class MainWindow
                     await publisher.TestAsync(settings.BaseUrl, settings.OnlineTrackId, key, _settings.Track.Id, _onlineCancel.Token);
                     if (!settings.Enabled) return;
                     _onlineConnected = true; _onlineConnectionFailed = false;
-                    _onlinePanel.OnlineStatusText.Text = "Connected. Waiting for the next completed race.";
+                    _onlinePanel.OnlineStatusText.Text = "Connected. " + UploadModeDescription(settings);
                 }
                 _onlineSchedule.Succeeded();
                 SetOnlineTransferring(false);
@@ -357,14 +357,20 @@ public partial class MainWindow
         }
     }
 
+    private static string UploadModeDescription(OnlinePublishingSettings settings)
+    {
+        var interval = $"{settings.UploadIntervalSeconds} {(settings.UploadIntervalSeconds == 1 ? "second" : "seconds")}";
+        return settings.CompletedRacesOnly
+            ? $"Race results after each race • practice every {interval}"
+            : $"Race and practice uploading every {interval}";
+    }
     private void ReadOnlineDataOptions(OnlinePublishingSettings target)
     {
         if (!long.TryParse(_onlinePanel!.OnlineLimitText.Text, out var limit) || limit < 0 || limit > 1_000_000_000)
             throw new ArgumentException("Enter a whole-number data limit in MB (0 = unlimited).");
-        var completedOnly = _onlinePanel!.OnlineCompletedOnlyRadio.IsChecked == true;
-        var interval = target.UploadIntervalSeconds;
-        if (!completedOnly && (!int.TryParse(_onlinePanel!.OnlineIntervalText.Text, out interval) ||
-            interval is < OnlinePublishingSettings.MinimumUploadIntervalSeconds or > OnlinePublishingSettings.MaximumUploadIntervalSeconds))
+        var completedOnly = _onlinePanel!.OnlineCompletedOnlyCheck.IsChecked == true;
+        if (!int.TryParse(_onlinePanel!.OnlineIntervalText.Text, out var interval) ||
+            interval is < OnlinePublishingSettings.MinimumUploadIntervalSeconds or > OnlinePublishingSettings.MaximumUploadIntervalSeconds)
             throw new ArgumentException("Enter a whole-number upload interval from 1 to 600 seconds.");
         target.UploadLimitMb = limit;
         target.CompletedRacesOnly = completedOnly;
@@ -397,7 +403,7 @@ public partial class MainWindow
             await CaptureAndSaveSettingsAsync(reportFailureToCaller: true);
             _onlineSchedule.Reset();
             _onlinePanel!.OnlineIntervalText.Text = settings.UploadIntervalSeconds.ToString();
-            _onlinePanel!.OnlineStatusText.Text = settings.CompletedRacesOnly ? "Saved. Results upload after each race; changed Series standings also upload." : $"Saved. Uploading every {settings.UploadIntervalSeconds} second(s).";
+            _onlinePanel!.OnlineStatusText.Text = "Saved. " + UploadModeDescription(settings);
             applied = true;
         }
         catch (Exception ex)

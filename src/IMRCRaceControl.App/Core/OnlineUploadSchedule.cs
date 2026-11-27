@@ -8,14 +8,21 @@ public sealed class OnlineUploadSchedule
     private DateTimeOffset _nextSnapshot;
     private DateTimeOffset _retryAt;
     private int _failures;
+    private bool _lastPracticeActive;
 
-    public bool SnapshotDue(OnlinePublishingSettings settings, DateTimeOffset now, bool force = false) =>
-        settings.Enabled && (force || now >= _nextSnapshot && now >= _retryAt);
+    public bool SnapshotDue(OnlinePublishingSettings settings, DateTimeOffset now, bool force = false, bool practiceActive = false) =>
+        settings.Enabled && (force || now >= _retryAt &&
+            (now >= _nextSnapshot || practiceActive != _lastPracticeActive));
 
     public bool WaitingForRetry(DateTimeOffset now) => now < _retryAt;
 
-    public void Started(OnlinePublishingSettings settings, DateTimeOffset now) =>
-        _nextSnapshot = now.AddSeconds(settings.CompletedRacesOnly ? 1 : settings.UploadIntervalSeconds);
+    public void Started(OnlinePublishingSettings settings, DateTimeOffset now, bool practiceActive = false)
+    {
+        _lastPracticeActive = practiceActive;
+        // The selected cadence always applies to practice. Outside practice,
+        // deduplicated results-only checks remain responsive to completed races.
+        _nextSnapshot = now.AddSeconds(settings.CompletedRacesOnly && !practiceActive ? 1 : settings.UploadIntervalSeconds);
+    }
 
     // Results-only mode retains the one-second check for corrected results/Series.
     // A race completion can request the next available poll, without bypassing retry backoff.

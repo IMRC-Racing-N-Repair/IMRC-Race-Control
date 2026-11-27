@@ -148,5 +148,11 @@ public sealed class AppSettings
     public double PracticeIdleLapMultiplier { get; set; } = 20.0;
     public string RaceStartShortcut { get; set; } = "S";
     public string RaceFalseStartShortcut { get; set; } = "F";
+    // Indexed by F1–F5; absent/empty entries are disabled on existing installations.
+    public List<string> CustomAnnouncementMessages { get; set; } = [];
+    public string CustomAnnouncement(int functionKey) =>
+        functionKey is >= 1 and <= 5
+            ? CustomAnnouncementMessages?.ElementAtOrDefault(functionKey - 1)?.Trim() ?? string.Empty
+            : string.Empty;
 
 }

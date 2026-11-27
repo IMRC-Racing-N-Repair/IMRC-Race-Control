@@ -17,16 +17,16 @@
                         <TextBlock Text="UPLOAD DATA" FontSize="15" FontWeight="Bold"/>
                         <TextBlock x:Name="OnlineUsageText" Margin="0,5,0,4" TextWrapping="Wrap"/>
                         <ProgressBar x:Name="OnlineUsageBar" Height="7" Minimum="0" Maximum="100" Margin="0,0,0,8"/>
-                        <TextBlock Text="UPLOAD MODE" FontWeight="SemiBold" Margin="0,8,0,4"/>
+                        <TextBlock Text="UPLOAD FREQUENCY" FontWeight="SemiBold" Margin="0,8,0,4"/>
                         <StackPanel Orientation="Horizontal" Margin="0,0,0,6">
-                            <RadioButton x:Name="OnlineIntervalRadio" GroupName="WebsiteUploadMode" IsChecked="True" Content="Uploading every" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                            <TextBlock Text="Uploading every" VerticalAlignment="Center" Margin="0,0,8,0"/>
                             <TextBox x:Name="OnlineIntervalText" Text="1" Width="60" Margin="0,0,8,0" VerticalContentAlignment="Center"
-                                     IsEnabled="{Binding IsChecked, ElementName=OnlineIntervalRadio}" AutomationProperties.Name="Live upload interval in seconds"
+                                     AutomationProperties.Name="Live upload interval in seconds"
                                      ToolTip="Whole seconds (1–600). Default: 1 second."/>
                             <TextBlock Text="seconds (1–600)" VerticalAlignment="Center"/>
                         </StackPanel>
-                        <RadioButton x:Name="OnlineCompletedOnlyRadio" GroupName="WebsiteUploadMode" Content="Upload results after each race" Margin="0,0,0,6"/>
-                        <TextBlock Text="Results-only mode publishes completed results and changed Series standings without sending live race or practice timing. Saved practice history is separately controlled below." FontSize="11" Foreground="{DynamicResource MutedBrush}" TextWrapping="Wrap" Margin="0,0,0,12"/>
+                        <CheckBox x:Name="OnlineCompletedOnlyCheck" Content="Upload results after each race" Margin="0,0,0,6"/>
+                        <TextBlock Text="The interval always applies to live practice. When checked, races upload only after completion (plus changed Series standings). When unchecked, live races also upload at the selected interval. Saved practice history is controlled separately below." FontSize="11" Foreground="{DynamicResource MutedBrush}" TextWrapping="Wrap" Margin="0,0,0,12"/>
                         <WrapPanel VerticalAlignment="Center">
                             <TextBlock Text="Limit (MB)" VerticalAlignment="Center" Margin="0,0,6,0"/>
                             <TextBox x:Name="OnlineLimitText" Text="0" Width="80" Margin="0,0,10,0" VerticalContentAlignment="Center" ToolTip="0 = unlimited. Uploads pause before the next request exceeds this budget."/>

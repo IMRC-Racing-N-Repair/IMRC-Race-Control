@@ -2531,11 +2531,21 @@ public partial class MainWindow : Window
 
     private void Window_PreviewKeyDown(object sender, KeyEventArgs e)
     {
-        if (e.IsRepeat || _activeEvent is null || MainTabs.SelectedItem != RaceTab || IsEditingText())
-            return;
-
         var key = e.Key == Key.System ? e.SystemKey : e.Key;
         var modifiers = Keyboard.Modifiers;
+        // Manual announcements work anywhere in the main window, including
+        // practice without an active race-day event. Never steal modified keys.
+        var editingText = IsEditingText();
+        if (TryGetCustomAnnouncement(_settings, key, modifiers, e.IsRepeat, editingText, out var announcement))
+        {
+            e.Handled = true;
+            _lapSpeech.StopLaps();
+            if (!_lapSpeech.Enqueue(announcement, _settings.RaceAnnouncementRate, _settings.LapSpeechVolume, _settings.LapSpeechVoice))
+                FooterStatusText.Text = _lapSpeech.LastError ?? "Unable to play the custom announcement.";
+            return;
+        }
+        if (e.IsRepeat || _activeEvent is null || MainTabs.SelectedItem != RaceTab || editingText)
+            return;
         // Shortcut keys only apply on the race screen; never intercept typing or car-number hotkeys.
         if (modifiers == ModifierKeys.None && key.ToString().Equals(_settings.RaceStartShortcut, StringComparison.OrdinalIgnoreCase) &&
             StartRaceButton.IsEnabled && !_practiceActive && (_raceEngine.State is RaceState.Ready or RaceState.FalseStart))

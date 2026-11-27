@@ -52,12 +52,12 @@ settings on that page; use TEST CONNECTION / SAVE to change connection details
 or enable publishing. PAUSE PUBLISHING stops automatic requests, without
 removing public results.
 
-Select **Uploading every N seconds** (1–600 whole seconds; defaults to the
-previous one-second cadence) to send live race/practice snapshots on that
-interval. Or select **Upload results after each race** to send completed race
-results and updated Series standings, without ongoing live race/practice
-timing; completion requests the next one-second scheduler poll and unchanged
-results are deduplicated. A single metered connection verification after a
+Set **Uploading every N seconds** (1–600 whole seconds; defaults to the
+previous one-second cadence). Independently check **Upload results after each
+race** to upload completed races and updated Series standings instead of live
+race timing. Live practice still uploads at the selected interval in either
+mode and publishes its start/stop state promptly. Race completion requests
+the next one-second scheduler poll; unchanged race results are deduplicated. A single metered connection verification after a
 restart may be necessary when no new result needs uploading. PUBLISH NOW
 requests a sync immediately, bypassing cadence but not pause/data limits.
 Practice archive batches, if separately enabled, remain independent of live

@@ -114,6 +114,8 @@ public partial class SettingsDialog : Window
         _sourceSettings = settings;
         RaceStartShortcutText.Text = string.IsNullOrWhiteSpace(settings.RaceStartShortcut) ? "S" : settings.RaceStartShortcut;
         RaceFalseStartShortcutText.Text = string.IsNullOrWhiteSpace(settings.RaceFalseStartShortcut) ? "F" : settings.RaceFalseStartShortcut;
+        for (var i = 1; i <= 5; i++)
+            CustomAnnouncementFields[i - 1].Text = settings.CustomAnnouncement(i);
         PracticeIdleMultiplierText.Text = settings.PracticeIdleLapMultiplier.ToString("0.##", CultureInfo.InvariantCulture);
         ClassFirstRegistrationCheck.IsChecked = !settings.EventRegistrationDriverFirst;
         WebOverallCheck.IsChecked = settings.WebShowOverallPosition;

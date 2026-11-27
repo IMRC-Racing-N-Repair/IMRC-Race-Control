@@ -34,6 +34,7 @@ public partial class MainWindow
         _settings.EventRegistrationDriverFirst = dialog.EventRegistrationDriverFirst;
         RefreshEventRegistrationView();
         dialog.ApplyRaceAudio(_settings);
+        _settings.CustomAnnouncementMessages = dialog.CustomAnnouncementMessages;
         ApplyScreenZoom();
         _settings.WebShowOverallPosition = dialog.WebShowOverallPosition;
         _settings.SpectatorVisibleColumns = dialog.SpectatorVisibleColumns;

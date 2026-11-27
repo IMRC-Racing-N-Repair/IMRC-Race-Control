@@ -306,6 +306,18 @@ Equal(0, audio.Advance(2, 0, true, 4, 5, audioSettings).Count, "Halfway only onc
 var audioRestored = JsonSerializer.Deserialize<AppSettings>(JsonSerializer.Serialize(audioSettings))!;
 Equal(15, audioRestored.RaceLeaderIntervalSeconds, "Audio preferences persist");
 Equal(true, audioRestored.RaceCountdownEnabled, "Countdown preference persists");
+var announcementSettings = new AppSettings { CustomAnnouncementMessages = [" First ", "", "Third", "Fourth", "Fifth"] };
+var restoredAnnouncements = JsonSerializer.Deserialize<AppSettings>(JsonSerializer.Serialize(announcementSettings))!;
+Equal("First", restoredAnnouncements.CustomAnnouncement(1), "F1 message persisted and trimmed");
+Equal("", restoredAnnouncements.CustomAnnouncement(2), "F2 blank stays disabled");
+Equal("Third", restoredAnnouncements.CustomAnnouncement(3), "F3 message persisted");
+Equal("Fourth", restoredAnnouncements.CustomAnnouncement(4), "F4 message persisted");
+Equal("Fifth", restoredAnnouncements.CustomAnnouncement(5), "F5 message persisted");
+Equal("", restoredAnnouncements.CustomAnnouncement(0), "Invalid low key ignored");
+Equal("", restoredAnnouncements.CustomAnnouncement(6), "Invalid high key ignored");
+Equal("", new AppSettings().CustomAnnouncement(5), "Old profiles have no enabled custom announcements");
+Equal("", JsonSerializer.Deserialize<AppSettings>("{}")!.CustomAnnouncement(1), "Missing legacy messages are safe");
+Equal("", JsonSerializer.Deserialize<AppSettings>("""{"CustomAnnouncementMessages":null}""")!.CustomAnnouncement(1), "Null legacy messages are safe");
 
 // v0.16.6: arbitrary slider intervals and late timer callbacks.
 audio.Reset();

@@ -9,6 +9,22 @@ public partial class MainWindow
 {
     private readonly LapSpeechService _lapSpeech = new();
 
+    internal static bool TryGetCustomAnnouncement(AppSettings settings, System.Windows.Input.Key key,
+        System.Windows.Input.ModifierKeys modifiers, bool isRepeat, bool editingText, out string message)
+    {
+        message = string.Empty;
+        var number = key switch
+        {
+            System.Windows.Input.Key.F1 => 1, System.Windows.Input.Key.F2 => 2,
+            System.Windows.Input.Key.F3 => 3, System.Windows.Input.Key.F4 => 4,
+            System.Windows.Input.Key.F5 => 5, _ => 0
+        };
+        if (number == 0 || modifiers != System.Windows.Input.ModifierKeys.None || isRepeat || editingText)
+            return false;
+        message = settings.CustomAnnouncement(number);
+        return message.Length > 0;
+    }
+
     private bool AnnounceRaceLap(LapRecord lap)
     {
         if (!_settings.LapAnnouncementsEnabled) return false;
