@@ -29,6 +29,7 @@ public sealed class RaceEngine
     public TimeSpan Duration { get; private set; } = TimeSpan.FromMinutes(5);
     public int TargetLaps { get; private set; } = 50;
     public RaceFormat RaceFormat { get; private set; } = global::IMRCRaceControl.Models.RaceFormat.Timed;
+    public RaceTimingSettings TimingSettings => new(RaceFormat, Duration, TargetLaps);
     public TimeSpan MinimumLapTime { get; private set; } = TimeSpan.FromSeconds(1);
     public SessionType SessionType { get; private set; } = SessionType.Race;
     public StartStyle StartStyle { get; private set; } = StartStyle.Tone;
@@ -501,7 +502,7 @@ public sealed class RaceEngine
 
             var status = GetStatus(runtime, now);
             var clock = GetClock(runtime, now);
-            var pace = GetPace(laps, average);
+            var pace = PracticeMode ? "—" : CalculatePace(laps.Count, average, TimingSettings);
             var consistency = GetConsistency(laps);
             var gapToLeader = classIndex == 0 ? "LEADER" : GetGap(field[0].Runtime, runtime);
             // GAP AHEAD is the interval to the immediately preceding racer.
@@ -595,21 +596,35 @@ public sealed class RaceEngine
         return FormatClock(remaining < TimeSpan.Zero ? TimeSpan.Zero : remaining);
     }
 
-    private string GetPace(IReadOnlyList<LapRecord> laps, TimeSpan? average)
+    // The desktop standings and online snapshots use the same full-lap average
+    // and projection. The start crossing / tone-to-first-crossing delay is not a lap.
+    public static string CalculatePace(IReadOnlyList<LapRecord> laps, RaceTimingSettings settings) =>
+        CalculatePace(laps.Count, Average(laps.Select(l => l.LapTime)), settings);
+
+    public static string CalculatePace(int completedLaps, TimeSpan? average, RaceTimingSettings settings)
     {
-        if (PracticeMode || average is null || average.Value <= TimeSpan.Zero || laps.Count == 0)
+        if (completedLaps <= 0 || average is null || average.Value <= TimeSpan.Zero)
             return "—";
 
-        if (RaceFormat == global::IMRCRaceControl.Models.RaceFormat.Laps)
+        double projectedLaps;
+        switch (settings.Format)
         {
-            var projectedTime = TimeSpan.FromTicks(average.Value.Ticks * TargetLaps);
-            return $"{TargetLaps}/{FormatElapsed(projectedTime)}";
+            case global::IMRCRaceControl.Models.RaceFormat.Laps when settings.TargetLaps > 0:
+                projectedLaps = settings.TargetLaps;
+                break;
+            case global::IMRCRaceControl.Models.RaceFormat.Timed when settings.Duration > TimeSpan.Zero:
+                projectedLaps = Math.Max(completedLaps, Math.Floor(settings.Duration.TotalSeconds / average.Value.TotalSeconds));
+                break;
+            default:
+                return "—";
         }
 
-        var projectedLaps = Math.Max(laps.Count, (int)Math.Floor(Duration.TotalSeconds / average.Value.TotalSeconds));
-        if (projectedLaps < 1) projectedLaps = 1;
-        var projectedTimedFinish = TimeSpan.FromTicks(average.Value.Ticks * projectedLaps);
-        return $"{projectedLaps}/{FormatElapsed(projectedTimedFinish)}";
+        // Invalid legacy settings must not overflow or prevent publishing the results.
+        if (projectedLaps > int.MaxValue || average.Value.Ticks > long.MaxValue / (long)projectedLaps)
+            return "—";
+        var projectedTime = TimeSpan.FromTicks(average.Value.Ticks * (long)projectedLaps);
+        if (projectedTime.TotalMinutes > int.MaxValue) return "—";
+        return $"{(int)projectedLaps}/{FormatElapsed(projectedTime)}";
     }
 
     private static string GetConsistency(IReadOnlyList<LapRecord> laps)

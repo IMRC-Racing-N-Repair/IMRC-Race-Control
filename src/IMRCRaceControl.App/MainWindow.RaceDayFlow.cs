@@ -338,6 +338,7 @@ public partial class MainWindow
         PlannedSessionGrid.Items.Refresh();
 
         await CaptureAndSaveSettingsAsync();
+        RequestCompletedRaceUpload();
 
         var next = GetQueueSessions()
             .FirstOrDefault(s => s.ProgressStatus is not EventSessionStatus.Completed and not EventSessionStatus.Skipped);

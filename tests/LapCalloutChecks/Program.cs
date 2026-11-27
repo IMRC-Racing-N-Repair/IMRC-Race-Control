@@ -876,6 +876,7 @@ checks += await V141Checks.Run();
 checks += await V143Checks.Run(args.Contains("--isolated-database"));
 checks += await V142Checks.Run(args.Contains("--isolated-database"));
 checks += await OnlineChecks.Run();
+checks += OnlinePaceChecks.Run();
 checks += await OnlineDataChecks.Run();
 checks += await PracticeArchiveChecks.Run();
 checks += await DataProtectionChecks.Run();

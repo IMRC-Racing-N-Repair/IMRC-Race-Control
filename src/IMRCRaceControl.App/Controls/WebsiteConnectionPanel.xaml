@@ -1,0 +1,65 @@
+<UserControl x:Class="IMRCRaceControl.Controls.WebsiteConnectionPanel"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+        <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+            <StackPanel Margin="16" MaxWidth="850" HorizontalAlignment="Stretch">
+                <TextBlock Text="IMRC LIVE — WEBSITE CONNECTION" FontSize="20" FontWeight="Bold"/>
+                <TextBlock x:Name="OnlineStatusText" Margin="0,8,0,2" FontWeight="SemiBold" TextWrapping="Wrap"/>
+                <WrapPanel Margin="0,4,0,2">
+                    <Button Content="PUBLISH NOW" x:Name="OnlinePublishButton"/>
+                    <Button Content="PAUSE PUBLISHING" x:Name="OnlinePauseButton"/>
+                    <Button Content="OPEN TRACK PAGE" x:Name="OnlineOpenTrackButton"/>
+                </WrapPanel>
+                <TextBlock Text="Website connection and upload settings are saved with the buttons on this page." FontSize="11" Foreground="{DynamicResource MutedBrush}" TextWrapping="Wrap" Margin="0,4,0,0"/>
+                <TextBlock Margin="0,8,0,12" TextWrapping="Wrap" Text="Save your Track Info, then click REGISTER TRACK ONLINE. No login is needed: your track is added, its upload key is saved securely, and publishing starts automatically. Associated lineups, racer display names, results and Series points become public. Only IMRC can modify or delete website tracks. Use one publishing race PC per track."/>
+                <Border Background="{DynamicResource PanelAltBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" Padding="12" Margin="0,0,0,14">
+                    <StackPanel>
+                        <TextBlock Text="UPLOAD DATA" FontSize="15" FontWeight="Bold"/>
+                        <TextBlock x:Name="OnlineUsageText" Margin="0,5,0,4" TextWrapping="Wrap"/>
+                        <ProgressBar x:Name="OnlineUsageBar" Height="7" Minimum="0" Maximum="100" Margin="0,0,0,8"/>
+                        <TextBlock Text="UPLOAD MODE" FontWeight="SemiBold" Margin="0,8,0,4"/>
+                        <StackPanel Orientation="Horizontal" Margin="0,0,0,6">
+                            <RadioButton x:Name="OnlineIntervalRadio" GroupName="WebsiteUploadMode" IsChecked="True" Content="Uploading every" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                            <TextBox x:Name="OnlineIntervalText" Text="1" Width="60" Margin="0,0,8,0" VerticalContentAlignment="Center"
+                                     IsEnabled="{Binding IsChecked, ElementName=OnlineIntervalRadio}" AutomationProperties.Name="Live upload interval in seconds"
+                                     ToolTip="Whole seconds (1–600). Default: 1 second."/>
+                            <TextBlock Text="seconds (1–600)" VerticalAlignment="Center"/>
+                        </StackPanel>
+                        <RadioButton x:Name="OnlineCompletedOnlyRadio" GroupName="WebsiteUploadMode" Content="Upload results after each race" Margin="0,0,0,6"/>
+                        <TextBlock Text="Results-only mode publishes completed results and changed Series standings without sending live race or practice timing. Saved practice history is separately controlled below." FontSize="11" Foreground="{DynamicResource MutedBrush}" TextWrapping="Wrap" Margin="0,0,0,12"/>
+                        <WrapPanel VerticalAlignment="Center">
+                            <TextBlock Text="Limit (MB)" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                            <TextBox x:Name="OnlineLimitText" Text="0" Width="80" Margin="0,0,10,0" VerticalContentAlignment="Center" ToolTip="0 = unlimited. Uploads pause before the next request exceeds this budget."/>
+                            <Button x:Name="OnlineApplyButton" Content="APPLY UPLOAD SETTINGS"/>
+                            <Button x:Name="OnlineResetMeterButton" Content="RESET METER"/>
+                        </WrapPanel>
+                        <TextBlock Text="0 = unlimited • Since last reset, saved across restarts. Counts upload payloads and retries; excludes network overhead and spectator downloads." FontSize="11" Foreground="{DynamicResource MutedBrush}" TextWrapping="Wrap" Margin="0,6,0,0"/>
+                    </StackPanel>
+                </Border>
+                <Border Background="{DynamicResource PanelAltBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" Padding="12" Margin="0,0,0,14">
+                    <StackPanel>
+                        <TextBlock Text="PRACTICE HISTORY" FontSize="15" FontWeight="Bold"/>
+                        <TextBlock Text="Upload saved practice sessions once, then publish future completed sessions automatically. Names and transponder numbers are public when enabled. Practice archive uploads count toward the data limit." TextWrapping="Wrap" Margin="0,6"/>
+                        <WrapPanel>
+                            <Button Content="ENABLE &amp; BACKFILL" x:Name="OnlineEnableArchiveButton"/>
+                            <Button Content="PAUSE PRACTICE ARCHIVE" x:Name="OnlinePauseArchiveButton"/>
+                        </WrapPanel>
+                        <TextBlock x:Name="OnlinePracticeArchiveStatusText" TextWrapping="Wrap" Margin="0,6,0,0"/>
+                    </StackPanel>
+                </Border>
+                <Button Content="REGISTER TRACK ONLINE" x:Name="OnlineRegisterButton" HorizontalAlignment="Left" Margin="0,0,0,12"/>
+                <TextBlock Text="Website address"/>
+                <TextBox x:Name="OnlineBaseUrlText" Margin="0,4,0,12"/>
+                <TextBlock Text="Online track ID (from the website)"/>
+                <TextBox x:Name="OnlineTrackIdText" Margin="0,4,0,12"/>
+                <TextBlock Text="Upload key (leave blank to keep the saved key)"/>
+                <PasswordBox x:Name="OnlineUploadKeyBox" Margin="0,4,0,12" Padding="8"/>
+                <CheckBox x:Name="OnlineEnabledCheck" Content="Enable website publishing (check and save to resume)" Margin="0,4,0,12"/>
+                <WrapPanel>
+                    <Button Content="TEST CONNECTION / SAVE" x:Name="OnlineSaveButton"/>
+                </WrapPanel>
+                <TextBlock Margin="0,8,0,0" TextWrapping="Wrap" Text="Results remain public when publishing is paused. Upload keys are encrypted for this Windows user. Internet outages do not stop scoring; pending updates retry automatically while publishing is enabled."/>
+
+            </StackPanel>
+        </ScrollViewer>
+</UserControl>

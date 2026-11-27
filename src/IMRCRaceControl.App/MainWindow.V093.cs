@@ -443,11 +443,7 @@ public partial class MainWindow
             .ToList();
 
         var cls = Classes.FirstOrDefault(c => c.Id == session.ClassId);
-        var duration = TimeSpan.FromMinutes(session.RaceMinutesOverride ?? cls?.MinutesFor(session.SessionType) ?? 0);
-        var raceFormat = session.RaceFormat;
-        var targetLaps = session.TargetLaps > 0
-            ? session.TargetLaps
-            : cls?.TargetLaps ?? 50;
+        var timingSettings = RaceTimingSettings.ForSession(session, cls);
 
         var results = new List<StandingRow>();
         for (var i = 0; i < racers.Count; i++)
@@ -479,7 +475,7 @@ public partial class MainWindow
                 Average10 = StoredRecentAverage(laps, 10),
                 Average15 = StoredRecentAverage(laps, 15),
                 Consistency = StoredConsistency(laps),
-                Pace = StoredPace(laps, average, duration, raceFormat, targetLaps),
+                Pace = RaceEngine.CalculatePace(laps.Count, average, timingSettings),
                 GapToLeader = i == 0 ? "LEADER" : StoredGap(racers[0].Laps, laps),
                 GapBehind = i == racers.Count - 1 ? "—" : StoredGap(laps, racers[i + 1].Laps),
                 TotalTime = last is null ? "—" : RaceEngine.FormatElapsed(last.Elapsed),
@@ -553,31 +549,6 @@ public partial class MainWindow
         var stdDev = Math.Sqrt(variance);
         var consistency = Math.Clamp(100.0 - (stdDev / avg * 100.0), 0.0, 100.0);
         return $"{consistency:0.0}%";
-    }
-
-    private static string StoredPace(
-        IReadOnlyList<LapRecord> laps,
-        TimeSpan? average,
-        TimeSpan duration,
-        RaceFormat raceFormat,
-        int targetLaps)
-    {
-        if (laps.Count == 0 || !average.HasValue || average.Value <= TimeSpan.Zero)
-            return "—";
-
-        if (raceFormat == RaceFormat.Laps)
-        {
-            var projectedLaps = Math.Max(1, targetLaps);
-            var projectedTime = TimeSpan.FromTicks(average.Value.Ticks * projectedLaps);
-            return $"{projectedLaps}/{RaceEngine.FormatElapsed(projectedTime)}";
-        }
-
-        if (duration <= TimeSpan.Zero)
-            return "—";
-
-        var projected = Math.Max(laps.Count, (int)Math.Floor(duration.TotalSeconds / average.Value.TotalSeconds));
-        var projectedTimeTimed = TimeSpan.FromTicks(average.Value.Ticks * projected);
-        return $"{projected}/{RaceEngine.FormatElapsed(projectedTimeTimed)}";
     }
 
     private static string StoredGap(

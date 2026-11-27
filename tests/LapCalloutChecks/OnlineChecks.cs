@@ -41,6 +41,7 @@ public static class OnlineChecks
         var result=race.GetProperty("drivers")[0];
         Check(result.GetProperty("carNumber").GetInt32()==7&&result.GetProperty("position").GetInt32()==1,"car and position distinct");
         Check(result.GetProperty("lapTimes")[0].GetDouble()==4.65,"decoder lap seconds preserved");
+        Check(result.GetProperty("pace").GetString()=="64/4:57.600","live pace generated from decoded laps");
         Check(!payload.GetRawText().Contains(racer.Id)&&!payload.GetRawText().Contains("SECRET_TAG")&&!payload.GetRawText().Contains("Private first"),"private identity not exported");
         session.ProgressStatus=EventSessionStatus.Completed;session.Laps=[lap];session.Results=[row];ev.Status=EventStatus.Completed;
         var series=new RaceSeriesDefinition{Name="Cup",StartDate=ev.EventDate,EndDate=ev.EventDate,EventIds=[ev.Id],BestEventCount=1,
@@ -86,6 +87,8 @@ public static class OnlineChecks
                 Check(failed.Authorization=="Bearer test-key","bearer authentication");
                 Check(JsonDocument.Parse(failed.Bodies[0]).RootElement.GetProperty("practice").GetProperty("active").GetBoolean(),"practice survives snapshot serialization into durable outbox");
                 Check(failed.Url!.EndsWith("/api/v1/tracks/online-id/snapshot"),"versioned endpoint");
+                var sentRace=failed.Bodies.Select(x=>JsonDocument.Parse(x)).First(d=>d.RootElement.GetProperty("events").GetArrayLength()>0).RootElement.GetProperty("events")[0].GetProperty("races")[0];
+                Check(sentRace.GetProperty("raceFormat").GetString()=="timed"&&sentRace.GetProperty("durationSeconds").GetDouble()==300&&sentRace.GetProperty("drivers")[0].GetProperty("pace").GetString()=="64/4:57.600","live HTTP payload contains format, duration and pace");
             }
             var success=new FakeHandler(HttpStatusCode.OK);
             using(var pub=new OnlinePublisher(folder,"scope",success))
@@ -97,6 +100,8 @@ public static class OnlineChecks
                 Check(pub.PendingCount==0,"successful uploads drain queue");
                 var eventBody=success.Bodies.Select(x=>JsonDocument.Parse(x)).First(d=>d.RootElement.GetProperty("events").GetArrayLength()>0);
                 Check(eventBody.RootElement.GetProperty("events")[0].GetProperty("status").GetString()=="completed","retry sends newest result");
+                var completedRace=eventBody.RootElement.GetProperty("events")[0].GetProperty("races")[0];
+                Check(completedRace.GetProperty("raceFormat").GetString()=="timed"&&completedRace.GetProperty("durationSeconds").GetDouble()==300&&completedRace.GetProperty("drivers")[0].GetProperty("pace").GetString()=="64/4:57.600","completed HTTP payload preserves race settings and pace");
                 await pub.CaptureAsync(completed with {CurrentEventId=null,Documents=completed.Documents.Select(d=>d with {Heartbeat=false}).ToList()},track.Id);
                 await pub.FlushAsync("https://example.com","online-id","test-key");
                 await pub.CaptureAsync(completed with {CurrentEventId=null,Documents=completed.Documents.Select(d=>d with {Heartbeat=false}).ToList()},track.Id);

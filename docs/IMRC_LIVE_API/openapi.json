@@ -1290,6 +1290,11 @@
           "gap": {
             "type": "string"
           },
+          "pace": {
+            "type": "string",
+            "description": "Desktop projected laps/finish time based on scored lap durations, not the current lap count. May be absent on older or planned records; — indicates unavailable.",
+            "example": "45/4:58.381"
+          },
           "finished": {
             "type": "boolean"
           },
@@ -1341,6 +1346,23 @@
               "completed",
               "skipped"
             ]
+          },
+          "raceFormat": {
+            "type": "string",
+            "enum": ["timed", "laps"],
+            "description": "Effective Race Control race format; optional for older records."
+          },
+          "durationSeconds": {
+            "type": "number",
+            "exclusiveMinimum": 0,
+            "description": "Effective engine duration in seconds for a timed race, including qualifying/main class settings and session overrides. Omitted for lap races or unknown/invalid duration.",
+            "example": 300
+          },
+          "targetLaps": {
+            "type": "integer",
+            "minimum": 1,
+            "description": "Effective engine target for lap-count races. Omitted for timed races or unknown/invalid target.",
+            "example": 50
           },
           "drivers": {
             "type": "array",

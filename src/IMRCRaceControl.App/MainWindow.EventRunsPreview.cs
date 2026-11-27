@@ -136,9 +136,10 @@ public partial class MainWindow
             finally { host.Close(); }
             main.CheckEventRoundsDivider();
             main.CheckPracticeCardLayout(output);
+            main.CheckWebsiteConnectionPreview();
             CheckThemedReleaseDialogs(output);
             File.WriteAllText(Path.Combine(output, "Dashboard-Startup-Checks.txt"),
-                "PASS: real dashboard XAML initializes; centered and padded projection columns resolve; current-heat text follows the theme and resets for historical rows.");
+                "PASS: real dashboard XAML initializes; centered and padded projection columns resolve; current-heat text follows the theme and resets for historical rows; Website Connection panel, upload modes and header indicator validated.");
         }
         finally { main.Close(); }
         Controls.NextRaceStrip.CheckResponsiveLayout(output);
@@ -165,6 +166,80 @@ public partial class MainWindow
                     queue.Enqueue(child);
             }
             throw new InvalidDataException("Qualifying projection grid was not found.");
+        }
+    }
+
+    // No real registrations, credentials, disk writes or HTTP calls in the UI check.
+    private void CheckWebsiteConnectionPreview()
+    {
+        var oldSettings = _settings.OnlinePublishing;
+        var oldPanel = _onlinePanel;
+        var settings = new OnlinePublishingSettings { OnlineTrackId = "preview", ProtectedUploadKey = "preview-only",
+            Enabled = true, UploadIntervalSeconds = 600 };
+        var panel = new Controls.WebsiteConnectionPanel();
+        var dialog = new Dialogs.SettingsDialog(_settings);
+        try
+        {
+            _settings.OnlinePublishing = settings;
+            _onlinePanel = panel;
+            ReadSavedOnlineSettingsIntoPanel();
+            dialog.WebsiteConnectionContent = panel;
+            dialog.SelectWebsiteConnection();
+            if (dialog.FindName("WebsiteConnectionTab") is not TabItem tab || !tab.IsSelected ||
+                !ReferenceEquals(dialog.WebsiteConnectionContent, panel) ||
+                panel.OnlineIntervalText.Text != "600" || panel.OnlineIntervalRadio.IsChecked != true)
+                throw new InvalidDataException("Website Connection must open directly in Settings with the saved interval.");
+            dialog.WebsiteConnectionContent = null;
+            dialog.WebsiteConnectionContent = panel; // same panel may be opened repeatedly
+            foreach (var value in new[] { "0", "601", "1.5", "" })
+            {
+                panel.OnlineIntervalText.Text = value;
+                try { ReadOnlineDataOptions(settings); }
+                catch (ArgumentException) { continue; }
+                throw new InvalidDataException("Website upload interval accepted invalid input: " + value);
+            }
+            panel.OnlineIntervalText.Text = "1";
+            ReadOnlineDataOptions(settings);
+            if (settings.UploadIntervalSeconds != 1 || settings.CompletedRacesOnly)
+                throw new InvalidDataException("One-second live upload choice was not applied.");
+            panel.OnlineCompletedOnlyRadio.IsChecked = true;
+            ReadOnlineDataOptions(settings);
+            if (!settings.CompletedRacesOnly || panel.OnlineIntervalRadio.IsChecked == true)
+                throw new InvalidDataException("Results-only must be mutually exclusive with live uploading.");
+            void ColorIs(Color color, string state)
+            {
+                if (HeaderWebsiteIcon.Foreground is not SolidColorBrush brush || brush.Color != color)
+                    throw new InvalidDataException("Website indicator color mismatch: " + state);
+            }
+            _onlineConnected = true;
+            UpdateWebsiteIndicator();
+            ColorIs(Color.FromRgb(53,199,111), "connected");
+            SetOnlineTransferring(true);
+            ColorIs(Color.FromRgb(53,199,111), "uploading");
+            if (_headerWebsiteState != Core.WebsiteConnectionState.Uploading)
+                throw new InvalidDataException("Upload indicator did not enter the pulsing state.");
+            settings.Enabled = false;
+            UpdateWebsiteIndicator();
+            ColorIs(Color.FromRgb(255,149,50), "paused");
+            if (HeaderWebsiteIcon.Opacity != 1)
+                throw new InvalidDataException("Pause must stop the upload pulse.");
+            _onlineConnected = false;
+            _onlineTransferring = false;
+            settings.Enabled = true;
+            UpdateWebsiteIndicator();
+            ColorIs(Color.FromRgb(229,59,59), "disconnected");
+        }
+        finally
+        {
+            dialog.WebsiteConnectionContent = null;
+            dialog.Close();
+            _settings.OnlinePublishing = oldSettings;
+            _onlinePanel = oldPanel;
+            _onlineConnected = false;
+            _onlineTransferring = false;
+            _onlineConnecting = false;
+            _onlineConnectionFailed = false;
+            UpdateWebsiteIndicator();
         }
     }
 

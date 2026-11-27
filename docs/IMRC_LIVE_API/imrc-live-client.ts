@@ -1,8 +1,8 @@
 /** Public read client. Never put a Race Control upload key in a spectator app. */
 export type Page<T> = {items:T[];nextOffset:number|null};
 export type Track = {id:string;name:string;location:string;surface:string;updatedAt:string;currentEventId:string|null;lastReceivedAt:string|null};
-export type Driver = {name:string;position:number;carNumber?:number;laps:number;time:string;best?:string;lastLap?:string;gap?:string;finished?:boolean;lapTimes?:number[]};
-export type Race = {id:string;number:number;round:string;classId?:string;className:string;heat:string;status:'planned'|'live'|'completed'|'skipped';drivers:Driver[]};
+export type Driver = {name:string;position:number;carNumber?:number;laps:number;time:string;best?:string;lastLap?:string;gap?:string;/** Desktop projected laps/finish time; — if unavailable. */pace?:string;finished?:boolean;lapTimes?:number[]};
+export type Race = {id:string;number:number;round:string;classId?:string;className:string;heat:string;status:'planned'|'live'|'completed'|'skipped';raceFormat?:'timed'|'laps';durationSeconds?:number;targetLaps?:number;drivers:Driver[]};
 export type EventSummary = {id:string;name:string;date:string;status:'upcoming'|'active'|'completed';raceCount:number;updatedAt:string};
 export type Event = Omit<EventSummary,'raceCount'> & {races:Race[]};
 export type Practice = {id:"current";active:boolean;updatedAt:string;stale:boolean;drivers:{id:string;name:string;laps:number;lastLap:string;best:string;average:string;lastCrossingAt:string;lapTimes:number[];stats:{label:string;value:string}[]}[]};

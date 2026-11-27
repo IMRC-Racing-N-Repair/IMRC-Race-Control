@@ -12,11 +12,23 @@ public partial class MainWindow
     private readonly ToneService _toneService = new();
     private bool _endTonePlayed;
 
-    private async void Settings_Click(object sender, RoutedEventArgs e)
+    private async void Settings_Click(object sender, RoutedEventArgs e) => await ShowSettingsAsync(false);
+    private async void HeaderWebsiteButton_Click(object sender, RoutedEventArgs e) => await ShowSettingsAsync(true);
+
+    private async Task ShowSettingsAsync(bool websiteConnection)
     {
         _lapSpeech.Stop();
         var dialog = new SettingsDialog(_settings) { Owner = this, ApplicationToolsEnabled = ApplicationUpdateAllowed, OpenWeb = () => LocalBoard_Click(this, new RoutedEventArgs()) };
-        if (dialog.ShowDialog() != true)
+        if (_onlinePanel is not null)
+        {
+            if (!_onlineBusy) ReadSavedOnlineSettingsIntoPanel();
+            dialog.WebsiteConnectionContent = _onlinePanel;
+            if (websiteConnection) dialog.SelectWebsiteConnection();
+        }
+        bool? saved;
+        try { saved = dialog.ShowDialog(); }
+        finally { dialog.WebsiteConnectionContent = null; }
+        if (saved != true)
             return;
 
         _settings.EventRegistrationDriverFirst = dialog.EventRegistrationDriverFirst;

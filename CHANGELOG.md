@@ -2,7 +2,12 @@
 
 Keep all release history in this file. Add each new version at the top; do not create version-specific changelog files.
 
+## 0.17.20
+- Move IMRC Live Website Connection into Settings and add a clickable globe in the upper-right toolbar: green when connected and enabled, pulsing green during transfers, orange when paused or at the data limit, red when disconnected.
+- Choose live uploading every 1–600 seconds (one second remains the default) or upload results after each race. Preserve existing credentials, mode, upload limit and practice archive opt-in; saved practice-history uploads run independently of the live interval.
+
 ## 0.17.19
+- Publish effective timed/lap race settings and per-driver projected Pace to IMRC Live for live and completed races, using the desktop calculation (including one scored lap), session overrides and combined-race car mapping. Existing API clients and registrations remain compatible.
 - Add opt-in one-time practice history backfill and automatic future completed practice uploads, using track-local dates, public driver display names and TX numbers, stable stint IDs, and durable acknowledgement tracking. Existing live timing remains independent if the archive endpoint is unavailable.
 
 ## 0.17.18

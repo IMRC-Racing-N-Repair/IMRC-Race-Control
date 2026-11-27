@@ -34,6 +34,7 @@
     <Compile Include="../../src/IMRCRaceControl.App/Core/NextRacePreview.cs" Link="NextRacePreview.cs" />
     <Compile Include="../../src/IMRCRaceControl.App/Core/TrackmateProtocol.cs" Link="TrackmateProtocol.cs" />
     <Compile Include="../../src/IMRCRaceControl.App/Core/OnlineTrackRegistration.cs" Link="OnlineTrackRegistration.cs" />
+    <Compile Include="../../src/IMRCRaceControl.App/Core/OnlineUploadSchedule.cs" Link="OnlineUploadSchedule.cs" />
     <Compile Include="../../src/IMRCRaceControl.App/Core/OnlineSnapshotBuilder.cs" Link="OnlineSnapshotBuilder.cs" />
     <Compile Include="../../src/IMRCRaceControl.App/Services/OnlinePublisher.cs" Link="OnlinePublisher.cs" />
     <Compile Include="../../src/IMRCRaceControl.App/Core/OpenStintDecoder.cs" Link="OpenStintDecoder.cs" />
@@ -60,6 +61,7 @@
     <Compile Include="../../src/IMRCRaceControl.App/Core/RaceSchedule.cs" Link="RaceSchedule.cs" />
     <Compile Include="../../src/IMRCRaceControl.App/Core/RaceReports.cs" Link="RaceReports.cs" />
     <Compile Include="../../src/IMRCRaceControl.App/Core/SavedRoundEditor.cs" Link="SavedRoundEditor.cs" />
+    <Compile Include="../../src/IMRCRaceControl.App/Core/RaceTimingSettings.cs" Link="RaceTimingSettings.cs" />
     <Compile Include="../../src/IMRCRaceControl.App/Core/RaceEngine.cs" Link="RaceEngine.cs" />
     <Compile Include="../../src/IMRCRaceControl.App/Core/LapAnnouncementFormatter.cs" Link="LapAnnouncementFormatter.cs" />
     <Compile Include="../../src/IMRCRaceControl.App/Core/SpeechCalloutQueue.cs" Link="SpeechCalloutQueue.cs" />

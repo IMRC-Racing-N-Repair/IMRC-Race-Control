@@ -11,6 +11,14 @@ namespace IMRCRaceControl.Dialogs;
 
 public partial class SettingsDialog : Window
 {
+    // The main window owns the uploader and its single live settings panel.
+    public FrameworkElement? WebsiteConnectionContent
+    {
+        get => WebsiteConnectionHost.Content as FrameworkElement;
+        set => WebsiteConnectionHost.Content = value;
+    }
+    public void SelectWebsiteConnection() => WebsiteConnectionTab.IsSelected = true;
+
     public enum ApplicationAction { None, CheckUpdates, ManageData }
     public ApplicationAction RequestedApplicationAction { get; private set; }
     public bool ApplicationToolsEnabled

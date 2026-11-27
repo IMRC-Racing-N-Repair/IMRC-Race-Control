@@ -67,11 +67,64 @@ internal static class OnlineDataChecks
                 try { await pub.TestAsync("https://example.com","track","key",track.Id);throw new Exception("Test bypassed cap"); } catch(OnlineUploadLimitException) { checks++; }
                 try { await pub.RegisterAsync("https://example.com",track,"key");throw new Exception("Register bypassed cap"); } catch(OnlineUploadLimitException) { checks++; }
             }
-            var settings=JsonSerializer.Deserialize<OnlinePublishingSettings>(JsonSerializer.Serialize(new OnlinePublishingSettings { CompletedRacesOnly=true,UploadLimitMb=25 }))!;
-            Check(settings.CompletedRacesOnly && settings.UploadLimitMb==25,"mode and limit persisted");
-            Check(!new OnlinePublishingSettings().CompletedRacesOnly && new OnlinePublishingSettings().UploadLimitMb==0,"existing installations retain unlimited live default");
+            var settings=JsonSerializer.Deserialize<OnlinePublishingSettings>(JsonSerializer.Serialize(new OnlinePublishingSettings { CompletedRacesOnly=true,UploadLimitMb=25,UploadIntervalSeconds=600 }))!;
+            Check(settings.CompletedRacesOnly && settings.UploadLimitMb==25 && settings.UploadIntervalSeconds==600,"mode, limit and cadence persisted");
+            var legacy=JsonSerializer.Deserialize<OnlinePublishingSettings>("""{"Enabled":true,"OnlineTrackId":"test-id","ProtectedUploadKey":"test-ciphertext"}""")!;
+            Check(legacy.Enabled && legacy.OnlineTrackId=="test-id" && legacy.ProtectedUploadKey=="test-ciphertext" && legacy.UploadIntervalSeconds==1 && !legacy.CompletedRacesOnly && legacy.UploadLimitMb==0,"existing installations retain one-second live default and credentials");
+            Check(new OnlinePublishingSettings {UploadIntervalSeconds=0}.UploadIntervalSeconds==1 && new OnlinePublishingSettings {UploadIntervalSeconds=601}.UploadIntervalSeconds==600,"stored interval clamped to 1–600 seconds");
+            checks+=CheckSchedule();
         }
         finally { Directory.Delete(folder,true); }
+        return checks;
+    }
+    private static int CheckSchedule()
+    {
+        int checks=0;
+        void Check(bool value,string message){if(!value)throw new Exception("Upload schedule: "+message);checks++;}
+        var now = DateTimeOffset.Parse("2026-11-27T12:00:00Z");
+        var settings = new OnlinePublishingSettings { Enabled=true };
+        var schedule = new OnlineUploadSchedule();
+        Check(schedule.SnapshotDue(settings,now),"startup is immediately due");
+        schedule.Started(settings,now);
+        Check(!schedule.SnapshotDue(settings,now.AddMilliseconds(999)) && schedule.SnapshotDue(settings,now.AddSeconds(1)),"default one-second cadence");
+        foreach (var seconds in new[] { 2, 30, 600 })
+        {
+            settings.UploadIntervalSeconds=seconds;
+            schedule.Started(settings,now);
+            Check(!schedule.SnapshotDue(settings,now.AddSeconds(seconds-1)),"no premature periodic snapshot");
+            Check(schedule.SnapshotDue(settings,now.AddSeconds(seconds)),"selected cadence is honored");
+            Check(schedule.SnapshotDue(settings,now,true),"manual publish bypasses cadence");
+        }
+        settings.Enabled=false;
+        Check(!schedule.SnapshotDue(settings,now.AddMinutes(20),true),"pause overrides manual and scheduled requests");
+        settings.Enabled=true;
+        schedule.Reset();
+        Check(schedule.SnapshotDue(settings,now),"changing upload settings makes next snapshot due");
+        schedule.Started(settings,now);
+        Check(schedule.Failed(now)==10,"first retry delay is ten seconds");
+        Check(!schedule.SnapshotDue(settings,now.AddSeconds(9)) && schedule.WaitingForRetry(now.AddSeconds(9)),"connection failure respects backoff");
+        schedule.RequestSnapshot();
+        Check(!schedule.SnapshotDue(settings,now.AddSeconds(9)),"race completion cannot bypass failed connection backoff");
+        Check(schedule.SnapshotDue(settings,now.AddSeconds(10)),"retry is independent of ten-minute live interval");
+        Check(schedule.Failed(now.AddSeconds(10))==20,"delay grows on failures");
+        Check(schedule.Failed(now.AddSeconds(30))==40 && schedule.Failed(now.AddSeconds(70))==80 && schedule.Failed(now.AddSeconds(150))==120 && schedule.Failed(now.AddSeconds(270))==120,"retry delay capped at two minutes");
+        schedule.Succeeded();
+        settings.CompletedRacesOnly=true;
+        schedule.Started(settings,now);
+        Check(!schedule.SnapshotDue(settings,now.AddMilliseconds(999)) && schedule.SnapshotDue(settings,now.AddSeconds(1)),"results-only check ignores live interval");
+        schedule.RequestSnapshot();
+        Check(schedule.SnapshotDue(settings,now),"race completion makes result available on next poll");
+        Check(!schedule.WaitingForRetry(now),"successful connection clears backoff");
+
+        Check(WebsiteConnectionIndicator.Resolve(false,false,false,false,false)==WebsiteConnectionState.Disconnected,"unconfigured red");
+        Check(WebsiteConnectionIndicator.Resolve(true,true,false,false,false)==WebsiteConnectionState.Disconnected,"unverified/disconnected red");
+        Check(WebsiteConnectionIndicator.Resolve(true,true,true,false,false)==WebsiteConnectionState.Ready,"connected green between requests");
+        Check(WebsiteConnectionIndicator.Resolve(true,true,true,true,false)==WebsiteConnectionState.Uploading,"upload pulses green");
+        Check(WebsiteConnectionIndicator.Resolve(true,false,true,true,false)==WebsiteConnectionState.Paused,"manual pause overrides in-flight upload");
+        Check(WebsiteConnectionIndicator.Resolve(true,true,true,true,true)==WebsiteConnectionState.Paused,"reached data cap orange");
+        Check(WebsiteConnectionIndicator.Resolve(false,false,false,false,false,connecting:true)==WebsiteConnectionState.Uploading,"connection test pulses");
+        Check(WebsiteConnectionIndicator.Resolve(true,false,false,false,false,connectionFailed:true)==WebsiteConnectionState.Disconnected,"failed registration red");
+        Check(WebsiteConnectionIndicator.Resolve(true,true,true,false,false)==WebsiteConnectionState.Ready,"successful retry returns green");
         return checks;
     }
     private sealed class Handler : HttpMessageHandler

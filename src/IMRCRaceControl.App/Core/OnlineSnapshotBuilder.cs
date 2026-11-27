@@ -1,4 +1,5 @@
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using IMRCRaceControl.Models;
 namespace IMRCRaceControl.Core;
 public sealed record OnlineDocument(string Kind, string Id, JsonElement Value, bool Heartbeat = false);
@@ -9,6 +10,8 @@ public sealed record OnlineCapture(string? CurrentEventId, List<OnlineDocument> 
 public static class OnlineSnapshotBuilder
 {
     public static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web);
+    // Keep unknown/inapplicable optional race fields absent rather than sending null or invented values.
+    private static readonly JsonSerializerOptions EventJson = new(Json) { DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull };
     public static string PracticeDate(TrackProfile track, DateTimeOffset start)
     {
         // Group by the venue's calendar, never by the server's UTC date.
@@ -38,7 +41,7 @@ public static class OnlineSnapshotBuilder
     public static OnlineCapture Capture(TrackProfile track, IEnumerable<RaceDayEventDefinition> allEvents,
         IEnumerable<RaceSeriesDefinition> allSeries, IEnumerable<DriverProfile> drivers, IEnumerable<ClassDefinition> classes,
         string? currentEventId, string? loadedSessionId, RaceState state, IEnumerable<StandingRow> liveRows,
-        IEnumerable<LapRecord> liveLaps, bool showLive, bool completedOnly = false)
+        IEnumerable<LapRecord> liveLaps, bool showLive, bool completedOnly = false, RaceTimingSettings? liveSettings = null)
     {
         var all = allEvents.ToList();
         var events = all.Where(e => e.Track?.Id == track.Id).ToList();
@@ -51,11 +54,17 @@ public static class OnlineSnapshotBuilder
                 .OrderBy(s => s.ScheduleStageOrder).ThenBy(s => s.ScheduleRoundOrder).ThenBy(s => s.RaceNumber).ThenBy(s => s.QueueOrder)
                 .Select(s => {
                     var combined=CombinedRaces.Run(ev.Sessions,s);
-                    int RuntimeCar(int car) => combined.IsCombinedRace ? combined.Entrants.FirstOrDefault(e=>e.SourceSessionId==s.Id && e.SourceCarNumber==car)?.CarNumber ?? car : car;
+                    int? RuntimeCar(int car) => combined.IsCombinedRace ? combined.Entrants.FirstOrDefault(e=>e.SourceSessionId==s.Id && e.SourceCarNumber==car)?.CarNumber : car;
                     var engine = !completedOnly && showLive && ev.Id == currentEventId && combined.Id == loadedSessionId &&
                         state is RaceState.Armed or RaceState.Running or RaceState.TimeExpired or RaceState.Complete;
                     var completed = s.ProgressStatus == EventSessionStatus.Completed || engine && state == RaceState.Complete;
                     var status = s.ProgressStatus == EventSessionStatus.Skipped ? "skipped" : completed ? "completed" : engine ? "live" : "planned";
+                    // Use the actual engine settings for a running/just-finished combined run,
+                    // including live format changes. Saved completions retain their own settings.
+                    var configuredSession = completed && !engine ? s : combined;
+                    var cls = classes.FirstOrDefault(c => c.Id == configuredSession.ClassId);
+                    var settings = engine && liveSettings.HasValue
+                        ? liveSettings.Value : RaceTimingSettings.ForSession(configuredSession, cls);
                     var timing = engine ? rows : s.Results;
                     var lapData = engine ? laps : s.Laps;
                     var ordered = status is "completed" or "live"
@@ -65,20 +74,25 @@ public static class OnlineSnapshotBuilder
                         id = s.Id, number = s.RaceNumber, round = s.RoundLabel, classId = s.ClassId, className = s.ClassName,
                         combinedRaceId=s.CombinedRaceId, combinedRaceName=combined.IsCombinedRace ? combined.Name : "", classColor=classes.FirstOrDefault(c=>c.Id==s.ClassId)?.PrintColor ?? "#808080",
                         heat = s.SessionType == SessionType.Race ? s.HeatMainDisplay + "-Main" : "Heat " + s.Heat,
-                        status,
+                        status, raceFormat = settings.FormatName, durationSeconds = settings.DurationSeconds, targetLaps = settings.LapTarget,
                         drivers = ordered.Select(e => {
-                            var row = status is "completed" or "live" ? timing.FirstOrDefault(r => r.CarNumber == (engine ? RuntimeCar(e.CarNumber) : e.CarNumber)) : null;
+                            var timingCar = engine ? RuntimeCar(e.CarNumber) : e.CarNumber;
+                            var hasTiming = status is "completed" or "live";
+                            var row = hasTiming ? timing.FirstOrDefault(r => r.CarNumber == timingCar) : null;
+                            var driverLaps = row is null ? Array.Empty<LapRecord>() : lapData.Where(l => l.CarNumber == timingCar)
+                                .OrderBy(l => l.LapNumber).ToArray();
                             return new { name = e.DisplayName, carNumber = e.CarNumber, position = row?.Position ?? e.CarNumber,
                                 laps = row?.Laps ?? 0, time = row?.TotalTime ?? "—", best = row?.BestLap ?? "—",
                                 lastLap = row?.LastLap ?? "—", gap = row?.GapToLeader ?? "—", finished = row?.IsFinished ?? false,
-                                lapTimes = row is null ? Array.Empty<double>() : lapData.Where(l => l.CarNumber == (engine ? RuntimeCar(e.CarNumber) : e.CarNumber))
-                                    .OrderBy(l => l.LapNumber).Select(l => l.LapTime.TotalSeconds).ToArray() };
+                                pace = hasTiming ? (row is not null && row.Laps == driverLaps.Length
+                                    ? RaceEngine.CalculatePace(driverLaps, settings) : "—") : null,
+                                lapTimes = driverLaps.Select(l => l.LapTime.TotalSeconds).ToArray() };
                         }).ToArray()
                     };
                 }).ToArray();
             var value = JsonSerializer.SerializeToElement(new { id = ev.Id, name = ev.Name,
                 date = ev.EventDate.ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture),
-                status = ev.Status == EventStatus.Completed ? "completed" : ev.Id == currentEventId ? "active" : "upcoming", races }, Json);
+                status = ev.Status == EventStatus.Completed ? "completed" : ev.Id == currentEventId ? "active" : "upcoming", races }, EventJson);
             documents.Add(new("event", ev.Id, value, !completedOnly && ev.Id == currentEventId));
         }
         var excludedSeries = 0;
